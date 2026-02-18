@@ -64,7 +64,7 @@ Kryteria akceptacji P4:
 - Wszystkie quality gates przechodzą na czystym środowisku.
 - Krytyczne flow jest pokryte testami automatycznymi.
 
-## Rejestr decyzji do potwierdzenia
-- [ ] Wybrać bibliotekę DnD: `@dnd-kit` (rekomendowane) lub `react-beautiful-dnd`.
-- [ ] Potwierdzić minimalną wersję Node.js dla projektu (rekomendacja: Node 20 LTS).
-- [ ] Potwierdzić, czy bootstrap ma od razu zawierać CI (GitHub Actions/GitLab CI).
+## Rejestr decyzji technicznych (potwierdzone)
+- [x] Biblioteka DnD: `@dnd-kit`.
+- [x] Minimalna wersja Node.js: `20 LTS`.
+- [x] CI od startu: `GitHub Actions`.

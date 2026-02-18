@@ -9,12 +9,20 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getBoard, patchTicket } from "../api/tickets";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import PriorityBadge from "../components/PriorityBadge";
-import StatusBadge from "../components/StatusBadge";
-import { formatDateShort } from "../utils/format";
+
+const columnClasses = {
+  submitted: "col-submitted",
+  verified: "col-verified",
+  in_progress: "col-in_progress",
+  waiting: "col-waiting",
+  blocked: "col-blocked",
+  closed: "col-closed"
+};
 
 function findContainer(columns, id) {
   if (STATUS_OPTIONS.includes(id)) {
@@ -30,17 +38,26 @@ function findContainer(columns, id) {
   return null;
 }
 
+function isOverdue(plannedDate) {
+  if (!plannedDate) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return String(plannedDate).slice(0, 10) < today;
+}
+
 function TicketCard({ ticket, muted = false }) {
   return (
-    <article className={`kanban-card${muted ? " muted-card" : ""}`}>
-      <div className="kanban-card-header">
-        <strong>#{String(ticket.number).padStart(3, "0")}</strong>
-        <PriorityBadge priority={ticket.priority} />
-      </div>
-      <p>{ticket.title}</p>
-      <div className="kanban-card-meta">
-        <span className="chip">{ticket.project_name || "-"}</span>
-        <span className="muted">{formatDateShort(ticket.planned_date)}</span>
+    <article
+      className={`kanban-card${muted ? " dragging" : ""}`}
+      data-priority={ticket.priority || "normal"}
+    >
+      <div className="kanban-card-number">#{String(ticket.number).padStart(3, "0")}</div>
+      <p className="kanban-card-title">{ticket.title}</p>
+      <div className="kanban-card-footer">
+        <PriorityBadge priority={ticket.priority || "normal"} />
+        <span className={isOverdue(ticket.planned_date) ? "kanban-card-date overdue" : "kanban-card-date"}>
+          <CalendarDays size={12} />
+          <span>{ticket.planned_date || "-"}</span>
+        </span>
       </div>
     </article>
   );
@@ -54,7 +71,7 @@ function SortableTicketCard({ ticket }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1
+    opacity: isDragging ? 0.55 : 1
   };
 
   return (
@@ -65,24 +82,29 @@ function SortableTicketCard({ ticket }) {
 }
 
 function KanbanColumn({ title, status, tickets, collapsed, onToggle }) {
-  const { setNodeRef } = useDroppable({ id: status });
+  const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <section className="kanban-column">
+    <section className={`kanban-column ${columnClasses[status] || ""}`}>
       <header className="kanban-column-header">
-        {onToggle ? (
-          <button type="button" className="btn btn-ghost" onClick={onToggle}>
-            {title}
-          </button>
-        ) : (
-          <div>{title}</div>
-        )}
-        <span className="badge">{tickets.length}</span>
+        <div className="kanban-column-title">
+          <span className="kanban-column-indicator" />
+          <span>{title}</span>
+        </div>
+        <button
+          type="button"
+          className="kanban-column-count"
+          onClick={onToggle}
+          disabled={!onToggle}
+        >
+          {tickets.length}
+        </button>
       </header>
 
       {!collapsed ? (
         <SortableContext items={tickets.map((ticket) => ticket.id)} strategy={verticalListSortingStrategy}>
-          <div ref={setNodeRef} className="kanban-column-body" id={status}>
+          <div ref={setNodeRef} className="kanban-cards" id={status}>
+            {isOver ? <div className="kanban-drop-zone active">Drop</div> : null}
             {tickets.map((ticket) => (
               <SortableTicketCard key={ticket.id} ticket={ticket} />
             ))}
@@ -119,9 +141,7 @@ export default function BoardPage() {
         const response = await getBoard();
         if (!active) return;
 
-        const next = Object.fromEntries(
-          STATUS_OPTIONS.map((status) => [status, response[status] || []])
-        );
+        const next = Object.fromEntries(STATUS_OPTIONS.map((status) => [status, response[status] || []]));
         setColumns(next);
       } catch (loadError) {
         setError(loadError?.response?.data?.error || loadError.message || "internal_error");
@@ -187,6 +207,7 @@ export default function BoardPage() {
     const ticket = sourceItems.find((item) => item.id === active.id);
     if (!ticket) return;
 
+    const previous = columns;
     const optimistic = {
       ...columns,
       [source]: sourceItems.filter((item) => item.id !== ticket.id),
@@ -198,21 +219,17 @@ export default function BoardPage() {
     try {
       await patchTicket(ticket.id, { status: target });
     } catch (patchError) {
-      setColumns(columns);
+      setColumns(previous);
       setError(patchError?.response?.data?.error || patchError.message || "internal_error");
     }
   }
 
   return (
-    <section className="page-content">
-      <header className="page-header">
-        <h1>{t("nav.board")}</h1>
-      </header>
-
+    <section className="page-content page-content--full">
       <article className="card form-grid filters-grid">
-        <label>
-          {t("tickets.project")}
-          <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+        <label className="form-group">
+          <span className="form-label">{t("tickets.project")}</span>
+          <select className="form-select" value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
             <option value="">-</option>
             {allProjects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -222,9 +239,9 @@ export default function BoardPage() {
           </select>
         </label>
 
-        <label>
-          {t("tickets.category")}
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+        <label className="form-group">
+          <span className="form-label">{t("tickets.category")}</span>
+          <select className="form-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
             <option value="">-</option>
             {CATEGORY_OPTIONS.map((value) => (
               <option key={value} value={value}>
@@ -234,9 +251,9 @@ export default function BoardPage() {
           </select>
         </label>
 
-        <label>
-          {t("tickets.priority")}
-          <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+        <label className="form-group">
+          <span className="form-label">{t("tickets.priority")}</span>
+          <select className="form-select" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
             <option value="">-</option>
             {PRIORITY_OPTIONS.map((value) => (
               <option key={value} value={value}>
@@ -257,25 +274,16 @@ export default function BoardPage() {
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveId(null)}
         >
-          <div className="kanban-grid">
+          <div className="kanban-board">
             {STATUS_OPTIONS.map((status) => (
-              <div key={status} id={status}>
-                <KanbanColumn
-                  title={
-                    <>
-                      <StatusBadge status={status} />
-                    </>
-                  }
-                  status={status}
-                  tickets={filteredColumns[status] || []}
-                  collapsed={status === "closed" ? collapsedClosed : false}
-                  onToggle={
-                    status === "closed"
-                      ? () => setCollapsedClosed((current) => !current)
-                      : undefined
-                  }
-                />
-              </div>
+              <KanbanColumn
+                key={status}
+                title={t(`status.${status}`)}
+                status={status}
+                tickets={filteredColumns[status] || []}
+                collapsed={status === "closed" ? collapsedClosed : false}
+                onToggle={status === "closed" ? () => setCollapsedClosed((current) => !current) : undefined}
+              />
             ))}
           </div>
 

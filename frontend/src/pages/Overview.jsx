@@ -48,10 +48,10 @@ export default function OverviewPage() {
   return (
     <section className="page-content">
       <header className="page-header">
-        <h1>{t("overview.title")}</h1>
+        <p>{t("overview.title")}</p>
       </header>
 
-      <div className="stats-grid">
+      <div className="dashboard-stats">
         <StatCard statusKey="submitted" count={stats?.submitted || 0} />
         <StatCard statusKey="verified" count={stats?.verified || 0} />
         <StatCard statusKey="in_progress" count={stats?.in_progress || 0} />
@@ -61,7 +61,7 @@ export default function OverviewPage() {
 
       <div className="panel-grid">
         <article className="card">
-          <h2>{t("overview.inProgressList")}</h2>
+          <h2 className="card-title">{t("overview.inProgressList")}</h2>
           <ul className="list-plain">
             {inProgressTickets.map((ticket) => (
               <li key={ticket.id}>
@@ -76,7 +76,7 @@ export default function OverviewPage() {
         </article>
 
         <article className="card">
-          <h2>{t("overview.waitingList")}</h2>
+          <h2 className="card-title">{t("overview.waitingList")}</h2>
           <ul className="list-plain">
             {waitingTickets.map((ticket) => (
               <li key={ticket.id}>

@@ -7,8 +7,23 @@ import { CATEGORY_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
 
 const steps = [1, 2, 3, 4];
 
-function toNumber(value) {
-  return Number(value || 0);
+const categoryMeta = {
+  bug: { icon: "🐞", desc: "newTicket.catBugDesc" },
+  feature: { icon: "✨", desc: "newTicket.catFeatureDesc" },
+  improvement: { icon: "🛠️", desc: "newTicket.catImprovementDesc" },
+  question: { icon: "❓", desc: "newTicket.catQuestionDesc" },
+  other: { icon: "📌", desc: "newTicket.catOtherDesc" }
+};
+
+function toMb(files) {
+  const bytes = files.reduce((sum, file) => sum + Number(file.size || 0), 0);
+  return (bytes / 1024 / 1024).toFixed(2);
+}
+
+function charCountClass(current, min) {
+  if (current <= 0) return "form-char-count";
+  if (current < min) return "form-char-count warning";
+  return "form-char-count";
 }
 
 export function validateNewTicketForm(form) {
@@ -19,24 +34,33 @@ export function validateNewTicketForm(form) {
   }
 
   const descriptionLength = (form.description || "").trim().length;
-  const minDescription = form.category === "bug" || form.category === "feature" || form.category === "improvement" ? 100 : 50;
+  const minDescription =
+    form.category === "bug" || form.category === "feature" || form.category === "improvement"
+      ? 100
+      : 50;
   if (descriptionLength < minDescription) {
     errors.description = "tickets.validation.description";
   }
 
   if (form.category === "bug") {
-    if ((form.steps_to_reproduce || "").trim().length < 30) errors.steps_to_reproduce = "tickets.validation.steps";
-    if ((form.expected_result || "").trim().length < 20) errors.expected_result = "tickets.validation.expected";
-    if ((form.actual_result || "").trim().length < 20) errors.actual_result = "tickets.validation.actual";
-    if ((form.environment || "").trim().length < 10) errors.environment = "tickets.validation.environment";
+    if ((form.steps_to_reproduce || "").trim().length < 30)
+      errors.steps_to_reproduce = "tickets.validation.steps";
+    if ((form.expected_result || "").trim().length < 20)
+      errors.expected_result = "tickets.validation.expected";
+    if ((form.actual_result || "").trim().length < 20)
+      errors.actual_result = "tickets.validation.actual";
+    if ((form.environment || "").trim().length < 10)
+      errors.environment = "tickets.validation.environment";
   }
 
   if (["feature", "improvement"].includes(form.category)) {
-    if ((form.business_goal || "").trim().length < 30) errors.business_goal = "tickets.validation.businessGoal";
+    if ((form.business_goal || "").trim().length < 30)
+      errors.business_goal = "tickets.validation.businessGoal";
   }
 
   if (form.category === "question") {
-    if ((form.question_context || "").trim().length < 30) errors.question_context = "tickets.validation.questionContext";
+    if ((form.question_context || "").trim().length < 30)
+      errors.question_context = "tickets.validation.questionContext";
   }
 
   return errors;
@@ -87,8 +111,6 @@ export default function NewTicketPage() {
   }, []);
 
   const errors = useMemo(() => validateNewTicketForm(form), [form]);
-
-  const progress = `${step}/${steps.length}`;
 
   function updateField(name, value) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -157,25 +179,62 @@ export default function NewTicketPage() {
   }
 
   return (
-    <section className="page-content">
-      <header className="page-header">
-        <h1>{t("tickets.newTitle")}</h1>
-        <p>{progress}</p>
+    <section className="page-content new-ticket-page">
+      <header className="new-ticket-header">
+        <h1 className="new-ticket-title">{t("tickets.newTitle")}</h1>
+        <p className="new-ticket-subtitle">{t("dashboard.subtitle")}</p>
       </header>
 
-      <form className="card form-grid" onSubmit={handleSubmit}>
-        <div className="steps-row">
-          <span className={step === 1 ? "step-chip active" : "step-chip"}>{t("newTicket.step1")}</span>
-          <span className={step === 2 ? "step-chip active" : "step-chip"}>{t("newTicket.step2")}</span>
-          <span className={step === 3 ? "step-chip active" : "step-chip"}>{t("newTicket.step3")}</span>
-          <span className={step === 4 ? "step-chip active" : "step-chip"}>{t("newTicket.step4")}</span>
-        </div>
+      <div className="form-progress">
+        {steps.map((item) => (
+          <div
+            key={item}
+            className={
+              step === item ? "form-step active" : step > item ? "form-step done" : "form-step"
+            }
+          >
+            <div className="form-step-circle">{item}</div>
+            <div className="form-step-label">{t(`newTicket.step${item}`)}</div>
+          </div>
+        ))}
+      </div>
 
+      <form className="card form-grid" onSubmit={handleSubmit}>
         {step === 1 ? (
           <>
-            <label>
-              {t("tickets.project")}
-              <select value={form.project_id} onChange={(event) => updateField("project_id", event.target.value)}>
+            <div className="form-instruction-box">
+              <div className="form-instruction-box-title">{t("tickets.titleField")}</div>
+              <p>
+                {t(
+                  "newTicket.titleHint",
+                  "Napisz precyzyjny tytuł. Unikaj ogólników typu 'nie działa'."
+                )}
+              </p>
+            </div>
+
+            <div className="form-examples">
+              <div className="form-example form-example-bad">
+                <div className="form-example-label">{t("newTicket.badExample", "Zły przykład")}</div>
+                <div>{t("newTicket.badTitle", "Nie działa formularz")}</div>
+              </div>
+              <div className="form-example form-example-good">
+                <div className="form-example-label">{t("newTicket.goodExample", "Dobry przykład")}</div>
+                <div>
+                  {t(
+                    "newTicket.goodTitle",
+                    "Błąd zapisu formularza zamówienia po kliknięciu Zatwierdź"
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <label className="form-group">
+              <span className="form-label">{t("tickets.project")}</span>
+              <select
+                className="form-select"
+                value={form.project_id}
+                onChange={(event) => updateField("project_id", event.target.value)}
+              >
                 <option value="">-</option>
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
@@ -185,107 +244,163 @@ export default function NewTicketPage() {
               </select>
             </label>
 
-            <label>
-              {t("tickets.category")}
-              <select value={form.category} onChange={(event) => updateField("category", event.target.value)}>
+            <div>
+              <p className="form-label">{t("tickets.category")}</p>
+              <div className="category-selector">
                 {CATEGORY_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`category.${value}`)}
-                  </option>
+                  <button
+                    key={value}
+                    type="button"
+                    className={
+                      form.category === value
+                        ? "category-option selected"
+                        : "category-option"
+                    }
+                    onClick={() => updateField("category", value)}
+                  >
+                    <span className="category-option-icon">{categoryMeta[value].icon}</span>
+                    <span className="category-option-label">{t(`category.${value}`)}</span>
+                    <span className="category-option-desc">
+                      {t(categoryMeta[value].desc, t(`category.${value}`))}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
 
-            <label>
-              {t("tickets.titleField")}
+            <label className="form-group">
+              <span className="form-label">{t("tickets.titleField")}</span>
               <input
                 type="text"
+                className={errors.title ? "form-input error" : "form-input"}
                 value={form.title}
                 onChange={(event) => updateField("title", event.target.value)}
-                minLength={10}
                 maxLength={300}
                 required
               />
-              {errors.title ? <small className="error-text">{t(errors.title)}</small> : null}
+              <div className={charCountClass(form.title.trim().length, 10)}>
+                {form.title.trim().length}/300
+              </div>
+              {errors.title ? <small className="form-error-msg">{t(errors.title)}</small> : null}
             </label>
           </>
         ) : null}
 
         {step === 2 ? (
           <>
-            <label>
-              {t("tickets.description")}
+            <div className="form-instruction-box">
+              <div className="form-instruction-box-title">{t("tickets.description")}</div>
+              <p>
+                {form.category === "bug"
+                  ? t(
+                      "newTicket.bugHint",
+                      "Opisz dokładnie kiedy i jak często problem występuje oraz jak go odtworzyć."
+                    )
+                  : t(
+                      "newTicket.generalHint",
+                      "Opisz szczegółowo kontekst i oczekiwany efekt biznesowy."
+                    )}
+              </p>
+            </div>
+
+            <label className="form-group">
+              <span className="form-label">{t("tickets.description")}</span>
               <textarea
                 rows={6}
+                className={errors.description ? "form-textarea error" : "form-textarea"}
                 value={form.description}
                 onChange={(event) => updateField("description", event.target.value)}
                 required
               />
-              {errors.description ? <small className="error-text">{t(errors.description)}</small> : null}
+              <div className={charCountClass(form.description.trim().length, 100)}>
+                {form.description.trim().length}/20000
+              </div>
+              {errors.description ? <small className="form-error-msg">{t(errors.description)}</small> : null}
             </label>
 
             {form.category === "bug" ? (
               <>
-                <label>
-                  {t("tickets.steps")}
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.steps")}</span>
                   <textarea
                     rows={3}
+                    className={errors.steps_to_reproduce ? "form-textarea error" : "form-textarea"}
                     value={form.steps_to_reproduce}
                     onChange={(event) => updateField("steps_to_reproduce", event.target.value)}
                   />
-                  {errors.steps_to_reproduce ? <small className="error-text">{t(errors.steps_to_reproduce)}</small> : null}
+                  {errors.steps_to_reproduce ? (
+                    <small className="form-error-msg">{t(errors.steps_to_reproduce)}</small>
+                  ) : null}
                 </label>
-                <label>
-                  {t("tickets.expected")}
+
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.expected")}</span>
                   <textarea
                     rows={3}
+                    className={errors.expected_result ? "form-textarea error" : "form-textarea"}
                     value={form.expected_result}
                     onChange={(event) => updateField("expected_result", event.target.value)}
                   />
-                  {errors.expected_result ? <small className="error-text">{t(errors.expected_result)}</small> : null}
+                  {errors.expected_result ? (
+                    <small className="form-error-msg">{t(errors.expected_result)}</small>
+                  ) : null}
                 </label>
-                <label>
-                  {t("tickets.actual")}
+
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.actual")}</span>
                   <textarea
                     rows={3}
+                    className={errors.actual_result ? "form-textarea error" : "form-textarea"}
                     value={form.actual_result}
                     onChange={(event) => updateField("actual_result", event.target.value)}
                   />
-                  {errors.actual_result ? <small className="error-text">{t(errors.actual_result)}</small> : null}
+                  {errors.actual_result ? (
+                    <small className="form-error-msg">{t(errors.actual_result)}</small>
+                  ) : null}
                 </label>
-                <label>
-                  {t("tickets.environment")}
+
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.environment")}</span>
                   <input
                     type="text"
+                    className={errors.environment ? "form-input error" : "form-input"}
                     value={form.environment}
                     onChange={(event) => updateField("environment", event.target.value)}
                   />
-                  {errors.environment ? <small className="error-text">{t(errors.environment)}</small> : null}
+                  {errors.environment ? (
+                    <small className="form-error-msg">{t(errors.environment)}</small>
+                  ) : null}
                 </label>
               </>
             ) : null}
 
             {["feature", "improvement"].includes(form.category) ? (
-              <label>
-                {t("newTicket.businessGoal")}
+              <label className="form-group">
+                <span className="form-label">{t("newTicket.businessGoal")}</span>
                 <textarea
                   rows={3}
+                  className={errors.business_goal ? "form-textarea error" : "form-textarea"}
                   value={form.business_goal}
                   onChange={(event) => updateField("business_goal", event.target.value)}
                 />
-                {errors.business_goal ? <small className="error-text">{t(errors.business_goal)}</small> : null}
+                {errors.business_goal ? (
+                  <small className="form-error-msg">{t(errors.business_goal)}</small>
+                ) : null}
               </label>
             ) : null}
 
             {form.category === "question" ? (
-              <label>
-                {t("newTicket.questionContext")}
+              <label className="form-group">
+                <span className="form-label">{t("newTicket.questionContext")}</span>
                 <textarea
                   rows={3}
+                  className={errors.question_context ? "form-textarea error" : "form-textarea"}
                   value={form.question_context}
                   onChange={(event) => updateField("question_context", event.target.value)}
                 />
-                {errors.question_context ? <small className="error-text">{t(errors.question_context)}</small> : null}
+                {errors.question_context ? (
+                  <small className="form-error-msg">{t(errors.question_context)}</small>
+                ) : null}
               </label>
             ) : null}
           </>
@@ -293,9 +408,10 @@ export default function NewTicketPage() {
 
         {step === 3 ? (
           <>
-            <label>
-              {t("tickets.urgency")}
+            <label className="form-group">
+              <span className="form-label">{t("tickets.urgency")}</span>
               <select
+                className="form-select"
                 value={form.urgency_reporter}
                 onChange={(event) => updateField("urgency_reporter", event.target.value)}
               >
@@ -307,14 +423,17 @@ export default function NewTicketPage() {
               </select>
             </label>
 
-            <label>
-              {t("tickets.attachments")}
+            <label className="form-group">
+              <span className="form-label">{t("tickets.attachments")}</span>
               <input
                 type="file"
+                className="form-input"
                 multiple
                 onChange={(event) => setFiles(Array.from(event.target.files || []))}
               />
-              <small>{files.length} file(s), {toNumber(files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024).toFixed(2)} MB</small>
+              <small className="form-hint">
+                {files.length} file(s), {toMb(files)} MB
+              </small>
             </label>
           </>
         ) : null}
@@ -322,14 +441,27 @@ export default function NewTicketPage() {
         {step === 4 ? (
           <>
             <article className="preview-box">
-              <h3>#{form.title || "-"}</h3>
-              <p><strong>{t("tickets.category")}:</strong> {t(`category.${form.category}`)}</p>
-              <p><strong>{t("tickets.urgency")}:</strong> {t(`priority.${form.urgency_reporter}`)}</p>
+              <h3>{form.title || "-"}</h3>
+              <p>
+                <strong>{t("tickets.category")}:</strong> {t(`category.${form.category}`)}
+              </p>
+              <p>
+                <strong>{t("tickets.urgency")}:</strong> {t(`priority.${form.urgency_reporter}`)}
+              </p>
               <p>{form.description || "-"}</p>
-              {files.length > 0 ? <p><strong>{t("tickets.attachments")}:</strong> {files.map((file) => file.name).join(", ")}</p> : null}
+              {files.length > 0 ? (
+                <p>
+                  <strong>{t("tickets.attachments")}:</strong> {files.map((file) => file.name).join(", ")}
+                </p>
+              ) : null}
             </article>
+
             <label className="check-row">
-              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
               <span>{t("newTicket.confirm")}</span>
             </label>
           </>
@@ -338,15 +470,16 @@ export default function NewTicketPage() {
         {error ? <p className="feedback err">{t(`errors.${error}`, { defaultValue: error })}</p> : null}
 
         <div className="row-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => moveStep(-1)} disabled={step === 1}>
+          <button type="button" className="btn btn-secondary" onClick={() => moveStep(-1)} disabled={step === 1}>
             {t("app.back")}
           </button>
+
           {step < 4 ? (
-            <button type="button" className="btn" onClick={() => moveStep(1)}>
+            <button type="button" className="btn btn-primary" onClick={() => moveStep(1)}>
               {t("app.next")}
             </button>
           ) : (
-            <button type="submit" className="btn" disabled={loading}>
+            <button type="submit" className="btn btn-yellow" disabled={loading}>
               {t("app.submit")}
             </button>
           )}

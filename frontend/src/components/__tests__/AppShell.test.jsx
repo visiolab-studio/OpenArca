@@ -50,7 +50,7 @@ describe("AppShell role-based navigation", () => {
 
     renderShell();
 
-    expect(screen.getByText("nav.dashboard")).toBeInTheDocument();
+    expect(screen.getAllByText("nav.dashboard").length).toBeGreaterThan(0);
     expect(screen.queryByText("nav.board")).not.toBeInTheDocument();
     expect(screen.queryByText("nav.todo")).not.toBeInTheDocument();
     expect(screen.queryByText("nav.admin")).not.toBeInTheDocument();

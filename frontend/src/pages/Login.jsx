@@ -18,6 +18,10 @@ function formatCountdown(seconds) {
   return `${minutes}:${sec}`;
 }
 
+function emptyDigits() {
+  return ["", "", "", "", "", "", "", ""];
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -25,7 +29,7 @@ export default function LoginPage() {
   const { language, setLanguage } = useLanguage();
 
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState(emptyDigits());
   const [phase, setPhase] = useState("request");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -43,8 +47,9 @@ export default function LoginPage() {
     return Math.floor((expiresAt - now) / 1000);
   }, [expiresAt, now]);
 
-  async function handleRequestOtp(event) {
-    event.preventDefault();
+  const code = digits.join("");
+
+  async function requestOtpFlow() {
     setError("");
     setInfo("");
     setLoading(true);
@@ -52,6 +57,7 @@ export default function LoginPage() {
     try {
       await requestOtp(email, language);
       setPhase("verify");
+      setDigits(emptyDigits());
       setExpiresAt(Date.now() + OTP_LIFETIME_SECONDS * 1000);
       setInfo(t("auth.requestSuccess"));
     } catch (requestError) {
@@ -59,6 +65,11 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleRequestOtp(event) {
+    event.preventDefault();
+    await requestOtpFlow();
   }
 
   async function handleVerifyOtp(event) {
@@ -77,14 +88,53 @@ export default function LoginPage() {
     }
   }
 
+  function updateDigit(index, value) {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    setDigits((current) => {
+      const next = [...current];
+      next[index] = digit;
+      return next;
+    });
+
+    if (digit && index < 7) {
+      const nextInput = document.querySelector(`[data-otp-index=\"${index + 1}\"]`);
+      if (nextInput) nextInput.focus();
+    }
+  }
+
+  function handleDigitKeyDown(index, event) {
+    if (event.key === "Backspace" && !digits[index] && index > 0) {
+      const prevInput = document.querySelector(`[data-otp-index=\"${index - 1}\"]`);
+      if (prevInput) prevInput.focus();
+    }
+  }
+
+  function handlePaste(event) {
+    const pasted = String(event.clipboardData.getData("text") || "")
+      .replace(/\D/g, "")
+      .slice(0, 8)
+      .split("");
+
+    if (!pasted.length) return;
+
+    event.preventDefault();
+    setDigits((current) => {
+      const next = [...current];
+      for (let index = 0; index < 8; index += 1) {
+        next[index] = pasted[index] || "";
+      }
+      return next;
+    });
+
+    const focusIndex = Math.min(pasted.length, 7);
+    const input = document.querySelector(`[data-otp-index=\"${focusIndex}\"]`);
+    if (input) input.focus();
+  }
+
   return (
-    <main className="page page-center">
-      <section className="auth-panel">
-        <div className="auth-header">
-          <div className="auth-brand">
-            <img src={appLogo} alt="EdudoroIT logo" className="auth-logo" />
-            <h1>{t("auth.title")}</h1>
-          </div>
+    <main className="login-page">
+      <section className="login-card">
+        <div className="login-head-row">
           <div className="lang-switch auth-lang">
             <button
               type="button"
@@ -105,43 +155,60 @@ export default function LoginPage() {
           </div>
         </div>
 
+        <div className="login-logo login-logo-image">
+          <img src={appLogo} alt="EdudoroIT logo" className="auth-logo" />
+        </div>
+
+        <h1 className="login-title">{t("auth.title")}</h1>
+        <p className="login-subtitle">{phase === "request" ? t("auth.email") : t("auth.code")}</p>
+
         {phase === "request" ? (
           <form className="form-grid" onSubmit={handleRequestOtp}>
-            <label>
-              {t("auth.email")}
+            <label className="form-group">
+              <span className="form-label">{t("auth.email")}</span>
               <input
                 type="email"
+                className="form-input"
                 required
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
               />
             </label>
-            <button type="submit" className="btn" disabled={loading}>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={loading || !email.trim()}>
               {t("auth.sendCode")}
             </button>
           </form>
         ) : (
           <form className="form-grid" onSubmit={handleVerifyOtp}>
-            <label>
-              {t("auth.code")}
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]{8}"
-                minLength={8}
-                maxLength={8}
-                required
-                value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 8))}
-              />
-            </label>
-            <p className="muted">{t("auth.expiresIn", { time: formatCountdown(countdown) })}</p>
+            <div className="otp-inputs" onPaste={handlePaste}>
+              {digits.map((digit, index) => (
+                <span key={`otp-wrap-${index}`} className="otp-slot">
+                  {index === 4 ? <span className="otp-separator">-</span> : null}
+                  <input
+                    data-otp-index={index}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]"
+                    maxLength={1}
+                    className={digit ? "otp-input filled" : "otp-input"}
+                    value={digit}
+                    onChange={(event) => updateDigit(index, event.target.value)}
+                    onKeyDown={(event) => handleDigitKeyDown(index, event)}
+                  />
+                </span>
+              ))}
+            </div>
+
+            <p className={countdown <= 60 ? "otp-timer expiring" : "otp-timer"}>
+              {t("auth.expiresIn", { time: formatCountdown(countdown) })}
+            </p>
+
             <div className="row-actions">
-              <button type="submit" className="btn" disabled={loading || code.length !== 8}>
+              <button type="submit" className="btn btn-primary" disabled={loading || code.length !== 8}>
                 {t("auth.verify")}
               </button>
-              <button type="button" className="btn btn-ghost" onClick={handleRequestOtp} disabled={loading}>
+              <button type="button" className="btn btn-secondary" onClick={requestOtpFlow} disabled={loading}>
                 {t("auth.resend")}
               </button>
             </div>
@@ -149,7 +216,11 @@ export default function LoginPage() {
         )}
 
         {info ? <p className="feedback ok">{info}</p> : null}
-        {error ? <p className="feedback err">{t(`errors.${error}`, { defaultValue: t(`auth.${error}`, { defaultValue: error }) })}</p> : null}
+        {error ? (
+          <p className="feedback err">
+            {t(`errors.${error}`, { defaultValue: t(`auth.${error}`, { defaultValue: error }) })}
+          </p>
+        ) : null}
       </section>
     </main>
   );

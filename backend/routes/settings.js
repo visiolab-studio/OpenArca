@@ -4,6 +4,7 @@ const { authRequired, requireRole } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { getSettingsMap, updateSettings } = require("../services/settings");
+const { sendEmail } = require("../services/email");
 
 const router = express.Router();
 
@@ -25,6 +26,9 @@ const patchSettingsSchema = z
   .refine((value) => Object.keys(value).length > 0, {
     message: "No changes provided"
   });
+const testSmtpSchema = z.object({
+  to: z.string().trim().email()
+}).strict();
 
 const privateKeys = new Set(["smtp_pass"]);
 
@@ -117,6 +121,21 @@ router.patch("/", writeLimiter, validate({ body: patchSettingsSchema }), (req, r
   }
 
   return res.json(payload);
+});
+
+router.post("/test-smtp", writeLimiter, validate({ body: testSmtpSchema }), async (req, res, next) => {
+  try {
+    const subject = "EdudoroIT_SupportCenter SMTP test";
+    const text = "SMTP test message from EdudoroIT_SupportCenter admin panel.";
+    const result = await sendEmail({
+      to: req.body.to,
+      subject,
+      text
+    });
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 module.exports = router;

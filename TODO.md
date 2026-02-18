@@ -44,10 +44,10 @@ Kryteria akceptacji P2:
 - Formularz nie pozwala wysłać zbyt ubogiego zgłoszenia.
 
 ## P3 - Moduły developer
-- [ ] Zaimplementować `Board` (Kanban) z drag-and-drop i zmianą statusu.
-- [ ] Zaimplementować `DevTodo` z ręcznym reorderem i auto-sortowaniem.
-- [ ] Zaimplementować `Admin` (ustawienia app, SMTP test, projekty, użytkownicy).
-- [ ] Dodać alerty dashboardowe (przeterminowane, bez priorytetu, bez daty planu).
+- [x] Zaimplementować `Board` (Kanban) z drag-and-drop i zmianą statusu.
+- [x] Zaimplementować `DevTodo` z ręcznym reorderem i auto-sortowaniem.
+- [x] Zaimplementować `Admin` (ustawienia app, SMTP test, projekty, użytkownicy).
+- [x] Dodać alerty dashboardowe (przeterminowane, bez priorytetu, bez daty planu).
 
 Kryteria akceptacji P3:
 - Trasy developer-only są niedostępne dla `user`.

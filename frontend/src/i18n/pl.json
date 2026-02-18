@@ -40,7 +40,11 @@
     "quick": "Szybkie linki",
     "openNew": "Dodaj zgłoszenie",
     "goMine": "Przejdź do moich zgłoszeń",
-    "todoCount": "Aktywne zadania TODO"
+    "todoCount": "Aktywne zadania TODO",
+    "alerts": "Alerty",
+    "overdue": "Tickety przeterminowane",
+    "withoutPriority": "Tickety bez priorytetu",
+    "withoutPlan": "Tickety bez planowanej daty"
   },
   "overview": {
     "title": "Obłożenie",
@@ -105,9 +109,45 @@
     "confirm": "Potwierdzam kompletność danych"
   },
   "dev": {
-    "boardPlaceholder": "Kanban zostanie rozszerzony w etapie P3.",
-    "todoPlaceholder": "Lista TODO zostanie rozszerzona w etapie P3.",
-    "adminPlaceholder": "Panel admina zostanie rozszerzony w etapie P3."
+    "summary": "Podsumowanie",
+    "totalEstimated": "Łączny szacowany czas",
+    "withoutPlanAlert": "Tickety bez planowanej daty",
+    "newTask": "Nowe zadanie",
+    "linkedTicket": "Powiązany ticket ID",
+    "applyAutoSort": "Zastosuj automatyczne sortowanie",
+    "active": "Aktywne",
+    "done": "Ukończone",
+    "taskTodo": "Do zrobienia",
+    "taskInProgress": "W realizacji",
+    "start": "Zacznij",
+    "markDone": "Ukończ",
+    "delete": "Usuń",
+    "create": "Utwórz"
+  },
+  "admin": {
+    "tabApp": "Aplikacja",
+    "tabSmtp": "SMTP",
+    "tabProjects": "Projekty",
+    "tabUsers": "Użytkownicy",
+    "appName": "Nazwa aplikacji",
+    "appUrl": "URL aplikacji",
+    "allowedDomains": "Dozwolone domeny (po przecinku)",
+    "developerEmails": "Emaile developerów (po przecinku)",
+    "smtpHost": "SMTP host",
+    "smtpPort": "SMTP port",
+    "smtpUser": "SMTP user",
+    "smtpPass": "SMTP password",
+    "smtpFrom": "SMTP from",
+    "smtpTestTo": "Adres testowy",
+    "smtpTest": "Test SMTP",
+    "newProject": "Nowy projekt",
+    "projects": "Projekty",
+    "users": "Użytkownicy",
+    "name": "Imię",
+    "role": "Rola",
+    "created": "Utworzono",
+    "lastLogin": "Ostatnie logowanie",
+    "action": "Akcja"
   },
   "status": {
     "submitted": "Zgłoszone",
@@ -134,6 +174,7 @@
     "forbidden": "Brak uprawnień",
     "unauthorized": "Sesja wygasła. Zaloguj się ponownie.",
     "validation_error": "Błąd walidacji",
-    "internal_error": "Wystąpił błąd serwera"
+    "internal_error": "Wystąpił błąd serwera",
+    "no_changes": "Brak zmian do zapisania"
   }
 }

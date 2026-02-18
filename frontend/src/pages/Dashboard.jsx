@@ -15,6 +15,11 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [latest, setLatest] = useState([]);
   const [todoCount, setTodoCount] = useState(0);
+  const [alerts, setAlerts] = useState({
+    overdueCount: 0,
+    withoutPriorityCount: 0,
+    withoutPlanCount: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +38,25 @@ export default function DashboardPage() {
         setStats(statsData);
         setLatest(ticketData.slice(0, 8));
         setTodoCount(devTaskData.active?.length || 0);
+
+        if (isDeveloper) {
+          const today = new Date().toISOString().slice(0, 10);
+          const overdueCount = ticketData.filter(
+            (ticket) =>
+              ticket.status !== "closed" &&
+              ticket.planned_date &&
+              String(ticket.planned_date).slice(0, 10) < today
+          ).length;
+
+          const withoutPriorityCount = ticketData.filter((ticket) => !ticket.priority).length;
+          const withoutPlanCount = ticketData.filter(
+            (ticket) =>
+              ["verified", "in_progress", "waiting", "blocked"].includes(ticket.status) &&
+              !ticket.planned_date
+          ).length;
+
+          setAlerts({ overdueCount, withoutPriorityCount, withoutPlanCount });
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -97,6 +121,17 @@ export default function DashboardPage() {
             ))}
           </ul>
         </article>
+
+        {isDeveloper ? (
+          <article className="card">
+            <h2>{t("dashboard.alerts")}</h2>
+            <ul className="list-plain">
+              <li>{t("dashboard.overdue")}: {alerts.overdueCount}</li>
+              <li>{t("dashboard.withoutPriority")}: {alerts.withoutPriorityCount}</li>
+              <li>{t("dashboard.withoutPlan")}: {alerts.withoutPlanCount}</li>
+            </ul>
+          </article>
+        ) : null}
       </div>
     </section>
   );

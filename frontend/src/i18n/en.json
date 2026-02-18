@@ -40,7 +40,11 @@
     "quick": "Quick links",
     "openNew": "Create ticket",
     "goMine": "Open my tickets",
-    "todoCount": "Active TODO tasks"
+    "todoCount": "Active TODO tasks",
+    "alerts": "Alerts",
+    "overdue": "Overdue tickets",
+    "withoutPriority": "Tickets without priority",
+    "withoutPlan": "Tickets without planned date"
   },
   "overview": {
     "title": "Workload overview",
@@ -105,9 +109,45 @@
     "confirm": "I confirm the ticket contains complete information"
   },
   "dev": {
-    "boardPlaceholder": "Kanban will be expanded in phase P3.",
-    "todoPlaceholder": "Developer TODO list will be expanded in phase P3.",
-    "adminPlaceholder": "Admin panel will be expanded in phase P3."
+    "summary": "Summary",
+    "totalEstimated": "Total estimated hours",
+    "withoutPlanAlert": "Tickets without planned date",
+    "newTask": "New task",
+    "linkedTicket": "Linked ticket ID",
+    "applyAutoSort": "Apply auto sort",
+    "active": "Active",
+    "done": "Done",
+    "taskTodo": "To do",
+    "taskInProgress": "In progress",
+    "start": "Start",
+    "markDone": "Done",
+    "delete": "Delete",
+    "create": "Create"
+  },
+  "admin": {
+    "tabApp": "Application",
+    "tabSmtp": "SMTP",
+    "tabProjects": "Projects",
+    "tabUsers": "Users",
+    "appName": "App name",
+    "appUrl": "App URL",
+    "allowedDomains": "Allowed domains (comma separated)",
+    "developerEmails": "Developer emails (comma separated)",
+    "smtpHost": "SMTP host",
+    "smtpPort": "SMTP port",
+    "smtpUser": "SMTP user",
+    "smtpPass": "SMTP password",
+    "smtpFrom": "SMTP from",
+    "smtpTestTo": "Test recipient",
+    "smtpTest": "Test SMTP",
+    "newProject": "New project",
+    "projects": "Projects",
+    "users": "Users",
+    "name": "Name",
+    "role": "Role",
+    "created": "Created",
+    "lastLogin": "Last login",
+    "action": "Action"
   },
   "status": {
     "submitted": "Submitted",
@@ -134,6 +174,7 @@
     "forbidden": "Forbidden",
     "unauthorized": "Session expired. Please log in again.",
     "validation_error": "Validation error",
-    "internal_error": "Internal server error"
+    "internal_error": "Internal server error",
+    "no_changes": "No changes to save"
   }
 }

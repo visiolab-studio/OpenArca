@@ -11,7 +11,7 @@ function toNumber(value) {
   return Number(value || 0);
 }
 
-function validateForm(form) {
+export function validateNewTicketForm(form) {
   const errors = {};
 
   if ((form.title || "").trim().length < 10) {
@@ -86,7 +86,7 @@ export default function NewTicketPage() {
     };
   }, []);
 
-  const errors = useMemo(() => validateForm(form), [form]);
+  const errors = useMemo(() => validateNewTicketForm(form), [form]);
 
   const progress = `${step}/${steps.length}`;
 

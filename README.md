@@ -32,3 +32,21 @@ MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build
 cd backend && npm install && npm run dev
 cd frontend && npm install && npm run dev
 ```
+
+## Quality Gates (P4)
+
+Wariant zalecany lokalnie (Node 20 w kontenerach):
+
+```bash
+docker compose exec -T backend npm run lint
+docker compose exec -T backend npm test
+docker compose exec -T frontend npm run lint
+docker compose exec -T frontend npm test
+docker compose exec -T frontend npm run build
+```
+
+CI jest zdefiniowane w `.github/workflows/ci.yml`.
+
+## Release i rollback
+
+Szczegółowa checklista: `docs/release-checklist.md`.

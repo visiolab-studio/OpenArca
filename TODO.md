@@ -54,11 +54,11 @@ Kryteria akceptacji P3:
 - Auto-sort TODO działa według priorytet + planned_date + status + blocked.
 
 ## P4 - Testy, jakość, gotowość release
-- [ ] Dodać testy backend (auth, RBAC, ticket lifecycle, upload security).
-- [ ] Dodać testy frontend (guardy, walidacje formularzy, widoczność elementów wg roli).
-- [ ] Dodać smoke e2e dla głównego flow user->developer->user.
-- [ ] Dodać CI quality gates: lint, test, build.
-- [ ] Dodać checklistę release i rollback.
+- [x] Dodać testy backend (auth, RBAC, ticket lifecycle, upload security).
+- [x] Dodać testy frontend (guardy, walidacje formularzy, widoczność elementów wg roli).
+- [x] Dodać smoke e2e dla głównego flow user->developer->user.
+- [x] Dodać CI quality gates: lint, test, build.
+- [x] Dodać checklistę release i rollback.
 
 Kryteria akceptacji P4:
 - Wszystkie quality gates przechodzą na czystym środowisku.

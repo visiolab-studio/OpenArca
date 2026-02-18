@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
+    "lint": "eslint . --max-warnings=0 --ignore-pattern dist --ignore-pattern node_modules",
+    "test": "vitest run",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
@@ -25,6 +27,11 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",
-    "vite": "^5.4.10"
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "eslint": "^8.57.1",
+    "jsdom": "^26.0.0",
+    "vite": "^5.4.10",
+    "vitest": "^3.0.9"
   }
 }

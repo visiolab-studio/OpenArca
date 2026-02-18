@@ -135,13 +135,6 @@ function normalizeText(input) {
   return value.length ? value : undefined;
 }
 
-function normalizeNullableText(input) {
-  if (input == null) return null;
-  if (typeof input !== "string") return null;
-  const value = input.trim();
-  return value.length ? value : null;
-}
-
 function parseCreateTicketBody(raw) {
   const normalized = {
     title: normalizeText(raw.title),

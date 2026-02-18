@@ -82,7 +82,7 @@ export default function LoginPage() {
       <section className="auth-panel">
         <div className="auth-header">
           <div className="auth-brand">
-            <img src={appLogo} alt="EdudoroIT logo" className="brand-logo" />
+            <img src={appLogo} alt="EdudoroIT logo" className="auth-logo" />
             <h1>{t("auth.title")}</h1>
           </div>
           <div className="lang-switch auth-lang">

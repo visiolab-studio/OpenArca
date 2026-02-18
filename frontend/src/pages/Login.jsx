@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import appLogo from "../assets/edudoro_itsc_logo.png";
 
 const OTP_LIFETIME_SECONDS = 10 * 60;
 
@@ -80,7 +81,10 @@ export default function LoginPage() {
     <main className="page page-center">
       <section className="auth-panel">
         <div className="auth-header">
-          <h1>{t("auth.title")}</h1>
+          <div className="auth-brand">
+            <img src={appLogo} alt="EdudoroIT logo" className="brand-logo" />
+            <h1>{t("auth.title")}</h1>
+          </div>
           <div className="lang-switch auth-lang">
             <button
               type="button"
@@ -95,7 +99,7 @@ export default function LoginPage() {
               className={language === "en" ? "lang-option active" : "lang-option"}
               onClick={() => setLanguage("en")}
             >
-              <span className="flag flag-en" aria-hidden="true" />
+              <span className="flag flag-us" aria-hidden="true" />
               <span>EN</span>
             </button>
           </div>

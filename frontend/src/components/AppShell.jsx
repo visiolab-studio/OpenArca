@@ -73,7 +73,7 @@ export default function AppShell() {
               className={language === "en" ? "lang-option active" : "lang-option"}
               onClick={() => handleLanguageChange("en")}
             >
-              <span className="flag flag-en" aria-hidden="true" />
+              <span className="flag flag-us" aria-hidden="true" />
               <span>EN</span>
             </button>
           </div>

@@ -73,6 +73,15 @@ textarea {
   color: var(--text);
   border-radius: 10px;
   padding: 0.6rem 0.75rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: rgba(246, 218, 63, 0.75);
+  box-shadow: 0 0 0 3px rgba(246, 218, 63, 0.18);
 }
 
 textarea {
@@ -199,6 +208,8 @@ button {
 }
 
 .flag {
+  position: relative;
+  overflow: hidden;
   width: 14px;
   height: 10px;
   border-radius: 2px;
@@ -207,14 +218,37 @@ button {
 }
 
 .flag-pl {
-  background: linear-gradient(to bottom, #ffffff 50%, #dc143c 50%);
+  background: linear-gradient(to bottom, #ffffff 50%, #d4213d 50%);
 }
 
-.flag-en {
+.flag-us {
   background:
-    linear-gradient(to right, transparent 41%, #ffffff 41%, #ffffff 59%, transparent 59%),
-    linear-gradient(to bottom, transparent 41%, #ffffff 41%, #ffffff 59%, transparent 59%),
-    #0a3161;
+    linear-gradient(#3c3b6e, #3c3b6e) top left / 45% 58% no-repeat,
+    repeating-linear-gradient(
+      to bottom,
+      #b22234 0,
+      #b22234 7.7%,
+      #ffffff 7.7%,
+      #ffffff 15.4%
+    );
+}
+
+.flag-us::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 42%;
+  height: 52%;
+  background:
+    radial-gradient(circle at 20% 25%, #ffffff 0 0.7px, transparent 0.9px),
+    radial-gradient(circle at 40% 25%, #ffffff 0 0.7px, transparent 0.9px),
+    radial-gradient(circle at 60% 25%, #ffffff 0 0.7px, transparent 0.9px),
+    radial-gradient(circle at 80% 25%, #ffffff 0 0.7px, transparent 0.9px),
+    radial-gradient(circle at 30% 55%, #ffffff 0 0.7px, transparent 0.9px),
+    radial-gradient(circle at 50% 55%, #ffffff 0 0.7px, transparent 0.9px),
+    radial-gradient(circle at 70% 55%, #ffffff 0 0.7px, transparent 0.9px),
+    #3c3b6e;
 }
 
 .page {
@@ -255,12 +289,22 @@ button {
     0 12px 34px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(246, 218, 63, 0.06),
     0 12px 24px rgba(246, 218, 63, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .auth-panel {
   width: min(540px, 100%);
   display: grid;
   gap: 1rem;
+}
+
+.card:hover,
+.auth-panel:hover {
+  border-color: rgba(246, 218, 63, 0.35);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.26),
+    0 0 0 1px rgba(246, 218, 63, 0.13),
+    0 14px 26px rgba(246, 218, 63, 0.12);
 }
 
 .auth-lang {
@@ -272,6 +316,12 @@ button {
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.8rem;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .form-grid {
@@ -298,9 +348,9 @@ button {
 }
 
 .step-chip.active {
-  border-color: #1f6d84;
-  color: #d9f6ff;
-  background: #124353;
+  border-color: rgba(246, 218, 63, 0.62);
+  color: #fff4b0;
+  background: rgba(246, 218, 63, 0.16);
 }
 
 .row-actions {
@@ -387,6 +437,7 @@ button {
 
 .stat-card strong {
   font-size: 1.45rem;
+  color: #ffe57c;
 }
 
 .panel-grid {
@@ -410,6 +461,12 @@ button {
   padding: 0.6rem;
   display: grid;
   gap: 0.45rem;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.ticket-row-link:hover {
+  border-color: rgba(246, 218, 63, 0.5);
+  transform: translateY(-1px);
 }
 
 .table-wrap {
@@ -430,6 +487,11 @@ table td {
   padding: 0.58rem 0.45rem;
 }
 
+table th {
+  color: #ffe57c;
+  border-bottom-color: rgba(246, 218, 63, 0.34);
+}
+
 .meta-grid {
   display: grid;
   gap: 0.45rem;
@@ -445,6 +507,7 @@ table td {
   border-radius: 999px;
   padding: 0.2rem 0.62rem;
   font-size: 0.78rem;
+  box-shadow: inset 0 0 0 1px rgba(246, 218, 63, 0.04);
 }
 
 .status-submitted {
@@ -488,7 +551,8 @@ table td {
 }
 
 .preview-box {
-  border: 1px dashed var(--line-soft);
+  border: 1px dashed rgba(246, 218, 63, 0.44);
+  background: rgba(246, 218, 63, 0.05);
   border-radius: 12px;
   padding: 0.8rem;
   display: grid;
@@ -530,6 +594,7 @@ table td {
   border-radius: 12px;
   background: #0e1420;
   min-height: 180px;
+  box-shadow: inset 0 1px 0 rgba(246, 218, 63, 0.08);
 }
 
 .kanban-column-header {
@@ -538,7 +603,7 @@ table td {
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid rgba(246, 218, 63, 0.25);
 }
 
 .kanban-column-body {
@@ -554,6 +619,12 @@ table td {
   padding: 0.6rem;
   display: grid;
   gap: 0.45rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.kanban-card:hover {
+  border-color: rgba(246, 218, 63, 0.58);
+  box-shadow: 0 8px 16px rgba(246, 218, 63, 0.12);
 }
 
 .kanban-card-header {
@@ -576,6 +647,7 @@ table td {
   padding: 0.15rem 0.55rem;
   font-size: 0.75rem;
   color: var(--muted);
+  background: rgba(246, 218, 63, 0.08);
 }
 
 .muted-card {

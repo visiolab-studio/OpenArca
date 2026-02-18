@@ -1,0 +1,4 @@
+interface:
+  display_name: "EdudoroIT Backend Secure Express"
+  short_description: "Implement secure Express + SQLite backend"
+  default_prompt: "Implement or update backend APIs for EdudoroIT_SupportCenter with strict RBAC, validation, and auditability."

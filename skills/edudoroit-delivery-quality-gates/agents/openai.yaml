@@ -1,0 +1,4 @@
+interface:
+  display_name: "EdudoroIT Delivery Quality Gates"
+  short_description: "Enforce tests, security, and release gates"
+  default_prompt: "Define or execute quality gates for EdudoroIT_SupportCenter with senior-level testing and security standards."

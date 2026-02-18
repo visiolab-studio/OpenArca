@@ -1,0 +1,4 @@
+interface:
+  display_name: "EdudoroIT Container Bootstrap"
+  short_description: "Build and maintain local dev containers"
+  default_prompt: "Set up or update Docker-based local development for EdudoroIT_SupportCenter with secure defaults."

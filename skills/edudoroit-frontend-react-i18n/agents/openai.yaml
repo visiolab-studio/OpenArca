@@ -1,0 +1,4 @@
+interface:
+  display_name: "EdudoroIT Frontend React i18n"
+  short_description: "Build role-aware React UI with i18n"
+  default_prompt: "Implement or refactor EdudoroIT_SupportCenter frontend pages with strict validation, RBAC UX, and full PL/EN coverage."

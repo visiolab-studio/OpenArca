@@ -1,3 +1,5 @@
+const multer = require("multer");
+
 function notFound(req, res) {
   return res.status(404).json({ error: "not_found" });
 }
@@ -7,9 +9,21 @@ function errorHandler(err, req, res, next) {
     return next(err);
   }
 
-  const status = Number(err.status || 500);
+  let status = Number(err.status || 500);
+  let code = err.code || "internal_error";
+
+  if (err instanceof multer.MulterError) {
+    status = 400;
+    code = "upload_error";
+  }
+
+  if (err.message === "unsupported_file_type") {
+    status = 400;
+    code = "unsupported_file_type";
+  }
+
   const payload = {
-    error: err.code || "internal_error"
+    error: code
   };
 
   if (err.details) {

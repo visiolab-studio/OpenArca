@@ -64,8 +64,26 @@ app.get("/api/uploads/:filename", authRequired, (req, res) => {
     return res.status(400).json({ error: "invalid_filename" });
   }
 
-  const filePath = path.join(uploadsDir, filename);
-  if (!filePath.startsWith(path.resolve(uploadsDir))) {
+  const attachment = db
+    .prepare(
+      `SELECT a.filename, t.reporter_id
+       FROM attachments a
+       JOIN tickets t ON t.id = a.ticket_id
+       WHERE a.filename = ?`
+    )
+    .get(filename);
+
+  if (!attachment) {
+    return res.status(404).json({ error: "file_not_found" });
+  }
+
+  if (req.user.role !== "developer" && attachment.reporter_id !== req.user.id) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
+  const root = path.resolve(uploadsDir);
+  const filePath = path.resolve(path.join(root, filename));
+  if (!filePath.startsWith(root)) {
     return res.status(400).json({ error: "invalid_filename" });
   }
 

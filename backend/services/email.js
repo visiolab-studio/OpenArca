@@ -1,21 +1,8 @@
 const nodemailer = require("nodemailer");
-const db = require("../db");
-
-function getSettings(keys) {
-  const placeholders = keys.map(() => "?").join(",");
-  const rows = db
-    .prepare(`SELECT key, value FROM settings WHERE key IN (${placeholders})`)
-    .all(...keys);
-
-  const map = Object.create(null);
-  for (const row of rows) {
-    map[row.key] = row.value;
-  }
-  return map;
-}
+const { getSettingsMap } = require("./settings");
 
 async function sendEmail({ to, subject, text, html }) {
-  const settings = getSettings([
+  const settings = getSettingsMap([
     "smtp_host",
     "smtp_port",
     "smtp_user",

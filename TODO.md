@@ -19,12 +19,12 @@ Kryteria akceptacji P0:
 - Brak endpointów bez walidacji i bez autoryzacji tam, gdzie wymagane.
 
 ## P1 - Backend MVP zgodny ze specyfikacją
-- [ ] Zaimplementować `db.js` i inicjalizację wszystkich tabel + ustawień domyślnych.
-- [ ] Zaimplementować OTP auth flow (`request-otp`, `verify-otp`, `me`, `PATCH me`).
-- [ ] Zaimplementować RBAC middleware (`user`, `developer`) i ownership checks.
-- [ ] Zaimplementować endpointy ticketów, komentarzy, uploadów i historii zmian.
-- [ ] Zaimplementować endpointy `projects`, `dev-tasks`, `users`, `settings`.
-- [ ] Zaimplementować serwis email z fallbackiem dev (Mailpit/logi).
+- [x] Zaimplementować `db.js` i inicjalizację wszystkich tabel + ustawień domyślnych.
+- [x] Zaimplementować OTP auth flow (`request-otp`, `verify-otp`, `me`, `PATCH me`).
+- [x] Zaimplementować RBAC middleware (`user`, `developer`) i ownership checks.
+- [x] Zaimplementować endpointy ticketów, komentarzy, uploadów i historii zmian.
+- [x] Zaimplementować endpointy `projects`, `dev-tasks`, `users`, `settings`.
+- [x] Zaimplementować serwis email z fallbackiem dev (Mailpit/logi).
 
 Kryteria akceptacji P1:
 - Wszystkie endpointy z `AGENT.md` odpowiadają zgodnie z kontraktem.

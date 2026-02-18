@@ -8,6 +8,8 @@
   --text: #e5ecf6;
   --muted: #9fb0c6;
   --accent: #38bdf8;
+  --accent-gold: #f6da3f;
+  --accent-gold-soft: rgba(246, 218, 63, 0.2);
   --ok: #22c55e;
   --warn: #f59e0b;
   --danger: #ef4444;
@@ -97,20 +99,40 @@ button {
   border-bottom: 1px solid var(--line);
   background: rgba(13, 18, 26, 0.85);
   backdrop-filter: blur(9px);
+  box-shadow: inset 0 -1px 0 rgba(246, 218, 63, 0.18);
 }
 
 .brand {
-  display: grid;
-  gap: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
 }
 
-.brand strong {
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 11px;
+  border: 1px solid rgba(246, 218, 63, 0.35);
+  box-shadow: 0 0 0 2px rgba(246, 218, 63, 0.12);
+}
+
+.brand-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.brand-copy strong {
   font-size: 0.95rem;
 }
 
-.brand span {
+.brand-copy span {
   color: var(--muted);
   font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .main-nav {
@@ -128,10 +150,16 @@ button {
   transition: all 0.2s ease;
 }
 
+.nav-link:hover {
+  border-color: rgba(246, 218, 63, 0.45);
+  color: #fff5bd;
+  box-shadow: inset 0 0 0 1px rgba(246, 218, 63, 0.14);
+}
+
 .nav-link.active {
-  border-color: #1d475a;
-  background: #12313f;
-  color: #c8f0ff;
+  border-color: rgba(246, 218, 63, 0.72);
+  background: linear-gradient(170deg, rgba(246, 218, 63, 0.2), rgba(246, 218, 63, 0.06));
+  color: #fff4b0;
 }
 
 .topbar-actions {
@@ -142,21 +170,51 @@ button {
 
 .lang-switch {
   display: inline-flex;
-  border: 1px solid var(--line-soft);
+  border: 1px solid rgba(246, 218, 63, 0.35);
   border-radius: 999px;
   overflow: hidden;
+  background: rgba(9, 13, 20, 0.7);
 }
 
 .lang-switch button {
   border: 0;
   background: transparent;
   color: var(--muted);
-  padding: 0.35rem 0.65rem;
+  padding: 0.35rem 0.62rem;
 }
 
-.lang-switch button.active {
-  background: #153746;
-  color: #dcf6ff;
+.lang-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lang-option:hover {
+  color: #fff4b0;
+}
+
+.lang-switch .lang-option.active {
+  background: rgba(246, 218, 63, 0.18);
+  color: #fff4b0;
+}
+
+.flag {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+
+.flag-pl {
+  background: linear-gradient(to bottom, #ffffff 50%, #dc143c 50%);
+}
+
+.flag-en {
+  background:
+    linear-gradient(to right, transparent 41%, #ffffff 41%, #ffffff 59%, transparent 59%),
+    linear-gradient(to bottom, transparent 41%, #ffffff 41%, #ffffff 59%, transparent 59%),
+    #0a3161;
 }
 
 .page {
@@ -193,7 +251,10 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1rem;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(246, 218, 63, 0.06),
+    0 12px 24px rgba(246, 218, 63, 0.08);
 }
 
 .auth-panel {
@@ -203,7 +264,14 @@ button {
 }
 
 .auth-lang {
-  justify-self: start;
+  justify-self: end;
+}
+
+.auth-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
 }
 
 .form-grid {
@@ -248,6 +316,13 @@ button {
   color: #def8ff;
   padding: 0.5rem 0.9rem;
   border-radius: 10px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.btn:hover {
+  border-color: rgba(246, 218, 63, 0.7);
+  box-shadow: 0 8px 16px rgba(246, 218, 63, 0.16);
+  transform: translateY(-1px);
 }
 
 .btn:disabled {
@@ -259,6 +334,11 @@ button {
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--muted);
+}
+
+.btn-ghost:hover {
+  border-color: rgba(246, 218, 63, 0.55);
+  color: #fff4b0;
 }
 
 .feedback {
@@ -297,6 +377,12 @@ button {
   padding: 0.8rem;
   display: grid;
   gap: 0.6rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.stat-card:hover {
+  border-color: rgba(246, 218, 63, 0.48);
+  box-shadow: 0 8px 18px rgba(246, 218, 63, 0.12);
 }
 
 .stat-card strong {
@@ -506,6 +592,6 @@ table td {
   }
 
   .topbar-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 }

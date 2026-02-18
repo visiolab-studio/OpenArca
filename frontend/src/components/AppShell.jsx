@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import appLogo from "../assets/edudoro_itsc_logo.png";
 
 export default function AppShell() {
   const navigate = useNavigate();
@@ -44,8 +45,11 @@ export default function AppShell() {
     <div className="app-root">
       <header className="topbar">
         <div className="brand">
-          <strong>{t("app.name")}</strong>
-          <span>{user?.email}</span>
+          <img src={appLogo} alt="EdudoroIT logo" className="brand-logo" />
+          <div className="brand-copy">
+            <strong>{t("app.name")}</strong>
+            <span>{user?.email}</span>
+          </div>
         </div>
         <nav className="main-nav">
           {links.map((link) => (
@@ -58,17 +62,19 @@ export default function AppShell() {
           <div className="lang-switch">
             <button
               type="button"
-              className={language === "pl" ? "active" : ""}
+              className={language === "pl" ? "lang-option active" : "lang-option"}
               onClick={() => handleLanguageChange("pl")}
             >
-              PL
+              <span className="flag flag-pl" aria-hidden="true" />
+              <span>PL</span>
             </button>
             <button
               type="button"
-              className={language === "en" ? "active" : ""}
+              className={language === "en" ? "lang-option active" : "lang-option"}
               onClick={() => handleLanguageChange("en")}
             >
-              EN
+              <span className="flag flag-en" aria-hidden="true" />
+              <span>EN</span>
             </button>
           </div>
           <button type="button" className="btn btn-ghost" onClick={handleLogout}>

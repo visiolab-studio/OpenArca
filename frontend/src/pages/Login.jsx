@@ -79,23 +79,26 @@ export default function LoginPage() {
   return (
     <main className="page page-center">
       <section className="auth-panel">
-        <h1>{t("auth.title")}</h1>
-
-        <div className="lang-switch auth-lang">
-          <button
-            type="button"
-            className={language === "pl" ? "active" : ""}
-            onClick={() => setLanguage("pl")}
-          >
-            PL
-          </button>
-          <button
-            type="button"
-            className={language === "en" ? "active" : ""}
-            onClick={() => setLanguage("en")}
-          >
-            EN
-          </button>
+        <div className="auth-header">
+          <h1>{t("auth.title")}</h1>
+          <div className="lang-switch auth-lang">
+            <button
+              type="button"
+              className={language === "pl" ? "lang-option active" : "lang-option"}
+              onClick={() => setLanguage("pl")}
+            >
+              <span className="flag flag-pl" aria-hidden="true" />
+              <span>PL</span>
+            </button>
+            <button
+              type="button"
+              className={language === "en" ? "lang-option active" : "lang-option"}
+              onClick={() => setLanguage("en")}
+            >
+              <span className="flag flag-en" aria-hidden="true" />
+              <span>EN</span>
+            </button>
+          </div>
         </div>
 
         {phase === "request" ? (

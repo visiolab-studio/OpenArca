@@ -1,0 +1,139 @@
+{
+  "app": {
+    "name": "EdudoroIT_SupportCenter",
+    "loading": "Ładowanie...",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "submit": "Wyślij",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "refresh": "Odśwież",
+    "notAvailable": "Brak danych",
+    "logout": "Wyloguj"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "newTicket": "Nowe zgłoszenie",
+    "myTickets": "Moje zgłoszenia",
+    "overview": "Obłożenie",
+    "board": "Kanban",
+    "todo": "Lista TODO",
+    "admin": "Ustawienia"
+  },
+  "auth": {
+    "title": "Logowanie OTP",
+    "email": "Email firmowy",
+    "sendCode": "Wyślij kod",
+    "code": "Kod OTP (8 cyfr)",
+    "verify": "Zweryfikuj",
+    "resend": "Wyślij ponownie",
+    "expiresIn": "Kod wygasa za: {{time}}",
+    "requestSuccess": "Kod został wysłany",
+    "invalid": "Nieprawidłowy email lub kod",
+    "domainDenied": "Ta domena nie jest dozwolona",
+    "tooMany": "Za dużo prób, spróbuj później"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Aktualny stan zgłoszeń",
+    "recent": "Ostatnie zgłoszenia",
+    "quick": "Szybkie linki",
+    "openNew": "Dodaj zgłoszenie",
+    "goMine": "Przejdź do moich zgłoszeń",
+    "todoCount": "Aktywne zadania TODO"
+  },
+  "overview": {
+    "title": "Obłożenie",
+    "inProgressList": "W realizacji",
+    "waitingList": "Oczekujące"
+  },
+  "tickets": {
+    "title": "Tickety",
+    "newTitle": "Nowe zgłoszenie",
+    "myTitle": "Moje zgłoszenia",
+    "detailTitle": "Szczegóły zgłoszenia",
+    "filters": "Filtry",
+    "status": "Status",
+    "priority": "Priorytet",
+    "category": "Kategoria",
+    "project": "Projekt",
+    "dateFrom": "Data od",
+    "dateTo": "Data do",
+    "sortBy": "Sortowanie",
+    "createdAt": "Data zgłoszenia",
+    "updatedAt": "Ostatnia aktywność",
+    "plannedDate": "Planowana data",
+    "estimatedHours": "Szacowany czas (h)",
+    "titleField": "Tytuł",
+    "description": "Opis",
+    "steps": "Kroki odtworzenia",
+    "expected": "Oczekiwany rezultat",
+    "actual": "Faktyczny rezultat",
+    "environment": "Środowisko",
+    "urgency": "Ważność zgłaszającego",
+    "internalNote": "Notatka wewnętrzna",
+    "assignee": "Przypisany",
+    "attachments": "Załączniki",
+    "comments": "Komentarze",
+    "history": "Historia zmian",
+    "addComment": "Dodaj komentarz",
+    "internal": "Wewnętrzny",
+    "commentType": "Typ komentarza",
+    "loadError": "Nie udało się pobrać zgłoszeń",
+    "noTickets": "Brak zgłoszeń",
+    "saveSuccess": "Zapisano zmiany",
+    "createSuccess": "Zgłoszenie zostało utworzone",
+    "uploadSuccess": "Załączniki dodane",
+    "validation": {
+      "title": "Tytuł musi mieć minimum 10 znaków",
+      "description": "Opis jest za krótki",
+      "steps": "Kroki odtworzenia: minimum 30 znaków",
+      "expected": "Oczekiwany rezultat: minimum 20 znaków",
+      "actual": "Faktyczny rezultat: minimum 20 znaków",
+      "environment": "Środowisko: minimum 10 znaków",
+      "businessGoal": "Cel biznesowy: minimum 30 znaków",
+      "questionContext": "Kontekst pytania: minimum 30 znaków"
+    }
+  },
+  "newTicket": {
+    "step1": "Krok 1: Podstawowe",
+    "step2": "Krok 2: Opis",
+    "step3": "Krok 3: Dodatkowe",
+    "step4": "Krok 4: Podgląd",
+    "businessGoal": "Cel biznesowy",
+    "questionContext": "Kontekst pytania",
+    "confirm": "Potwierdzam kompletność danych"
+  },
+  "dev": {
+    "boardPlaceholder": "Kanban zostanie rozszerzony w etapie P3.",
+    "todoPlaceholder": "Lista TODO zostanie rozszerzona w etapie P3.",
+    "adminPlaceholder": "Panel admina zostanie rozszerzony w etapie P3."
+  },
+  "status": {
+    "submitted": "Zgłoszone",
+    "verified": "Zweryfikowane",
+    "in_progress": "W realizacji",
+    "waiting": "Oczekujące",
+    "blocked": "Zablokowane",
+    "closed": "Zamknięte"
+  },
+  "priority": {
+    "critical": "Krytyczny",
+    "high": "Wysoki",
+    "normal": "Normalny",
+    "low": "Niski"
+  },
+  "category": {
+    "bug": "Błąd",
+    "feature": "Nowa funkcja",
+    "improvement": "Usprawnienie",
+    "question": "Pytanie",
+    "other": "Inne"
+  },
+  "errors": {
+    "forbidden": "Brak uprawnień",
+    "unauthorized": "Sesja wygasła. Zaloguj się ponownie.",
+    "validation_error": "Błąd walidacji",
+    "internal_error": "Wystąpił błąd serwera"
+  }
+}

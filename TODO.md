@@ -32,11 +32,11 @@ Kryteria akceptacji P1:
 - Powiadomienia email wysyłane tylko dla triggerów z dokumentu.
 
 ## P2 - Frontend MVP i i18n
-- [ ] Zaimplementować shell aplikacji: routing, `AuthContext`, `LanguageContext`, axios instance.
-- [ ] Zaimplementować `Login` z OTP i przełącznikiem PL/EN.
-- [ ] Zaimplementować widoki: `Dashboard`, `NewTicket`, `MyTickets`, `TicketDetail`, `Overview`.
-- [ ] Zaimplementować walidacje formularza zgłoszenia zależne od kategorii.
-- [ ] Zaimplementować tłumaczenia `pl.json`, `en.json` dla pełnego UI.
+- [x] Zaimplementować shell aplikacji: routing, `AuthContext`, `LanguageContext`, axios instance.
+- [x] Zaimplementować `Login` z OTP i przełącznikiem PL/EN.
+- [x] Zaimplementować widoki: `Dashboard`, `NewTicket`, `MyTickets`, `TicketDetail`, `Overview`.
+- [x] Zaimplementować walidacje formularza zgłoszenia zależne od kategorii.
+- [x] Zaimplementować tłumaczenia `pl.json`, `en.json` dla pełnego UI.
 
 Kryteria akceptacji P2:
 - Brak brakujących kluczy i18n na głównych ścieżkach.

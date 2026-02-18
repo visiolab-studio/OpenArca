@@ -1,0 +1,139 @@
+{
+  "app": {
+    "name": "EdudoroIT_SupportCenter",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "refresh": "Refresh",
+    "notAvailable": "No data",
+    "logout": "Logout"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "newTicket": "New Ticket",
+    "myTickets": "My Tickets",
+    "overview": "Workload",
+    "board": "Kanban",
+    "todo": "TODO List",
+    "admin": "Settings"
+  },
+  "auth": {
+    "title": "OTP Sign In",
+    "email": "Company email",
+    "sendCode": "Send code",
+    "code": "OTP code (8 digits)",
+    "verify": "Verify",
+    "resend": "Resend",
+    "expiresIn": "Code expires in: {{time}}",
+    "requestSuccess": "Code has been sent",
+    "invalid": "Invalid email or code",
+    "domainDenied": "This email domain is not allowed",
+    "tooMany": "Too many attempts, try later"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Current ticket workload",
+    "recent": "Recent tickets",
+    "quick": "Quick links",
+    "openNew": "Create ticket",
+    "goMine": "Open my tickets",
+    "todoCount": "Active TODO tasks"
+  },
+  "overview": {
+    "title": "Workload overview",
+    "inProgressList": "In progress",
+    "waitingList": "Waiting"
+  },
+  "tickets": {
+    "title": "Tickets",
+    "newTitle": "New Ticket",
+    "myTitle": "My Tickets",
+    "detailTitle": "Ticket details",
+    "filters": "Filters",
+    "status": "Status",
+    "priority": "Priority",
+    "category": "Category",
+    "project": "Project",
+    "dateFrom": "Date from",
+    "dateTo": "Date to",
+    "sortBy": "Sort by",
+    "createdAt": "Created",
+    "updatedAt": "Last activity",
+    "plannedDate": "Planned date",
+    "estimatedHours": "Estimated hours",
+    "titleField": "Title",
+    "description": "Description",
+    "steps": "Steps to reproduce",
+    "expected": "Expected result",
+    "actual": "Actual result",
+    "environment": "Environment",
+    "urgency": "Reporter urgency",
+    "internalNote": "Internal note",
+    "assignee": "Assignee",
+    "attachments": "Attachments",
+    "comments": "Comments",
+    "history": "Change history",
+    "addComment": "Add comment",
+    "internal": "Internal",
+    "commentType": "Comment type",
+    "loadError": "Failed to load tickets",
+    "noTickets": "No tickets found",
+    "saveSuccess": "Changes saved",
+    "createSuccess": "Ticket created",
+    "uploadSuccess": "Attachments uploaded",
+    "validation": {
+      "title": "Title must be at least 10 characters",
+      "description": "Description is too short",
+      "steps": "Steps to reproduce: minimum 30 characters",
+      "expected": "Expected result: minimum 20 characters",
+      "actual": "Actual result: minimum 20 characters",
+      "environment": "Environment: minimum 10 characters",
+      "businessGoal": "Business goal: minimum 30 characters",
+      "questionContext": "Question context: minimum 30 characters"
+    }
+  },
+  "newTicket": {
+    "step1": "Step 1: Basics",
+    "step2": "Step 2: Details",
+    "step3": "Step 3: Extra",
+    "step4": "Step 4: Preview",
+    "businessGoal": "Business goal",
+    "questionContext": "Question context",
+    "confirm": "I confirm the ticket contains complete information"
+  },
+  "dev": {
+    "boardPlaceholder": "Kanban will be expanded in phase P3.",
+    "todoPlaceholder": "Developer TODO list will be expanded in phase P3.",
+    "adminPlaceholder": "Admin panel will be expanded in phase P3."
+  },
+  "status": {
+    "submitted": "Submitted",
+    "verified": "Verified",
+    "in_progress": "In progress",
+    "waiting": "Waiting",
+    "blocked": "Blocked",
+    "closed": "Closed"
+  },
+  "priority": {
+    "critical": "Critical",
+    "high": "High",
+    "normal": "Normal",
+    "low": "Low"
+  },
+  "category": {
+    "bug": "Bug",
+    "feature": "Feature",
+    "improvement": "Improvement",
+    "question": "Question",
+    "other": "Other"
+  },
+  "errors": {
+    "forbidden": "Forbidden",
+    "unauthorized": "Session expired. Please log in again.",
+    "validation_error": "Validation error",
+    "internal_error": "Internal server error"
+  }
+}

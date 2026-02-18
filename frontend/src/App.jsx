@@ -1,34 +1,56 @@
-import { useEffect, useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import DeveloperRoute from "./components/DeveloperRoute";
+import LoadingScreen from "./components/LoadingScreen";
+import AppShell from "./components/AppShell";
+import LoginPage from "./pages/Login";
+import DashboardPage from "./pages/Dashboard";
+import NewTicketPage from "./pages/NewTicket";
+import MyTicketsPage from "./pages/MyTickets";
+import TicketDetailPage from "./pages/TicketDetail";
+import OverviewPage from "./pages/Overview";
+import BoardPage from "./pages/Board";
+import DevTodoPage from "./pages/DevTodo";
+import AdminPage from "./pages/Admin";
+import NotFoundPage from "./pages/NotFound";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+function LoginRoute() {
+  const { ready, isAuthenticated } = useAuth();
+
+  if (!ready) {
+    return <LoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <LoginPage />;
+}
 
 export default function App() {
-  const [health, setHealth] = useState({ status: "loading" });
-
-  useEffect(() => {
-    async function checkHealth() {
-      try {
-        const response = await fetch(`${API_URL}/health`);
-        const data = await response.json();
-        setHealth({ status: "ok", data });
-      } catch (error) {
-        setHealth({ status: "error", message: error.message });
-      }
-    }
-
-    checkHealth();
-  }, []);
-
   return (
-    <main className="app-shell">
-      <section className="panel">
-        <h1>EdudoroIT_SupportCenter</h1>
-        <p>Bootstrap frontend is running.</p>
-        <p>
-          API URL: <code>{API_URL}</code>
-        </p>
-        <pre>{JSON.stringify(health, null, 2)}</pre>
-      </section>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginRoute />} />
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppShell />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="/new-ticket" element={<NewTicketPage />} />
+          <Route path="/my-tickets" element={<MyTicketsPage />} />
+          <Route path="/ticket/:id" element={<TicketDetailPage />} />
+          <Route path="/overview" element={<OverviewPage />} />
+
+          <Route element={<DeveloperRoute />}>
+            <Route path="/board" element={<BoardPage />} />
+            <Route path="/dev-todo" element={<DevTodoPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
+        </Route>
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }

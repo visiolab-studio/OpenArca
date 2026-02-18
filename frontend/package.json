@@ -12,8 +12,13 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "axios": "^1.8.2",
+    "date-fns": "^4.1.0",
+    "i18next": "^24.2.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-i18next": "^15.4.1",
+    "react-router-dom": "^6.30.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",

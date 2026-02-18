@@ -2,19 +2,19 @@
 
 ## Status projektu
 - [x] Rebranding specyfikacji: `TaskFlow` -> `EdudoroIT_SupportCenter` w `AGENT.md`.
-- [ ] Bootstrap kodu aplikacji (backend + frontend + kontenery).
+- [x] Bootstrap kodu aplikacji (backend + frontend + kontenery).
 
 ## P0 - Fundament i bezpieczeństwo (blokujące)
-- [ ] Utworzyć strukturę repo zgodną z `AGENT.md` (`backend/`, `frontend/`, `uploads/`, i18n, routes).
-- [ ] Dodać `docker-compose.yml` dla `backend`, `frontend`, `mailpit`.
-- [ ] Dodać `backend/Dockerfile` i `frontend/Dockerfile` z uruchamianiem jako non-root.
-- [ ] Dodać `.env.example` z kompletem zmiennych (JWT, SMTP, URL-e, porty).
-- [ ] Dodać centralny mechanizm walidacji wejścia (body/query/params/files).
-- [ ] Dodać globalny middleware błędów (spójny format odpowiedzi, brak wycieku danych).
-- [ ] Dodać ograniczenia bezpieczeństwa: rate-limit dla OTP, limity uploadu, CORS, nagłówki HTTP.
+- [x] Utworzyć strukturę repo zgodną z `AGENT.md` (`backend/`, `frontend/`, `uploads/`, i18n, routes).
+- [x] Dodać `docker-compose.yml` dla `backend`, `frontend`, `mailpit`.
+- [x] Dodać `backend/Dockerfile` i `frontend/Dockerfile` z uruchamianiem jako non-root.
+- [x] Dodać `.env.example` z kompletem zmiennych (JWT, SMTP, URL-e, porty).
+- [x] Dodać centralny mechanizm walidacji wejścia (body/query/params/files).
+- [x] Dodać globalny middleware błędów (spójny format odpowiedzi, brak wycieku danych).
+- [x] Dodać ograniczenia bezpieczeństwa: rate-limit dla OTP, limity uploadu, CORS, nagłówki HTTP.
 
 Kryteria akceptacji P0:
-- `docker compose up --build` uruchamia cały stack lokalny.
+- `docker compose up --build` uruchamia cały stack lokalny (przy zajętych portach Mailpit: `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026`).
 - Aplikacja nie działa na procesach root.
 - Brak endpointów bez walidacji i bez autoryzacji tam, gdzie wymagane.
 

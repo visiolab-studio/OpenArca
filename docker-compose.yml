@@ -1,0 +1,65 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edudoroit-backend
+    environment:
+      - PORT=4000
+      - JWT_SECRET=change-me-super-secret
+      - JWT_EXPIRES_IN=30d
+      - APP_URL=http://localhost:3000
+      - FRONTEND_ORIGIN=http://localhost:3000
+      - DATA_DIR=/app/data
+      - UPLOADS_DIR=/app/uploads
+      - SQLITE_PATH=/app/data/data.sqlite
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: edudoroit-frontend
+    environment:
+      - VITE_API_URL=http://localhost:4000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+      start_period: 20s
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    container_name: edudoroit-mailpit
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+volumes:
+  backend_node_modules:
+  frontend_node_modules:
+  backend_data:
+  backend_uploads:

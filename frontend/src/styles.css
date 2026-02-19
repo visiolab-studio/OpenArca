@@ -125,8 +125,8 @@ body,
 
 body {
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.65;
   color: var(--text-primary);
   background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
@@ -157,17 +157,17 @@ button {
 }
 
 .text-sm {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .text-base {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
 .text-md {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -252,7 +252,7 @@ button {
   gap: 10px;
   padding: 7px 10px;
   border-radius: var(--radius);
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-secondary);
 }
 
@@ -358,7 +358,7 @@ button {
 }
 
 .page-title {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -375,11 +375,11 @@ button {
 }
 
 .page-content {
-  padding: 32px 40px;
+  padding: 36px 44px;
   max-width: none;
   width: 100%;
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
 
 .page-content--full {
@@ -477,7 +477,7 @@ button {
   background: var(--bg-primary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
 }
 
 .card-hover {
@@ -492,7 +492,7 @@ button {
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
@@ -500,8 +500,12 @@ button {
 
 .panel-grid {
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+}
+
+.panel-grid > .card {
+  height: 100%;
 }
 
 .list-plain {
@@ -531,8 +535,8 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 7px 14px;
-  font-size: 14px;
+  padding: 8px 15px;
+  font-size: 15px;
   font-weight: 500;
   border: none;
   border-radius: var(--radius);
@@ -597,13 +601,13 @@ button {
 }
 
 .btn-sm {
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 5px 11px;
+  font-size: 13px;
 }
 
 .btn-lg {
-  padding: 10px 20px;
-  font-size: 15px;
+  padding: 11px 22px;
+  font-size: 16px;
 }
 
 .btn:disabled {
@@ -626,7 +630,7 @@ button {
 .filters-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .form-group {
@@ -636,7 +640,7 @@ button {
 }
 
 .form-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -653,8 +657,8 @@ input,
 textarea,
 select {
   width: 100%;
-  padding: 9px 12px;
-  font-size: 14px;
+  padding: 10px 13px;
+  font-size: 15px;
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 1px solid var(--border-default);
@@ -911,14 +915,14 @@ select:focus {
 }
 
 .new-ticket-title {
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .new-ticket-subtitle {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-secondary);
 }
 
@@ -1026,13 +1030,13 @@ select:focus {
 
 .dashboard-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
   margin-bottom: 8px;
 }
 
 .stat-card {
-  padding: 20px;
+  padding: 24px;
   background: var(--bg-primary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
@@ -1046,7 +1050,7 @@ select:focus {
 }
 
 .stat-card-value {
-  font-size: 32px;
+  font-size: 38px;
   font-weight: 700;
   line-height: 1;
   color: var(--text-primary);
@@ -1079,11 +1083,11 @@ table td {
   border-bottom: 1px solid var(--border-subtle);
   text-align: left;
   vertical-align: top;
-  padding: 8px 6px;
+  padding: 10px 8px;
 }
 
 table th {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.07em;

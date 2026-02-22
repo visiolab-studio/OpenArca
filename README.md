@@ -204,3 +204,11 @@ docker compose down -v
 ## Release i rollback
 
 Checklista release/rollback: `docs/release-checklist.md`.
+
+## Governance Open Source
+
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `CODE_OF_CONDUCT.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`

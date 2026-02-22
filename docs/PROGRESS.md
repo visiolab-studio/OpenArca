@@ -455,7 +455,7 @@
 
 ## Step P5-security-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po commicie)
+- Commit: `a2f2c5a`
 - Description: Audyt RBAC i ownership checks dla krytycznych endpointów write.
 
 ### Implementation Plan
@@ -502,3 +502,59 @@
 
 ### Skills created/updated
 - `docs/skills/rbac-ownership-checks.md` (created)
+
+## Step P5-governance-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Dodać pakiet governance Open Source (CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG/ROADMAP) i podlinkować go w README.
+
+### Implementation Plan
+- Dodać dokument `CONTRIBUTING.md` z workflow PR i quality gates.
+- Dodać `SECURITY.md` z kanałami responsible disclosure i SLA odpowiedzi.
+- Dodać `CODE_OF_CONDUCT.md`.
+- Dodać `CHANGELOG.md` z sekcją `Unreleased` dla bieżących zmian P5.
+- Dodać `ROADMAP.md` jako publiczny widok kierunku produktu.
+- Zaktualizować `README.md` o sekcję governance links.
+- Dodać skill operacyjny dla utrzymania governance docs.
+- Uruchomić pełne quality gates i smoke E2E baseline.
+
+### Files changed
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `CODE_OF_CONDUCT.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
+- `README.md`
+- `docs/skills/oss-governance-docs.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (28/28)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline (API + React routes):
+  - OTP login user -> PASS (backend smoke test)
+  - create ticket (+ attachment) -> PASS (backend smoke test)
+  - my tickets -> PASS (backend smoke test)
+  - ticket detail -> PASS (backend smoke test)
+  - OTP login developer -> PASS (backend smoke test)
+  - overview + board -> PASS (backend smoke test)
+  - move ticket status (`verified` -> `in_progress`) -> PASS (backend smoke test)
+  - DevTodo sync -> PASS (backend smoke test)
+  - route checks (`/`, `/login`, `/my-tickets`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Dodano bazowy pakiet governance dla publicznego Open Core.
+- README zawiera sekcję z odnośnikami do dokumentów governance.
+- Utrzymano zielone quality gates backend/frontend oraz smoke E2E baseline.
+- Brak regresji funkcjonalnych w kluczowych flow.
+
+### Skills created/updated
+- `docs/skills/oss-governance-docs.md` (created)

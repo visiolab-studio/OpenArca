@@ -786,6 +786,18 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
       });
     }
 
+    if (newStatus !== oldStatus && oldStatus !== "submitted") {
+      trackTelemetryEvent({
+        eventName: "board.drag",
+        userId: req.user.id,
+        ticketId: req.params.id,
+        properties: {
+          old_status: oldStatus,
+          new_status: newStatus
+        }
+      });
+    }
+
     if (newStatus !== oldStatus) {
       try {
         await notifyReporterStatusChange({

@@ -49,3 +49,10 @@ Przykładowe eventy:
 - `backend/db.js`
 - `backend/tests/api.integration.test.js`
 - `docs/PROGRESS.md`
+
+## Dodatkowy check UI (Kanban)
+- Wykonaj drag ticketu między kolumnami na `/board`.
+- Oczekiwany rezultat:
+  - status ticketu się zmienia,
+  - ticket pojawia się w nowej kolumnie po odświeżeniu.
+- Po stronie backend telemetry powinno pojawić się `board.drag`.

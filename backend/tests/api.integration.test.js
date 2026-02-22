@@ -264,6 +264,52 @@ test("telemetry records devtodo.reorder event for developer reorder action", asy
   assert.ok(Number(properties.active_count_after) >= 2);
 });
 
+test("telemetry records board.drag event when developer moves ticket across statuses", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Board drag telemetry event should be persisted"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.body.status, "submitted");
+
+  const accept = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "verified" });
+  assert.equal(accept.statusCode, 200);
+  assert.equal(accept.body.status, "verified");
+
+  const dragMove = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "in_progress" });
+  assert.equal(dragMove.statusCode, 200);
+  assert.equal(dragMove.body.status, "in_progress");
+
+  const event = db
+    .prepare(
+      `SELECT event_name, user_id, ticket_id, properties_json
+       FROM telemetry_events
+       WHERE event_name = 'board.drag' AND ticket_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+    .get(created.body.id);
+
+  assert.ok(event);
+  assert.equal(event.event_name, "board.drag");
+  assert.equal(event.user_id, devAuth.user.id);
+  assert.equal(event.ticket_id, created.body.id);
+
+  const properties = JSON.parse(event.properties_json);
+  assert.equal(properties.old_status, "verified");
+  assert.equal(properties.new_status, "in_progress");
+});
+
 test("developer todo scope is isolated per user and linked ticket access is restricted", async () => {
   const secondDevEmail = uniqueEmail("dev2");
   db.prepare("UPDATE settings SET value = ? WHERE key = 'developer_emails'").run(

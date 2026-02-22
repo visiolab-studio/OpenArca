@@ -56,6 +56,7 @@
 
 ## Step P5-telemetry-02
 - Status: Done (approved by user)
+- Commit: `2585898`
 - Description: Telemetria `devtodo.reorder` po udanym reorderze listy TODO developera.
 
 ### Scope
@@ -98,6 +99,53 @@
 - Payload eventu zawiera `items_count` i `active_count_after`.
 - Dodany test integracyjny backend potwierdzający zapis eventu.
 - Brak regresji backend/frontend i brak regresji RBAC dla endpointu reorder.
+
+### Skills created/updated
+- `docs/skills/telemetry-events.md` (updated)
+
+## Step P5-telemetry-03
+- Status: Done (approved by user)
+- Description: Telemetria `board.drag` przy zmianie statusu ticketa w przepływie Kanban.
+
+### Scope
+- emit event `board.drag` dla przejść statusów (drag workflow)
+- test integracyjny telemetry dla board move
+- walidacja E2E baseline + move statusu z perspektywy developera
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `docs/skills/telemetry-events.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (18/18)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- RBAC check (manual script):
+  - obcy user patch statusu cudzego ticketu -> `403 forbidden` (PASS)
+  - developer patch statusu ticketu -> `200` (PASS)
+
+### E2E run
+- Manual scripted E2E baseline + board move:
+  - OTP login user -> PASS
+  - create ticket + attachment -> PASS
+  - my tickets + ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status (`verified` -> `in_progress`) -> PASS
+  - DevTodo sync -> PASS
+  - telemetry `board.drag` persisted with payload (`old_status`, `new_status`) -> PASS
+  - route checks (`/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Event `board.drag` emitowany przy przejściu statusu (bez `submitted` -> `...` bootstrap transition).
+- Payload eventu zawiera `old_status` i `new_status`.
+- Dodany test integracyjny backend potwierdzający zapis eventu.
+- Brak regresji backend/frontend i brak regresji RBAC dla endpointu `PATCH /api/tickets/:id`.
 
 ### Skills created/updated
 - `docs/skills/telemetry-events.md` (updated)

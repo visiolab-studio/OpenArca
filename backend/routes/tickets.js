@@ -17,7 +17,7 @@ const {
   notifyReporterStatusChange,
   notifyReporterDeveloperComment
 } = require("../services/notifications");
-const { trackTelemetryEvent } = require("../services/telemetry");
+const { TELEMETRY_EVENT_NAMES, trackTelemetryEvent } = require("../services/telemetry");
 
 const router = express.Router();
 
@@ -356,6 +356,136 @@ function buildActivationStats() {
   };
 }
 
+const TELEMETRY_USAGE_EVENT_CONFIG = [
+  { eventName: "ticket.created", key: "ticket_created" },
+  { eventName: "ticket.closed", key: "ticket_closed" },
+  { eventName: "board.drag", key: "board_drag" },
+  { eventName: "devtodo.reorder", key: "devtodo_reorder" },
+  { eventName: "closure_summary_added", key: "closure_summary_added" }
+];
+
+function formatDateUtc(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildLastDaysLabels(days) {
+  const labels = [];
+  const now = new Date();
+  const baseUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const dayDate = new Date(baseUtc - offset * 24 * 60 * 60 * 1000);
+    labels.push(formatDateUtc(dayDate));
+  }
+
+  return labels;
+}
+
+function buildFeatureUsageStats() {
+  const perEventDefaults = Object.fromEntries(
+    TELEMETRY_USAGE_EVENT_CONFIG.map((entry) => [
+      entry.key,
+      {
+        event_name: entry.eventName,
+        count_30d: 0,
+        unique_users_30d: 0,
+        last_event_at: null
+      }
+    ])
+  );
+
+  const eventNamesList = TELEMETRY_USAGE_EVENT_CONFIG.map((entry) => `'${entry.eventName}'`).join(", ");
+  const countsByEvent = db
+    .prepare(
+      `SELECT
+        event_name,
+        COUNT(*) AS count,
+        COUNT(DISTINCT user_id) AS unique_users,
+        MAX(created_at) AS last_event_at
+       FROM telemetry_events
+       WHERE event_name IN (${eventNamesList})
+         AND datetime(created_at) >= datetime('now', '-30 days')
+       GROUP BY event_name`
+    )
+    .all();
+
+  const eventKeyByName = new Map(
+    TELEMETRY_USAGE_EVENT_CONFIG.map((entry) => [entry.eventName, entry.key])
+  );
+
+  for (const row of countsByEvent) {
+    const key = eventKeyByName.get(row.event_name);
+    if (!key) continue;
+    perEventDefaults[key] = {
+      event_name: row.event_name,
+      count_30d: Number(row.count) || 0,
+      unique_users_30d: Number(row.unique_users) || 0,
+      last_event_at: row.last_event_at || null
+    };
+  }
+
+  const totalsRaw = db
+    .prepare(
+      `SELECT
+        COUNT(*) AS events_count,
+        COUNT(DISTINCT user_id) AS unique_users_count,
+        COUNT(DISTINCT date(created_at)) AS active_days_count
+       FROM telemetry_events
+       WHERE event_name IN (${eventNamesList})
+         AND datetime(created_at) >= datetime('now', '-30 days')`
+    )
+    .get();
+
+  const timelineDays = 14;
+  const labels = buildLastDaysLabels(timelineDays);
+  const timeline = labels.map((dateLabel) => {
+    const row = { date: dateLabel, total: 0 };
+    for (const entry of TELEMETRY_USAGE_EVENT_CONFIG) {
+      row[entry.key] = 0;
+    }
+    return row;
+  });
+
+  const timelineByDay = new Map(timeline.map((item) => [item.date, item]));
+  const dailyRows = db
+    .prepare(
+      `SELECT
+        date(created_at) AS day,
+        event_name,
+        COUNT(*) AS count
+       FROM telemetry_events
+       WHERE event_name IN (${eventNamesList})
+         AND datetime(created_at) >= datetime('now', '-14 days')
+       GROUP BY day, event_name
+       ORDER BY day ASC`
+    )
+    .all();
+
+  for (const row of dailyRows) {
+    const target = timelineByDay.get(row.day);
+    const key = eventKeyByName.get(row.event_name);
+    if (!target || !key) continue;
+    const count = Number(row.count) || 0;
+    target[key] += count;
+    target.total += count;
+  }
+
+  return {
+    generated_at: new Date().toISOString(),
+    window_days: 30,
+    events: perEventDefaults,
+    totals: {
+      events_30d: Number(totalsRaw?.events_count) || 0,
+      unique_users_30d: Number(totalsRaw?.unique_users_count) || 0,
+      active_days_30d: Number(totalsRaw?.active_days_count) || 0
+    },
+    daily_breakdown_14d: timeline
+  };
+}
+
 function getTicket(ticketId) {
   return db.prepare("SELECT * FROM tickets WHERE id = ?").get(ticketId);
 }
@@ -560,6 +690,35 @@ router.get("/stats/overview", authRequired, (req, res) => {
 
 router.get("/stats/activation", authRequired, requireRole("developer"), (req, res) => {
   return res.json(buildActivationStats());
+});
+
+router.get("/stats/usage", authRequired, requireRole("developer"), (req, res) => {
+  const unknownEventsCount = db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM telemetry_events
+       WHERE datetime(created_at) >= datetime('now', '-30 days')`
+    )
+    .get().count;
+  const knownEventsCount = db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM telemetry_events
+       WHERE event_name IN (${Array.from(TELEMETRY_EVENT_NAMES).map((name) => `'${name}'`).join(", ")})
+         AND datetime(created_at) >= datetime('now', '-30 days')`
+    )
+    .get().count;
+
+  const payload = buildFeatureUsageStats();
+  payload.known_events_coverage_30d = {
+    known_events_count: Number(knownEventsCount) || 0,
+    all_events_count: Number(unknownEventsCount) || 0,
+    coverage_percent:
+      Number(unknownEventsCount) > 0
+        ? roundToTwo((Number(knownEventsCount) / Number(unknownEventsCount)) * 100)
+        : 100
+  };
+  return res.json(payload);
 });
 
 router.get("/workload", authRequired, (req, res) => {

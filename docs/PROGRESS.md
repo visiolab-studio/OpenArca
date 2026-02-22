@@ -207,7 +207,7 @@
 
 ## Step P5-analytics-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po commicie)
+- Commit: `1cd5750`
 - Description: Metryki aktywacji produktu (`time to first ticket`, `time to first dev assignment`) jako nowy endpoint backendowy z ochroną RBAC.
 
 ### Implementation Plan
@@ -262,3 +262,71 @@
 
 ### Skills created/updated
 - `docs/skills/activation-metrics.md` (created)
+
+## Step P5-analytics-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po commicie)
+- Description: Metryki użycia funkcji na telemetry events (`GET /api/tickets/stats/usage`) z agregacją 30d + daily breakdown 14d.
+
+### Implementation Plan
+- Dodać endpoint `GET /api/tickets/stats/usage` jako developer-only.
+- Zmapować stabilny kontrakt eventów i kluczy odpowiedzi.
+- Zwracać metryki per event (count, unique users, last event) dla okna 30 dni.
+- Dodać agregaty globalne (`events_30d`, `unique_users_30d`, `active_days_30d`).
+- Dodać timeline 14 dni (`daily_breakdown_14d`) z kompletnymi zerami.
+- Dodać coverage znanych eventów telemetrycznych względem wszystkich eventów 30d.
+- Dodać test integracyjny RBAC + poprawność agregacji i zakresu czasowego.
+- Uzupełnić skills/dokumentację agentową.
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/usage.stats.integration.test.js`
+- `docs/skills/feature-usage-metrics.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (24/24)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- RBAC check:
+  - `GET /api/tickets/stats/usage` jako `user` -> `403 forbidden` (PASS)
+  - `GET /api/tickets/stats/usage` jako `developer` -> `200` (PASS)
+
+### E2E run
+- Manual scripted E2E baseline (API + React routes):
+  - OTP login user -> PASS
+  - create ticket (+ attachment) -> PASS
+  - my tickets -> PASS
+  - ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status (`verified` -> `in_progress`) -> PASS
+  - DevTodo sync -> PASS
+  - closure summary + close ticket -> PASS
+  - `GET /api/tickets/stats/usage` (developer) -> PASS
+  - `GET /api/tickets/stats/usage` (user) -> PASS (403)
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Dodany endpoint `GET /api/tickets/stats/usage` (developer-only).
+- Metryki usage obejmują wszystkie kluczowe eventy telemetry:
+  - `ticket.created`
+  - `ticket.closed`
+  - `board.drag`
+  - `devtodo.reorder`
+  - `closure_summary_added`
+- Dodane agregaty:
+  - 30d per event (`count_30d`, `unique_users_30d`, `last_event_at`)
+  - 30d totals (`events_30d`, `unique_users_30d`, `active_days_30d`)
+  - `daily_breakdown_14d`
+  - `known_events_coverage_30d`
+- Dodany test integracyjny potwierdzający RBAC i poprawność agregacji.
+- Brak regresji backend/frontend i brak regresji bezpieczeństwa.
+
+### Skills created/updated
+- `docs/skills/feature-usage-metrics.md` (created)

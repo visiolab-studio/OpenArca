@@ -604,7 +604,7 @@
 
 ## Step P5-stabilization-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `7349a3d`
 - Description: Stabilizacja sync statusów Ticket <-> Kanban <-> DevTodo przy reassign/unassign assignee.
 
 ### Implementation Plan
@@ -648,3 +648,48 @@
 
 ### Skills created/updated
 - `docs/skills/devtodo-ticket-sync.md` (created)
+
+## Step P5-stabilization-03
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Ujednolicenie finalizacji `closed` vs `waiting` tak, aby zadanie deva trafiało do zakończonych również przy `waiting`.
+
+### Implementation Plan
+- Dostosować mapowanie statusu ticket -> status linked dev task dla `waiting`.
+- Zapewnić, że `waiting` nie zostawia linked taska w aktywnych (`todo`/`in_progress`).
+- Dodać test regresyjny dla flow `verified -> in_progress -> waiting`.
+- Potwierdzić, że reopen z `waiting` do aktywnego statusu przywraca task do aktywnych.
+- Zaktualizować skill sync o regułę finalizacji `waiting`.
+- Uruchomić pełne quality gates backend/frontend.
+- Wykonać smoke E2E baseline.
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `docs/skills/devtodo-ticket-sync.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (30/30)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/non-existing`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+- Dodatkowa walidacja finalizacji:
+  - test integracyjny `waiting status finalization moves linked dev task to done and supports reopen` -> PASS
+
+### Result
+- Status `waiting` działa jak stan finalizacji po stronie deva: linked task przechodzi do `done`.
+- Reopen z `waiting` do `verified` przywraca linked task do aktywnych (`todo`).
+- Ujednolicono zachowanie `closed` i `waiting` dla sync z DevTodo.
+- Dodany test regresyjny zabezpiecza flow przed powrotem błędu.
+
+### Skills created/updated
+- `docs/skills/devtodo-ticket-sync.md` (updated)

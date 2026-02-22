@@ -531,7 +531,9 @@ function validateForeignRefs(payload) {
 
 function ensureDevTaskForAcceptedTicket({ ticketId, userId, ticket }) {
   const desiredTaskStatus =
-    ticket.status === "closed" ? "done" : (ticket.status === "in_progress" ? "in_progress" : "todo");
+    ticket.status === "closed" || ticket.status === "waiting"
+      ? "done"
+      : (ticket.status === "in_progress" ? "in_progress" : "todo");
 
   const existing = db
     .prepare(

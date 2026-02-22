@@ -15,7 +15,7 @@ Dla jednego ticketu ma istnieć tylko jedno aktywne linked TODO (`todo`/`in_prog
 - [ ] Jeśli ticket jest bez przypisanego deva: usuń aktywne linked taski (`todo`, `in_progress`) dla tego ticketu.
 - [ ] Jeśli ticket jest przypisany: zostaw tylko jeden aktywny linked task dla aktualnego assignee.
 - [ ] Gdy brak taska dla aktualnego assignee: przenieś najnowszy aktywny task do niego albo utwórz nowy.
-- [ ] Utrzymaj mapowanie statusów ticket -> task (`closed -> done`, `in_progress -> in_progress`, reszta -> `todo`).
+- [ ] Utrzymaj mapowanie statusów ticket -> task (`closed/waiting -> done`, `in_progress -> in_progress`, reszta -> `todo`).
 - [ ] Dodaj test regresyjny dla reassign + unassign i potwierdź brak duplikatów aktywnych linked tasków.
 
 ## Przykłady
@@ -34,6 +34,7 @@ docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow
 ## Definition of Done
 - [ ] Reassign nie zostawia aktywnego linked taska u poprzedniego deva.
 - [ ] Unassign usuwa aktywny linked task dla ticketu.
+- [ ] Przejście ticketu na `waiting` przenosi linked task do `done`.
 - [ ] W aktywnych linked taskach istnieje maksymalnie jeden task na ticket.
 - [ ] `backend/tests/api.integration.test.js` zawiera test regresyjny dla reassign/unassign.
 - [ ] Smoke flow przechodzi bez regresji.

@@ -585,6 +585,69 @@ test("accepting submitted ticket auto-assigns developer and creates linked dev t
   assert.equal(linkedTasks[0].status, "in_progress");
 });
 
+test("waiting status finalization moves linked dev task to done and supports reopen", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Waiting finalization should complete developer task"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.body.status, "submitted");
+
+  const accepted = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "verified" });
+  assert.equal(accepted.statusCode, 200);
+  assert.equal(accepted.body.assignee_id, devAuth.user.id);
+
+  const started = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "in_progress" });
+  assert.equal(started.statusCode, 200);
+  assert.equal(started.body.status, "in_progress");
+
+  const movedToWaiting = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "waiting" });
+  assert.equal(movedToWaiting.statusCode, 200);
+  assert.equal(movedToWaiting.body.status, "waiting");
+
+  const tasksAfterWaiting = await request
+    .get("/api/dev-tasks")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(tasksAfterWaiting.statusCode, 200);
+
+  const activeAfterWaiting = tasksAfterWaiting.body.active.filter((task) => task.ticket_id === created.body.id);
+  const doneAfterWaiting = tasksAfterWaiting.body.done.filter((task) => task.ticket_id === created.body.id);
+  assert.equal(activeAfterWaiting.length, 0);
+  assert.equal(doneAfterWaiting.length, 1);
+  assert.equal(doneAfterWaiting[0].status, "done");
+
+  const reopenToVerified = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "verified" });
+  assert.equal(reopenToVerified.statusCode, 200);
+  assert.equal(reopenToVerified.body.status, "verified");
+
+  const tasksAfterReopen = await request
+    .get("/api/dev-tasks")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(tasksAfterReopen.statusCode, 200);
+
+  const activeAfterReopen = tasksAfterReopen.body.active.filter((task) => task.ticket_id === created.body.id);
+  const doneAfterReopen = tasksAfterReopen.body.done.filter((task) => task.ticket_id === created.body.id);
+  assert.equal(activeAfterReopen.length, 1);
+  assert.equal(activeAfterReopen[0].status, "todo");
+  assert.equal(doneAfterReopen.length, 0);
+});
+
 test("planning submitted ticket auto-verifies and keeps explicit assignee", async () => {
   const secondDevEmail = uniqueEmail("dev-planning");
   db.prepare("UPDATE settings SET value = ? WHERE key = 'developer_emails'").run(

@@ -105,6 +105,7 @@
 
 ## Step P5-telemetry-04
 - Status: Done (approved by user)
+- Commit: `d1cabb6`
 - Description: Telemetria `closure_summary_added` przy finalizacji ticketu z komentarzem podsumowującym.
 
 ### Scope
@@ -203,3 +204,61 @@
 
 ### Skills created/updated
 - `docs/skills/telemetry-events.md` (updated)
+
+## Step P5-analytics-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po commicie)
+- Description: Metryki aktywacji produktu (`time to first ticket`, `time to first dev assignment`) jako nowy endpoint backendowy z ochroną RBAC.
+
+### Implementation Plan
+- Dodać endpoint `GET /api/tickets/stats/activation` (developer-only).
+- Zliczać metryki na podstawie realnych danych (`users`, `tickets`, `ticket_history`).
+- Zabezpieczyć obliczenia null-safe i odporne na brak danych.
+- Dodać test integracyjny RBAC + kształt odpowiedzi + wartości deterministyczne.
+- Uzupełnić docs: skill operacyjny i playbook agentów.
+- Uruchomić pełne quality gates backend/frontend + smoke E2E.
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/activation.stats.integration.test.js`
+- `docs/AGENTS.md`
+- `docs/skills/activation-metrics.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (22/22)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- RBAC check (integracyjny):
+  - `GET /api/tickets/stats/activation` jako `user` -> `403 forbidden` (PASS)
+  - `GET /api/tickets/stats/activation` jako `developer` -> `200` (PASS)
+
+### E2E run
+- Manual scripted E2E baseline (API + React routes):
+  - OTP login user -> PASS
+  - create ticket (+ attachment) -> PASS
+  - my tickets -> PASS
+  - ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status (`verified` -> `in_progress`) -> PASS
+  - DevTodo sync -> PASS
+  - closure summary + close ticket -> PASS
+  - `GET /api/tickets/stats/activation` (developer) -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Dodany endpoint `GET /api/tickets/stats/activation` (developer-only).
+- Metryki liczone z danych produkcyjnych:
+  - `time_to_first_ticket_minutes`
+  - `time_to_first_dev_assignment_minutes`
+  - `first_dev_assignment_under_30m`
+- Dodany test integracyjny z deterministycznymi timestampami.
+- Brak regresji testowej backend/frontend oraz brak regresji RBAC.
+
+### Skills created/updated
+- `docs/skills/activation-metrics.md` (created)

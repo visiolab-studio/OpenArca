@@ -17,6 +17,7 @@ const {
   notifyReporterStatusChange,
   notifyReporterDeveloperComment
 } = require("../services/notifications");
+const { trackTelemetryEvent } = require("../services/telemetry");
 
 const router = express.Router();
 
@@ -619,6 +620,15 @@ router.post(
       });
 
       const ticketId = createTx();
+      trackTelemetryEvent({
+        eventName: "ticket.created",
+        userId: req.user.id,
+        ticketId,
+        properties: {
+          status: "submitted",
+          category: payload.category || "other"
+        }
+      });
       return res.status(201).json(getTicket(ticketId));
     } catch (error) {
       removeUploadedFiles(req.files);
@@ -763,6 +773,18 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
     });
 
     updateTx();
+
+    if (newStatus !== oldStatus && newStatus === "closed") {
+      trackTelemetryEvent({
+        eventName: "ticket.closed",
+        userId: req.user.id,
+        ticketId: req.params.id,
+        properties: {
+          old_status: oldStatus,
+          new_status: newStatus
+        }
+      });
+    }
 
     if (newStatus !== oldStatus) {
       try {

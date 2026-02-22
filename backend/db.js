@@ -111,6 +111,14 @@ const schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS telemetry_events (
+    id TEXT PRIMARY KEY,
+    event_name TEXT NOT NULL,
+    user_id TEXT REFERENCES users(id),
+    ticket_id TEXT REFERENCES tickets(id),
+    properties_json TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -118,7 +126,9 @@ const schemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_otp_codes_email_created ON otp_codes(email, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_otp_codes_email_used ON otp_codes(email, used)`,
   `CREATE INDEX IF NOT EXISTS idx_tickets_reporter_status ON tickets(reporter_id, status)`,
-  `CREATE INDEX IF NOT EXISTS idx_comments_ticket ON comments(ticket_id, created_at)`
+  `CREATE INDEX IF NOT EXISTS idx_comments_ticket ON comments(ticket_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_events_event_created ON telemetry_events(event_name, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ticket_created ON telemetry_events(ticket_id, created_at)`
 ];
 
 const defaultSettings = [

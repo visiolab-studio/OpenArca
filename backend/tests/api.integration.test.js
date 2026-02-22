@@ -171,6 +171,48 @@ test("settings support SES provider selection and mask secrets", async () => {
   assert.equal(testEmailResult.body.mode, "dev-fallback");
 });
 
+test("telemetry records ticket.created and ticket.closed events", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Telemetry check for ticket lifecycle events"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+
+  const closed = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      status: "closed"
+    });
+  assert.equal(closed.statusCode, 200);
+  assert.equal(closed.body.status, "closed");
+
+  const events = db
+    .prepare(
+      `SELECT event_name, user_id, ticket_id, properties_json
+       FROM telemetry_events
+       WHERE ticket_id = ?
+       ORDER BY created_at ASC`
+    )
+    .all(created.body.id);
+
+  assert.ok(events.some((event) => event.event_name === "ticket.created"));
+  assert.ok(events.some((event) => event.event_name === "ticket.closed"));
+
+  const createdEvent = events.find((event) => event.event_name === "ticket.created");
+  assert.equal(createdEvent.user_id, userAuth.user.id);
+  assert.equal(createdEvent.ticket_id, created.body.id);
+  assert.equal(JSON.parse(createdEvent.properties_json).status, "submitted");
+
+  const closedEvent = events.find((event) => event.event_name === "ticket.closed");
+  assert.equal(closedEvent.user_id, devAuth.user.id);
+  assert.equal(JSON.parse(closedEvent.properties_json).new_status, "closed");
+});
+
 test("developer todo scope is isolated per user and linked ticket access is restricted", async () => {
   const secondDevEmail = uniqueEmail("dev2");
   db.prepare("UPDATE settings SET value = ? WHERE key = 'developer_emails'").run(

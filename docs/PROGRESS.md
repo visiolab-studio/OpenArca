@@ -561,7 +561,7 @@
 
 ## Step P5-governance-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `dcae561`
 - Description: Dodać `LICENSE` (AGPL-3.0-only) i domknąć checklistę governance w dokumentacji.
 
 ### Implementation Plan
@@ -601,3 +601,50 @@
 
 ### Skills created/updated
 - `docs/skills/oss-governance-docs.md` (updated)
+
+## Step P5-stabilization-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Stabilizacja sync statusów Ticket <-> Kanban <-> DevTodo przy reassign/unassign assignee.
+
+### Implementation Plan
+- Dodać test regresyjny na scenariusz: accept -> reassign -> unassign.
+- Wprowadzić normalizację linked tasków podczas zmiany statusu/przypisania ticketu.
+- Wymusić zasadę: maksymalnie jeden aktywny linked task na ticket.
+- Usuwać aktywne linked taski po `assignee_id = null`.
+- Przy reassign zostawić/przenieść tylko jeden aktywny linked task do nowego assignee.
+- Zachować istniejące mapowanie statusów ticket -> dev task.
+- Dodać skill operacyjny dla sync ticket/devtodo.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `docs/skills/devtodo-ticket-sync.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (29/29)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/non-existing`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+- Dodatkowa walidacja flow sync:
+  - test integracyjny `reassigning or unassigning accepted ticket keeps a single active linked dev task in sync` -> PASS
+
+### Result
+- Reassign ticketu nie zostawia już aktywnego linked taska u poprzedniego developera.
+- Unassign ticketu usuwa aktywne linked taski powiązane z tym ticketem.
+- Dla ticketu utrzymywany jest pojedynczy aktywny linked task w TODO.
+- Dodany regresyjny test backendowy chroniący sync flow przed nawrotem błędu.
+
+### Skills created/updated
+- `docs/skills/devtodo-ticket-sync.md` (created)

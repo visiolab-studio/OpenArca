@@ -635,6 +635,87 @@ test("planning submitted ticket auto-verifies and keeps explicit assignee", asyn
   assert.equal(linkedTask.status, "todo");
 });
 
+test("reassigning or unassigning accepted ticket keeps a single active linked dev task in sync", async () => {
+  const secondDevEmail = uniqueEmail("dev-reassign");
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'developer_emails'").run(
+    JSON.stringify([devAuth.user.email, secondDevEmail])
+  );
+
+  const secondDevAuth = await loginByOtp({
+    request,
+    db,
+    email: secondDevEmail
+  });
+  assert.equal(secondDevAuth.user.role, "developer");
+
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Reassign should not leave stale active linked tasks"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+
+  const accepted = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "verified" });
+  assert.equal(accepted.statusCode, 200);
+  assert.equal(accepted.body.assignee_id, devAuth.user.id);
+
+  const firstDevTasks = await request
+    .get("/api/dev-tasks")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(firstDevTasks.statusCode, 200);
+  assert.equal(firstDevTasks.body.active.filter((task) => task.ticket_id === created.body.id).length, 1);
+
+  const reassigned = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${secondDevAuth.token}`)
+    .send({ assignee_id: secondDevAuth.user.id, status: "verified" });
+  assert.equal(reassigned.statusCode, 200);
+  assert.equal(reassigned.body.assignee_id, secondDevAuth.user.id);
+
+  const firstDevAfterReassign = await request
+    .get("/api/dev-tasks")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(firstDevAfterReassign.statusCode, 200);
+  assert.equal(firstDevAfterReassign.body.active.filter((task) => task.ticket_id === created.body.id).length, 0);
+
+  const secondDevAfterReassign = await request
+    .get("/api/dev-tasks")
+    .set("Authorization", `Bearer ${secondDevAuth.token}`);
+  assert.equal(secondDevAfterReassign.statusCode, 200);
+  const secondDevLinked = secondDevAfterReassign.body.active.filter((task) => task.ticket_id === created.body.id);
+  assert.equal(secondDevLinked.length, 1);
+  assert.equal(secondDevLinked[0].created_by, secondDevAuth.user.id);
+
+  const unassigned = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${secondDevAuth.token}`)
+    .send({ assignee_id: null, status: "verified" });
+  assert.equal(unassigned.statusCode, 200);
+  assert.equal(unassigned.body.assignee_id, null);
+
+  const secondDevAfterUnassign = await request
+    .get("/api/dev-tasks")
+    .set("Authorization", `Bearer ${secondDevAuth.token}`);
+  assert.equal(secondDevAfterUnassign.statusCode, 200);
+  assert.equal(secondDevAfterUnassign.body.active.filter((task) => task.ticket_id === created.body.id).length, 0);
+
+  const activeLinkedCount = db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM dev_tasks
+       WHERE ticket_id = ?
+         AND status IN ('todo', 'in_progress')`
+    )
+    .get(created.body.id).count;
+  assert.equal(activeLinkedCount, 0);
+});
+
 test("reopening ticket from kanban reactivates linked dev task", async () => {
   const created = await request
     .post("/api/tickets")

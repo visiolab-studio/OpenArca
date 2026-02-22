@@ -585,6 +585,83 @@ function ensureDevTaskForAcceptedTicket({ ticketId, userId, ticket }) {
   );
 }
 
+function getNextActiveTaskOrderForUser(userId, excludeTaskId = null) {
+  if (!userId) return 0;
+
+  if (excludeTaskId) {
+    const row = db
+      .prepare(
+        `SELECT COALESCE(MAX(order_index), -1) AS max_order
+         FROM dev_tasks
+         WHERE created_by = ?
+           AND status IN ('todo', 'in_progress')
+           AND id != ?`
+      )
+      .get(userId, excludeTaskId);
+    return Number(row?.max_order || -1) + 1;
+  }
+
+  const row = db
+    .prepare(
+      `SELECT COALESCE(MAX(order_index), -1) AS max_order
+       FROM dev_tasks
+       WHERE created_by = ?
+         AND status IN ('todo', 'in_progress')`
+    )
+    .get(userId);
+  return Number(row?.max_order || -1) + 1;
+}
+
+function normalizeLinkedDevTasksForTicket({ ticketId, assigneeId }) {
+  const activeLinkedTasks = db
+    .prepare(
+      `SELECT id, created_by
+       FROM dev_tasks
+       WHERE ticket_id = ?
+         AND status IN ('todo', 'in_progress')
+       ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC`
+    )
+    .all(ticketId);
+
+  if (activeLinkedTasks.length === 0) {
+    return;
+  }
+
+  if (!assigneeId) {
+    db.prepare(
+      "DELETE FROM dev_tasks WHERE ticket_id = ? AND status IN ('todo', 'in_progress')"
+    ).run(ticketId);
+    return;
+  }
+
+  const keepTask = activeLinkedTasks.find((task) => task.created_by === assigneeId);
+  if (keepTask) {
+    db.prepare(
+      `DELETE FROM dev_tasks
+       WHERE ticket_id = ?
+         AND status IN ('todo', 'in_progress')
+         AND id != ?`
+    ).run(ticketId, keepTask.id);
+    return;
+  }
+
+  const taskToTransfer = activeLinkedTasks[0];
+  const nextOrder = getNextActiveTaskOrderForUser(assigneeId, taskToTransfer.id);
+
+  db.prepare(
+    `UPDATE dev_tasks
+     SET created_by = ?, order_index = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  ).run(assigneeId, nextOrder, taskToTransfer.id);
+
+  db.prepare(
+    `DELETE FROM dev_tasks
+     WHERE ticket_id = ?
+       AND status IN ('todo', 'in_progress')
+       AND id != ?`
+  ).run(ticketId, taskToTransfer.id);
+}
+
 router.get("/", authRequired, validate({ query: listQuerySchema }), (req, res) => {
   const filters = [];
   const params = [];
@@ -1054,6 +1131,12 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
       hasStatusChange ||
       hasAssigneeChange
       );
+    const shouldNormalizeLinkedTasks =
+      isDeveloper &&
+      (
+        hasStatusChange ||
+        hasAssigneeChange
+      );
     const nextTicketState = { ...current, ...payload };
 
     const updateTx = db.transaction(() => {
@@ -1093,6 +1176,13 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
           historyValue(item.oldValue),
           historyValue(item.newValue)
         );
+      }
+
+      if (shouldNormalizeLinkedTasks) {
+        normalizeLinkedDevTasksForTicket({
+          ticketId: req.params.id,
+          assigneeId: nextAssigneeId
+        });
       }
 
       if (shouldEnsureDevTask) {

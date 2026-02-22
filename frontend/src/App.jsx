@@ -8,6 +8,7 @@ import LoginPage from "./pages/Login";
 import DashboardPage from "./pages/Dashboard";
 import NewTicketPage from "./pages/NewTicket";
 import MyTicketsPage from "./pages/MyTickets";
+import ProfilePage from "./pages/Profile";
 import TicketDetailPage from "./pages/TicketDetail";
 import OverviewPage from "./pages/Overview";
 import BoardPage from "./pages/Board";
@@ -39,6 +40,7 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="/new-ticket" element={<NewTicketPage />} />
           <Route path="/my-tickets" element={<MyTicketsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/ticket/:id" element={<TicketDetailPage />} />
           <Route path="/overview" element={<OverviewPage />} />
 

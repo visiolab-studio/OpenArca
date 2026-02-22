@@ -10,12 +10,19 @@ export async function verifyOtp(payload) {
   return response.data;
 }
 
-export async function me() {
-  const response = await client.get("/api/auth/me");
+export async function me(options = {}) {
+  const response = await client.get("/api/auth/me", options);
   return response.data;
 }
 
 export async function patchMe(payload) {
   const response = await client.patch("/api/auth/me", payload);
+  return response.data;
+}
+
+export async function uploadMyAvatar(file) {
+  const formData = new FormData();
+  formData.append("avatar", file);
+  const response = await client.post("/api/auth/me/avatar", formData);
   return response.data;
 }

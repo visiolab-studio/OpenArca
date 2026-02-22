@@ -23,7 +23,10 @@ router.use(authRequired, requireRole("developer"));
 router.get("/", (req, res) => {
   const rows = db
     .prepare(
-      "SELECT id, email, name, role, language, created_at, last_login FROM users ORDER BY created_at DESC"
+      `SELECT
+        id, email, name, role, language, avatar_filename, avatar_updated_at, created_at, last_login
+       FROM users
+       ORDER BY created_at DESC`
     )
     .all();
   return res.json(rows);
@@ -57,7 +60,10 @@ router.patch(
 
     const user = db
       .prepare(
-        "SELECT id, email, name, role, language, created_at, last_login FROM users WHERE id = ?"
+        `SELECT
+          id, email, name, role, language, avatar_filename, avatar_updated_at, created_at, last_login
+         FROM users
+         WHERE id = ?`
       )
       .get(req.params.id);
 

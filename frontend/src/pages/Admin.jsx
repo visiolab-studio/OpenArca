@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createProject, deleteProject, getProjects, patchProject } from "../api/projects";
-import { getSettings, patchSettings, testSmtp } from "../api/settings";
+import { API_BASE_URL } from "../api/client";
+import { getSettings, patchSettings, testEmail, uploadAppLogo } from "../api/settings";
 import { getUsers, patchUser } from "../api/users";
+import appLogo from "../assets/edudoro_itsc_logo.png";
 
 const tabs = ["app", "smtp", "projects", "users"];
 
@@ -35,8 +37,10 @@ export default function AdminPage() {
 
   const [settings, setSettings] = useState(null);
   const [settingsForm, setSettingsForm] = useState(null);
-  const [smtpForm, setSmtpForm] = useState(null);
-  const [smtpTestTo, setSmtpTestTo] = useState("");
+  const [mailForm, setMailForm] = useState(null);
+  const [mailTestTo, setMailTestTo] = useState("");
+  const [logoFile, setLogoFile] = useState(null);
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
 
   const [projects, setProjects] = useState([]);
   const [projectDrafts, setProjectDrafts] = useState({});
@@ -62,12 +66,19 @@ export default function AdminPage() {
         allowed_domains: toCommaList(settingsData.allowed_domains || []),
         developer_emails: toCommaList(settingsData.developer_emails || [])
       });
-      setSmtpForm({
+      setMailForm({
+        mail_provider: settingsData.mail_provider || "smtp",
         smtp_host: settingsData.smtp_host || "",
         smtp_port: settingsData.smtp_port || "587",
         smtp_user: settingsData.smtp_user || "",
         smtp_pass: "",
-        smtp_from: settingsData.smtp_from || ""
+        smtp_from: settingsData.smtp_from || "",
+        ses_region: settingsData.ses_region || "",
+        ses_access_key_id: "",
+        ses_secret_access_key: "",
+        ses_session_token: "",
+        ses_from: settingsData.ses_from || "",
+        ses_endpoint: settingsData.ses_endpoint || ""
       });
 
       setProjects(projectsData);
@@ -111,6 +122,7 @@ export default function AdminPage() {
   const usersSorted = useMemo(() => {
     return [...users].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   }, [users]);
+  const appLogoPreviewUrl = settings?.app_logo_url ? `${API_BASE_URL}${settings.app_logo_url}` : appLogo;
 
   async function handleSaveAppSettings(event) {
     event.preventDefault();
@@ -133,36 +145,80 @@ export default function AdminPage() {
     }
   }
 
-  async function handleSaveSmtp(event) {
+  async function handleSaveMail(event) {
     event.preventDefault();
-    if (!smtpForm) return;
+    if (!mailForm) return;
 
     setError("");
     setNotice("");
 
     try {
       const payload = {
-        smtp_host: smtpForm.smtp_host,
-        smtp_port: Number(smtpForm.smtp_port || 587),
-        smtp_user: smtpForm.smtp_user,
-        smtp_from: smtpForm.smtp_from
+        mail_provider: mailForm.mail_provider,
+        smtp_host: mailForm.smtp_host,
+        smtp_port: Number(mailForm.smtp_port || 587),
+        smtp_user: mailForm.smtp_user,
+        smtp_from: mailForm.smtp_from,
+        ses_region: mailForm.ses_region,
+        ses_from: mailForm.ses_from
       };
 
-      if (smtpForm.smtp_pass.trim()) {
-        payload.smtp_pass = smtpForm.smtp_pass;
+      if (mailForm.ses_endpoint.trim()) {
+        payload.ses_endpoint = mailForm.ses_endpoint.trim();
+      }
+
+      if (mailForm.smtp_pass.trim()) {
+        payload.smtp_pass = mailForm.smtp_pass;
+      }
+
+      if (mailForm.ses_access_key_id.trim()) {
+        payload.ses_access_key_id = mailForm.ses_access_key_id;
+      }
+
+      if (mailForm.ses_secret_access_key.trim()) {
+        payload.ses_secret_access_key = mailForm.ses_secret_access_key;
+      }
+
+      if (mailForm.ses_session_token.trim()) {
+        payload.ses_session_token = mailForm.ses_session_token;
       }
 
       const updated = await patchSettings(payload);
       setSettings(updated);
-      setSmtpForm((current) => ({ ...current, smtp_pass: "" }));
+      setMailForm((current) => ({
+        ...current,
+        smtp_pass: "",
+        ses_access_key_id: "",
+        ses_secret_access_key: "",
+        ses_session_token: ""
+      }));
       setNotice("saved");
-    } catch (smtpError) {
-      setError(parseError(smtpError));
+    } catch (mailError) {
+      setError(parseError(mailError));
     }
   }
 
-  async function handleTestSmtp() {
-    if (!smtpTestTo.trim()) {
+  async function handleUploadLogo() {
+    if (!logoFile) return;
+
+    setError("");
+    setNotice("");
+    setIsLogoUploading(true);
+
+    try {
+      const updated = await uploadAppLogo(logoFile);
+      setSettings(updated);
+      setLogoFile(null);
+      setNotice("saved");
+    } catch (logoError) {
+      setError(parseError(logoError));
+    } finally {
+      setIsLogoUploading(false);
+    }
+  }
+
+  async function handleTestMail() {
+    if (!mailTestTo.trim()) {
       setError("validation_error");
       return;
     }
@@ -171,7 +227,7 @@ export default function AdminPage() {
     setNotice("");
 
     try {
-      const result = await testSmtp({ to: smtpTestTo.trim() });
+      const result = await testEmail({ to: mailTestTo.trim() });
       setNotice(result.mode || "saved");
     } catch (testError) {
       setError(parseError(testError));
@@ -333,80 +389,200 @@ export default function AdminPage() {
               />
             </label>
 
+            <div className="admin-logo-field">
+              <span className="form-label">{t("admin.appLogo")}</span>
+              <p className="muted">{t("admin.appLogoHint")}</p>
+              <div className="admin-logo-preview">
+                <img src={appLogoPreviewUrl} alt={t("admin.currentLogo")} className="admin-logo-preview-image" />
+              </div>
+              <div className="row-actions">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleUploadLogo}
+                  disabled={!logoFile || isLogoUploading}
+                >
+                  {isLogoUploading ? t("app.loading") : t("admin.uploadLogo")}
+                </button>
+              </div>
+            </div>
+
             <button type="submit" className="btn">{t("app.save")}</button>
           </form>
         </article>
       ) : null}
 
-      {!loading && activeTab === "smtp" && smtpForm ? (
+      {!loading && activeTab === "smtp" && mailForm ? (
         <article className="card">
-          <form className="form-grid" onSubmit={handleSaveSmtp}>
+          <form className="form-grid" onSubmit={handleSaveMail}>
             <label>
-              {t("admin.smtpHost")}
-              <input
-                type="text"
-                value={smtpForm.smtp_host}
+              {t("admin.mailProvider")}
+              <select
+                value={mailForm.mail_provider}
                 onChange={(event) =>
-                  setSmtpForm((current) => ({ ...current, smtp_host: event.target.value }))
+                  setMailForm((current) => ({ ...current, mail_provider: event.target.value }))
                 }
-              />
+              >
+                <option value="smtp">SMTP</option>
+                <option value="ses">AWS SES</option>
+              </select>
             </label>
 
-            <label>
-              {t("admin.smtpPort")}
-              <input
-                type="number"
-                value={smtpForm.smtp_port}
-                onChange={(event) =>
-                  setSmtpForm((current) => ({ ...current, smtp_port: event.target.value }))
-                }
-              />
-            </label>
+            {mailForm.mail_provider === "smtp" ? (
+              <>
+                <label>
+                  {t("admin.smtpHost")}
+                  <input
+                    type="text"
+                    value={mailForm.smtp_host}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, smtp_host: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  {t("admin.smtpPort")}
+                  <input
+                    type="number"
+                    value={mailForm.smtp_port}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, smtp_port: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  {t("admin.smtpUser")}
+                  <input
+                    type="text"
+                    value={mailForm.smtp_user}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, smtp_user: event.target.value }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  {t("admin.smtpPass")}
+                  <input
+                    type="password"
+                    value={mailForm.smtp_pass}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, smtp_pass: event.target.value }))
+                    }
+                    placeholder={settings?.smtp_pass ? "********" : ""}
+                  />
+                </label>
+
+                <label>
+                  {t("admin.smtpFrom")}
+                  <input
+                    type="text"
+                    value={mailForm.smtp_from}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, smtp_from: event.target.value }))
+                    }
+                  />
+                </label>
+              </>
+            ) : null}
+
+            {mailForm.mail_provider === "ses" ? (
+              <>
+                <label>
+                  {t("admin.sesRegion")}
+                  <input
+                    type="text"
+                    value={mailForm.ses_region}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, ses_region: event.target.value }))
+                    }
+                    placeholder="eu-central-1"
+                  />
+                </label>
+
+                <label>
+                  {t("admin.sesAccessKeyId")}
+                  <input
+                    type="text"
+                    value={mailForm.ses_access_key_id}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, ses_access_key_id: event.target.value }))
+                    }
+                    placeholder={settings?.ses_access_key_id ? "********" : ""}
+                  />
+                </label>
+
+                <label>
+                  {t("admin.sesSecretAccessKey")}
+                  <input
+                    type="password"
+                    value={mailForm.ses_secret_access_key}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, ses_secret_access_key: event.target.value }))
+                    }
+                    placeholder={settings?.ses_secret_access_key ? "********" : ""}
+                  />
+                </label>
+
+                <label>
+                  {t("admin.sesSessionToken")}
+                  <input
+                    type="password"
+                    value={mailForm.ses_session_token}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, ses_session_token: event.target.value }))
+                    }
+                    placeholder={settings?.ses_session_token ? "********" : ""}
+                  />
+                </label>
+
+                <label>
+                  {t("admin.sesFrom")}
+                  <input
+                    type="text"
+                    value={mailForm.ses_from}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, ses_from: event.target.value }))
+                    }
+                    placeholder="no-reply@example.com"
+                  />
+                </label>
+
+                <label>
+                  {t("admin.sesEndpoint")}
+                  <input
+                    type="url"
+                    value={mailForm.ses_endpoint}
+                    onChange={(event) =>
+                      setMailForm((current) => ({ ...current, ses_endpoint: event.target.value }))
+                    }
+                    placeholder="https://email.eu-central-1.amazonaws.com"
+                  />
+                </label>
+              </>
+            ) : null}
 
             <label>
-              {t("admin.smtpUser")}
+              {t("admin.smtpTestTo")}
               <input
-                type="text"
-                value={smtpForm.smtp_user}
-                onChange={(event) =>
-                  setSmtpForm((current) => ({ ...current, smtp_user: event.target.value }))
-                }
-              />
-            </label>
-
-            <label>
-              {t("admin.smtpPass")}
-              <input
-                type="password"
-                value={smtpForm.smtp_pass}
-                onChange={(event) =>
-                  setSmtpForm((current) => ({ ...current, smtp_pass: event.target.value }))
-                }
-                placeholder={settings?.smtp_pass ? "********" : ""}
-              />
-            </label>
-
-            <label>
-              {t("admin.smtpFrom")}
-              <input
-                type="text"
-                value={smtpForm.smtp_from}
-                onChange={(event) =>
-                  setSmtpForm((current) => ({ ...current, smtp_from: event.target.value }))
-                }
+                type="email"
+                placeholder="test@example.com"
+                value={mailTestTo}
+                onChange={(event) => setMailTestTo(event.target.value)}
               />
             </label>
 
             <div className="row-actions">
               <button type="submit" className="btn">{t("app.save")}</button>
-              <input
-                type="email"
-                placeholder="test@example.com"
-                value={smtpTestTo}
-                onChange={(event) => setSmtpTestTo(event.target.value)}
-              />
-              <button type="button" className="btn btn-ghost" onClick={handleTestSmtp}>
-                {t("admin.smtpTest")}
+              <button type="button" className="btn btn-ghost" onClick={handleTestMail}>
+                {t("admin.emailTest")}
               </button>
             </div>
           </form>

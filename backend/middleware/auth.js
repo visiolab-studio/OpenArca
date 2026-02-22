@@ -14,7 +14,10 @@ function authRequired(req, res, next) {
     const payload = jwt.verify(token, jwtSecret);
     const user = db
       .prepare(
-        "SELECT id, email, name, role, language, created_at, last_login FROM users WHERE id = ?"
+        `SELECT
+          id, email, name, role, language, avatar_filename, avatar_updated_at, created_at, last_login
+         FROM users
+         WHERE id = ?`
       )
       .get(payload.sub);
 

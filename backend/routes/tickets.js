@@ -235,6 +235,62 @@ function validateForeignRefs(payload) {
   }
 }
 
+function ensureDevTaskForAcceptedTicket({ ticketId, userId, ticket }) {
+  const desiredTaskStatus =
+    ticket.status === "closed" ? "done" : (ticket.status === "in_progress" ? "in_progress" : "todo");
+
+  const existing = db
+    .prepare(
+      `SELECT id, status
+       FROM dev_tasks
+       WHERE ticket_id = ? AND created_by = ?
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+    .get(ticketId, userId);
+
+  if (existing) {
+    if (existing.status !== desiredTaskStatus) {
+      db.prepare(
+        "UPDATE dev_tasks SET status = ?, updated_at = datetime('now') WHERE id = ?"
+      ).run(desiredTaskStatus, existing.id);
+    }
+    return;
+  }
+
+  if (desiredTaskStatus === "done") {
+    return;
+  }
+
+  const maxOrder = db
+    .prepare(
+      "SELECT COALESCE(MAX(order_index), -1) AS max_order FROM dev_tasks WHERE created_by = ? AND status IN ('todo', 'in_progress')"
+    )
+    .get(userId).max_order;
+
+  const taskTitle = String(ticket.title || `Ticket #${ticket.number || ""}`)
+    .slice(0, 200)
+    .trim();
+
+  db.prepare(
+    `INSERT INTO dev_tasks (
+      id, title, description, priority, estimated_hours, planned_date,
+      status, order_index, ticket_id, created_by, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+  ).run(
+    uuidv4(),
+    taskTitle || `Ticket #${ticket.number || ""}`,
+    ticket.description ? String(ticket.description).slice(0, 4000) : null,
+    ticket.priority || "normal",
+    ticket.estimated_hours ?? null,
+    ticket.planned_date || null,
+    desiredTaskStatus,
+    Number(maxOrder) + 1,
+    ticketId,
+    userId
+  );
+}
+
 router.get("/", authRequired, validate({ query: listQuerySchema }), (req, res) => {
   const filters = [];
   const params = [];
@@ -298,7 +354,7 @@ router.get("/board", authRequired, requireRole("developer"), (req, res) => {
   const rows = db
     .prepare(
       `SELECT
-        t.id, t.number, t.title, t.status, t.priority, t.category, t.project_id,
+        t.id, t.number, t.title, t.description, t.status, t.priority, t.category, t.project_id,
         t.reporter_id, t.assignee_id, t.planned_date,
         p.name AS project_name, p.color AS project_color,
         ru.name AS reporter_name, au.name AS assignee_name
@@ -351,6 +407,97 @@ router.get("/stats/overview", authRequired, (req, res) => {
     blocked: counts.blocked || 0,
     closed_today: closedToday || 0
   });
+});
+
+router.get("/workload", authRequired, (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT
+        t.id,
+        t.number,
+        t.title,
+        t.status,
+        t.priority,
+        t.category,
+        t.reporter_id,
+        t.assignee_id,
+        t.planned_date,
+        t.created_at,
+        t.updated_at,
+        ru.name AS reporter_name,
+        ru.email AS reporter_email,
+        au.name AS assignee_name,
+        au.email AS assignee_email
+      FROM tickets t
+      LEFT JOIN users ru ON ru.id = t.reporter_id
+      LEFT JOIN users au ON au.id = t.assignee_id
+      WHERE t.status IN ('submitted', 'verified', 'in_progress', 'waiting', 'blocked')
+      ORDER BY
+        CASE t.status
+          WHEN 'in_progress' THEN 1
+          WHEN 'verified' THEN 2
+          WHEN 'waiting' THEN 3
+          WHEN 'blocked' THEN 4
+          WHEN 'submitted' THEN 5
+          ELSE 9
+        END ASC,
+        CASE WHEN t.planned_date IS NULL THEN 1 ELSE 0 END ASC,
+        t.planned_date ASC,
+        t.updated_at DESC`
+    )
+    .all();
+
+  const payload = {
+    in_progress: [],
+    queue: [],
+    blocked: [],
+    submitted: [],
+    _stats: {
+      in_progress: 0,
+      queue: 0,
+      blocked: 0,
+      submitted: 0,
+      open: 0
+    }
+  };
+
+  const canOpenAll = req.user.role === "developer";
+
+  for (const row of rows) {
+    const ticket = {
+      ...row,
+      can_open: canOpenAll || row.reporter_id === req.user.id
+    };
+
+    if (row.status === "in_progress") {
+      payload.in_progress.push(ticket);
+      payload._stats.in_progress += 1;
+      payload._stats.open += 1;
+      continue;
+    }
+
+    if (row.status === "verified" || row.status === "waiting") {
+      payload.queue.push(ticket);
+      payload._stats.queue += 1;
+      payload._stats.open += 1;
+      continue;
+    }
+
+    if (row.status === "blocked") {
+      payload.blocked.push(ticket);
+      payload._stats.blocked += 1;
+      payload._stats.open += 1;
+      continue;
+    }
+
+    if (row.status === "submitted") {
+      payload.submitted.push(ticket);
+      payload._stats.submitted += 1;
+      payload._stats.open += 1;
+    }
+  }
+
+  return res.json(payload);
 });
 
 router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res) => {
@@ -500,6 +647,32 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
       throw error;
     }
 
+    const acceptanceStatuses = new Set(["verified", "waiting", "in_progress"]);
+    const hasStatusInPayload = Object.prototype.hasOwnProperty.call(payload, "status");
+    const shouldAutoVerifyFromPlanning =
+      isDeveloper &&
+      current.status === "submitted" &&
+      (!hasStatusInPayload || payload.status === "submitted") &&
+      (
+        (Object.prototype.hasOwnProperty.call(payload, "assignee_id") && payload.assignee_id != null) ||
+        (Object.prototype.hasOwnProperty.call(payload, "planned_date") && payload.planned_date != null) ||
+        (Object.prototype.hasOwnProperty.call(payload, "estimated_hours") && payload.estimated_hours != null)
+      );
+
+    if (shouldAutoVerifyFromPlanning) {
+      payload.status = "verified";
+    }
+
+    const isAcceptanceTransition =
+      isDeveloper &&
+      current.status === "submitted" &&
+      Object.prototype.hasOwnProperty.call(payload, "status") &&
+      acceptanceStatuses.has(payload.status);
+
+    if (isAcceptanceTransition && payload.assignee_id == null) {
+      payload.assignee_id = req.user.id;
+    }
+
     validateForeignRefs(payload);
 
     const changedEntries = [];
@@ -520,6 +693,26 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
     const newStatus = Object.prototype.hasOwnProperty.call(payload, "status")
       ? payload.status
       : oldStatus;
+    const nextAssigneeId = Object.prototype.hasOwnProperty.call(payload, "assignee_id")
+      ? payload.assignee_id
+      : current.assignee_id;
+    const hasStatusChange = newStatus !== oldStatus;
+    const hasAssigneeChange = nextAssigneeId !== current.assignee_id;
+    const isAssignmentToCurrentDeveloper =
+      isDeveloper &&
+      nextAssigneeId === req.user.id &&
+      current.assignee_id !== req.user.id &&
+      acceptanceStatuses.has(newStatus);
+    const shouldEnsureDevTask =
+      isDeveloper &&
+      Boolean(nextAssigneeId) &&
+      (
+      isAcceptanceTransition ||
+      isAssignmentToCurrentDeveloper ||
+      hasStatusChange ||
+      hasAssigneeChange
+      );
+    const nextTicketState = { ...current, ...payload };
 
     const updateTx = db.transaction(() => {
       const setters = [];
@@ -558,6 +751,14 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
           historyValue(item.oldValue),
           historyValue(item.newValue)
         );
+      }
+
+      if (shouldEnsureDevTask) {
+        ensureDevTaskForAcceptedTicket({
+          ticketId: req.params.id,
+          userId: nextAssigneeId,
+          ticket: nextTicketState
+        });
       }
     });
 

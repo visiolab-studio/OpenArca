@@ -17,6 +17,8 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import appLogo from "../assets/edudoro_itsc_logo.png";
+import { API_BASE_URL } from "../api/client";
+import { getPublicSettings } from "../api/settings";
 
 const themeStorageKey = "taskflow-theme";
 
@@ -29,9 +31,10 @@ const baseItems = [
 
 const developerItems = [
   { to: "/board", labelKey: "nav.board", icon: KanbanSquare },
-  { to: "/dev-todo", labelKey: "nav.todo", icon: ListTodo },
-  { to: "/admin", labelKey: "nav.admin", icon: Settings }
+  { to: "/dev-todo", labelKey: "nav.todo", icon: ListTodo }
 ];
+
+const adminItem = { to: "/admin", labelKey: "nav.admin", icon: Settings };
 
 function resolveInitialTheme() {
   if (typeof window === "undefined") return "light";
@@ -62,28 +65,63 @@ export default function AppShell() {
   const { language, setLanguage } = useLanguage();
 
   const [theme, setTheme] = useState(() => resolveInitialTheme());
+  const [branding, setBranding] = useState({
+    app_name: "",
+    app_logo_url: null
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicSettings()
+      .then((payload) => {
+        if (!isMounted || !payload) return;
+        setBranding({
+          app_name: String(payload.app_name || "").trim(),
+          app_logo_url: payload.app_logo_url || null
+        });
+      })
+      .catch(() => {
+        // Sidebar uses static fallback when public settings are unavailable.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const navItems = useMemo(() => {
     return isDeveloper ? [...baseItems, ...developerItems] : baseItems;
   }, [isDeveloper]);
 
+  const titleItems = useMemo(() => {
+    return [...navItems, { to: "/profile", labelKey: "nav.profile" }];
+  }, [navItems]);
+
   const currentItem = useMemo(() => {
     if (location.pathname === "/") {
-      return navItems.find((item) => item.to === "/") || navItems[0];
+      return titleItems.find((item) => item.to === "/") || titleItems[0];
     }
 
     return (
-      navItems.find((item) => {
+      titleItems.find((item) => {
         return item.to !== "/" && location.pathname.startsWith(item.to);
-      }) || navItems[0]
+      }) || titleItems[0]
     );
-  }, [location.pathname, navItems]);
+  }, [location.pathname, titleItems]);
 
   const isFullWidth = location.pathname.startsWith("/board");
+  const appName = branding.app_name || t("app.name");
+  const logoSrc = branding.app_logo_url ? `${API_BASE_URL}${branding.app_logo_url}` : appLogo;
+  const userAvatarSrc = user?.avatar_filename
+    ? `${API_BASE_URL}/api/auth/avatar/${user.avatar_filename}?v=${encodeURIComponent(
+      user.avatar_updated_at || "1"
+    )}`
+    : null;
 
   async function handleLanguageChange(nextLanguage) {
     setLanguage(nextLanguage);
@@ -113,8 +151,8 @@ export default function AppShell() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-logo">
-            <img src={appLogo} alt="EdudoroIT logo" className="sidebar-logo-image" />
-            <span>{t("app.name")}</span>
+            <img src={logoSrc} alt="EdudoroIT logo" className="sidebar-logo-image" />
+            <span className="sidebar-logo-text">{appName}</span>
           </NavLink>
         </div>
 
@@ -139,34 +177,58 @@ export default function AppShell() {
         </div>
 
         {isDeveloper ? (
-          <div className="sidebar-section">
-            <p className="sidebar-section-label">Developer</p>
-            {developerItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    isActive ? "sidebar-item active" : "sidebar-item"
-                  }
-                >
-                  <Icon className="sidebar-item-icon" />
-                  <span>{t(item.labelKey)}</span>
-                </NavLink>
-              );
-            })}
-          </div>
+          <>
+            <div className="sidebar-section">
+              <p className="sidebar-section-label">Developer</p>
+              {developerItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      isActive ? "sidebar-item active" : "sidebar-item"
+                    }
+                  >
+                    <Icon className="sidebar-item-icon" />
+                    <span>{t(item.labelKey)}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+
+            <div className="sidebar-section">
+              <p className="sidebar-section-label">{t("nav.admin")}</p>
+              <NavLink
+                to={adminItem.to}
+                className={({ isActive }) =>
+                  isActive ? "sidebar-item active" : "sidebar-item"
+                }
+              >
+                <adminItem.icon className="sidebar-item-icon" />
+                <span>{t(adminItem.labelKey)}</span>
+              </NavLink>
+            </div>
+          </>
         ) : null}
 
         <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-avatar">{toInitials(user?.name || user?.email)}</div>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => (isActive ? "sidebar-user active" : "sidebar-user")}
+          >
+            <div className="sidebar-avatar">
+              {userAvatarSrc ? (
+                <img src={userAvatarSrc} alt={user?.name || user?.email || "User"} className="sidebar-avatar-image" />
+              ) : (
+                <span>{toInitials(user?.name || user?.email)}</span>
+              )}
+            </div>
             <div>
               <div className="text-sm">{user?.name || "User"}</div>
               <div className="text-xs muted">{user?.email}</div>
             </div>
-          </div>
+          </NavLink>
 
           <button type="button" className="theme-toggle" onClick={handleToggleTheme}>
             {theme === "light" ? <Moon size={14} /> : <Sun size={14} />}
@@ -184,7 +246,7 @@ export default function AppShell() {
         <header className="page-topbar">
           <div>
             <div className="page-breadcrumb">
-              <span>{t("app.name")}</span>
+              <span>{appName}</span>
               <ChevronRight size={12} />
               <span>{t(currentItem?.labelKey || "nav.dashboard")}</span>
             </div>

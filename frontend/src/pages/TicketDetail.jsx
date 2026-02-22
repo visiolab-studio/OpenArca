@@ -7,6 +7,7 @@ import {
   getTicket,
   patchTicket
 } from "../api/tickets";
+import { getUsers } from "../api/users";
 import { API_BASE_URL } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import StatusBadge from "../components/StatusBadge";
@@ -16,6 +17,11 @@ import { formatDate, formatDateShort } from "../utils/format";
 
 function parseError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
+}
+
+function toInitial(value) {
+  const source = String(value || "U").trim();
+  return source ? source[0].toUpperCase() : "U";
 }
 
 export default function TicketDetailPage() {
@@ -30,15 +36,48 @@ export default function TicketDetailPage() {
   const [commentType, setCommentType] = useState("comment");
   const [commentInternal, setCommentInternal] = useState(false);
   const [uploadFiles, setUploadFiles] = useState([]);
+  const [developerUsers, setDeveloperUsers] = useState([]);
+  const [isQuickAccepting, setIsQuickAccepting] = useState(false);
 
   const [editForm, setEditForm] = useState(null);
+
+  const assigneeMap = useMemo(
+    () =>
+      new Map(
+        developerUsers.map((user) => [
+          user.id,
+          user.name ? `${user.name} (${user.email})` : user.email
+        ])
+      ),
+    [developerUsers]
+  );
+
+  const assigneeLabel = useMemo(() => {
+    if (!ticket?.assignee_id) return t("tickets.unassigned");
+    return assigneeMap.get(ticket.assignee_id) || ticket.assignee_id;
+  }, [ticket?.assignee_id, assigneeMap, t]);
 
   async function loadTicket() {
     setLoading(true);
     setError("");
 
     try {
-      const response = await getTicket(id);
+      const [response, users] = await Promise.all([
+        getTicket(id),
+        isDeveloper ? getUsers() : Promise.resolve([])
+      ]);
+
+      if (isDeveloper) {
+        const developers = (users || [])
+          .filter((user) => user.role === "developer")
+          .sort((a, b) =>
+            String(a.name || a.email).localeCompare(String(b.name || b.email), "pl")
+          );
+        setDeveloperUsers(developers);
+      } else {
+        setDeveloperUsers([]);
+      }
+
       setTicket(response);
       setEditForm({
         title: response.title || "",
@@ -50,6 +89,7 @@ export default function TicketDetailPage() {
         category: response.category || "other",
         status: response.status || "submitted",
         priority: response.priority || "normal",
+        assignee_id: response.assignee_id || "",
         planned_date: response.planned_date || "",
         estimated_hours: response.estimated_hours ?? "",
         internal_note: response.internal_note || ""
@@ -81,6 +121,7 @@ export default function TicketDetailPage() {
         await patchTicket(id, {
           status: editForm.status,
           priority: editForm.priority,
+          assignee_id: editForm.assignee_id || null,
           planned_date: editForm.planned_date || null,
           estimated_hours:
             editForm.estimated_hours === "" ? null : Number(editForm.estimated_hours),
@@ -164,6 +205,22 @@ export default function TicketDetailPage() {
     }
   }
 
+  async function handleQuickAccept() {
+    if (!ticket) return;
+
+    setError("");
+    setIsQuickAccepting(true);
+
+    try {
+      await patchTicket(id, { status: "verified" });
+      await loadTicket();
+    } catch (acceptError) {
+      setError(parseError(acceptError));
+    } finally {
+      setIsQuickAccepting(false);
+    }
+  }
+
   if (loading) {
     return <section className="card">{t("app.loading")}</section>;
   }
@@ -173,10 +230,23 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <section className="page-content ticket-layout">
+    <section className="page-content ticket-detail-page">
       <header className="page-header">
-        <h1>{t("tickets.detailTitle")} #{String(ticket.number).padStart(3, "0")}</h1>
+        <div>
+          <p className="ticket-number">#{String(ticket.number).padStart(3, "0")}</p>
+          <h1 className="issue-summary">{ticket.title}</h1>
+        </div>
         <div className="row-actions">
+          {isDeveloper && ticket.status === "submitted" ? (
+            <button
+              type="button"
+              className="btn btn-yellow"
+              onClick={handleQuickAccept}
+              disabled={isQuickAccepting}
+            >
+              {isQuickAccepting ? t("app.loading") : t("dev.acceptTicket")}
+            </button>
+          ) : null}
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
         </div>
@@ -184,233 +254,351 @@ export default function TicketDetailPage() {
 
       {error ? <p className="feedback err">{t(`errors.${error}`, { defaultValue: error })}</p> : null}
 
-      <article className="card">
-        <h2>{ticket.title}</h2>
-        <p>{ticket.description}</p>
-        <div className="meta-grid">
-          <p><strong>{t("tickets.category")}:</strong> {t(`category.${ticket.category}`)}</p>
-          <p><strong>{t("tickets.createdAt")}:</strong> {formatDate(ticket.created_at)}</p>
-          <p><strong>{t("tickets.updatedAt")}:</strong> {formatDate(ticket.updated_at)}</p>
-          <p><strong>{t("tickets.plannedDate")}:</strong> {formatDateShort(ticket.planned_date)}</p>
-          <p><strong>{t("tickets.estimatedHours")}:</strong> {ticket.estimated_hours ?? "-"}</p>
-        </div>
+      <div className="ticket-detail">
+        <div className="ticket-main">
+          <article className="card issue-card">
+            <section className="issue-section">
+              <h3 className="issue-section-title">{t("tickets.description")}</h3>
+              <div className="issue-rich-text">{ticket.description || "-"}</div>
+            </section>
 
-        {ticket.steps_to_reproduce ? <p><strong>{t("tickets.steps")}:</strong> {ticket.steps_to_reproduce}</p> : null}
-        {ticket.expected_result ? <p><strong>{t("tickets.expected")}:</strong> {ticket.expected_result}</p> : null}
-        {ticket.actual_result ? <p><strong>{t("tickets.actual")}:</strong> {ticket.actual_result}</p> : null}
-        {ticket.environment ? <p><strong>{t("tickets.environment")}:</strong> {ticket.environment}</p> : null}
-      </article>
-
-      {(isDeveloper || canUserEdit) && editForm ? (
-        <article className="card">
-          <h2>{t("app.save")}</h2>
-          <form className="form-grid" onSubmit={handleUpdateTicket}>
-            {!isDeveloper ? (
-              <>
-                <label>
-                  {t("tickets.titleField")}
-                  <input
-                    type="text"
-                    value={editForm.title}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, title: event.target.value }))
-                    }
-                  />
-                </label>
-                <label>
-                  {t("tickets.description")}
-                  <textarea
-                    rows={4}
-                    value={editForm.description}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, description: event.target.value }))
-                    }
-                  />
-                </label>
-              </>
+            {ticket.steps_to_reproduce ? (
+              <section className="issue-section">
+                <h3 className="issue-section-title">{t("tickets.steps")}</h3>
+                <div className="issue-rich-text">{ticket.steps_to_reproduce}</div>
+              </section>
             ) : null}
 
-            {isDeveloper ? (
-              <>
-                <label>
-                  {t("tickets.status")}
-                  <select
-                    value={editForm.status}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, status: event.target.value }))
-                    }
-                  >
-                    {STATUS_OPTIONS.map((value) => (
-                      <option key={value} value={value}>
-                        {t(`status.${value}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  {t("tickets.priority")}
-                  <select
-                    value={editForm.priority}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, priority: event.target.value }))
-                    }
-                  >
-                    {PRIORITY_OPTIONS.map((value) => (
-                      <option key={value} value={value}>
-                        {t(`priority.${value}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  {t("tickets.category")}
-                  <select
-                    value={editForm.category}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, category: event.target.value }))
-                    }
-                  >
-                    {CATEGORY_OPTIONS.map((value) => (
-                      <option key={value} value={value}>
-                        {t(`category.${value}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  {t("tickets.plannedDate")}
-                  <input
-                    type="date"
-                    value={editForm.planned_date || ""}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, planned_date: event.target.value }))
-                    }
-                  />
-                </label>
-
-                <label>
-                  {t("tickets.estimatedHours")}
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={editForm.estimated_hours}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, estimated_hours: event.target.value }))
-                    }
-                  />
-                </label>
-
-                <label>
-                  {t("tickets.internalNote")}
-                  <textarea
-                    rows={3}
-                    value={editForm.internal_note || ""}
-                    onChange={(event) =>
-                      setEditForm((current) => ({ ...current, internal_note: event.target.value }))
-                    }
-                  />
-                </label>
-              </>
+            {ticket.expected_result ? (
+              <section className="issue-section">
+                <h3 className="issue-section-title">{t("tickets.expected")}</h3>
+                <div className="issue-rich-text">{ticket.expected_result}</div>
+              </section>
             ) : null}
 
-            <button className="btn" type="submit">
-              {t("app.save")}
-            </button>
-          </form>
-        </article>
-      ) : null}
+            {ticket.actual_result ? (
+              <section className="issue-section">
+                <h3 className="issue-section-title">{t("tickets.actual")}</h3>
+                <div className="issue-rich-text">{ticket.actual_result}</div>
+              </section>
+            ) : null}
 
-      <article className="card">
-        <h2>{t("tickets.attachments")}</h2>
-        <ul className="list-plain">
-          {ticket.attachments?.map((attachment) => (
-            <li key={attachment.id}>
-              <button type="button" className="btn btn-ghost" onClick={() => handleDownload(attachment)}>
-                {attachment.original_name}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <form className="row-actions" onSubmit={handleUpload}>
-          <input
-            type="file"
-            multiple
-            onChange={(event) => setUploadFiles(Array.from(event.target.files || []))}
-          />
-          <button type="submit" className="btn">
-            {t("app.submit")}
-          </button>
-        </form>
-      </article>
+            {ticket.environment ? (
+              <section className="issue-section">
+                <h3 className="issue-section-title">{t("tickets.environment")}</h3>
+                <div className="issue-rich-text">{ticket.environment}</div>
+              </section>
+            ) : null}
+          </article>
 
-      <article className="card">
-        <h2>{t("tickets.comments")}</h2>
-        <ul className="list-plain comments-list">
-          {ticket.comments?.map((comment) => (
-            <li key={comment.id} className={comment.is_internal ? "comment-internal" : ""}>
-              <div className="comment-meta">
-                <span>{comment.user_name || comment.user_email || "User"}</span>
-                <span className="muted">{formatDate(comment.created_at)}</span>
-                {comment.is_internal ? <span className="badge">{t("tickets.internal")}</span> : null}
-              </div>
-              <p>{comment.content}</p>
-            </li>
-          ))}
-        </ul>
+          {(isDeveloper || canUserEdit) && editForm ? (
+            <article className="card issue-edit-card">
+              <h2 className="card-title">{t("app.save")}</h2>
+              <form className="form-grid" onSubmit={handleUpdateTicket}>
+                {!isDeveloper ? (
+                  <>
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.titleField")}</span>
+                      <input
+                        className="form-input"
+                        type="text"
+                        value={editForm.title}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, title: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.description")}</span>
+                      <textarea
+                        className="form-textarea"
+                        rows={4}
+                        value={editForm.description}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, description: event.target.value }))
+                        }
+                      />
+                    </label>
+                  </>
+                ) : null}
 
-        <form className="form-grid" onSubmit={handleAddComment}>
-          <label>
-            {t("tickets.commentType")}
-            <select value={commentType} onChange={(event) => setCommentType(event.target.value)}>
-              <option value="comment">comment</option>
-              <option value="question">question</option>
-              <option value="answer">answer</option>
-            </select>
-          </label>
+                {isDeveloper ? (
+                  <div className="filters-grid">
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.status")}</span>
+                      <select
+                        className="form-select"
+                        value={editForm.status}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, status: event.target.value }))
+                        }
+                      >
+                        {STATUS_OPTIONS.map((value) => (
+                          <option key={value} value={value}>
+                            {t(`status.${value}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-          {isDeveloper ? (
-            <label className="check-row">
-              <input
-                type="checkbox"
-                checked={commentInternal}
-                onChange={(event) => setCommentInternal(event.target.checked)}
-              />
-              <span>{t("tickets.internal")}</span>
-            </label>
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.priority")}</span>
+                      <select
+                        className="form-select"
+                        value={editForm.priority}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, priority: event.target.value }))
+                        }
+                      >
+                        {PRIORITY_OPTIONS.map((value) => (
+                          <option key={value} value={value}>
+                            {t(`priority.${value}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.category")}</span>
+                      <select
+                        className="form-select"
+                        value={editForm.category}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, category: event.target.value }))
+                        }
+                      >
+                        {CATEGORY_OPTIONS.map((value) => (
+                          <option key={value} value={value}>
+                            {t(`category.${value}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.assignee")}</span>
+                      <select
+                        className="form-select"
+                        value={editForm.assignee_id || ""}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, assignee_id: event.target.value }))
+                        }
+                      >
+                        <option value="">{t("tickets.unassigned")}</option>
+                        {developerUsers.map((developer) => (
+                          <option key={developer.id} value={developer.id}>
+                            {developer.name ? `${developer.name} (${developer.email})` : developer.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.plannedDate")}</span>
+                      <input
+                        className="form-input"
+                        type="date"
+                        value={editForm.planned_date || ""}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, planned_date: event.target.value }))
+                        }
+                      />
+                    </label>
+
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.estimatedHours")}</span>
+                      <input
+                        className="form-input"
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={editForm.estimated_hours}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, estimated_hours: event.target.value }))
+                        }
+                      />
+                    </label>
+
+                    <label className="form-group">
+                      <span className="form-label">{t("tickets.internalNote")}</span>
+                      <textarea
+                        className="form-textarea"
+                        rows={3}
+                        value={editForm.internal_note || ""}
+                        onChange={(event) =>
+                          setEditForm((current) => ({ ...current, internal_note: event.target.value }))
+                        }
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                <button className="btn btn-primary" type="submit">
+                  {t("app.save")}
+                </button>
+              </form>
+            </article>
           ) : null}
 
-          <label>
-            {t("tickets.addComment")}
-            <textarea
-              rows={3}
-              value={commentText}
-              onChange={(event) => setCommentText(event.target.value)}
-            />
-          </label>
+          <article className="card">
+            <h2 className="card-title">{t("tickets.attachments")}</h2>
+            <ul className="list-plain attachment-list">
+              {ticket.attachments?.map((attachment) => (
+                <li key={attachment.id}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleDownload(attachment)}
+                  >
+                    {attachment.original_name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <form className="row-actions" onSubmit={handleUpload}>
+              <input
+                className="form-input"
+                type="file"
+                multiple
+                onChange={(event) => setUploadFiles(Array.from(event.target.files || []))}
+              />
+              <button type="submit" className="btn btn-primary">
+                {t("app.submit")}
+              </button>
+            </form>
+          </article>
 
-          <button className="btn" type="submit">
-            {t("app.submit")}
-          </button>
-        </form>
-      </article>
+          <article className="card">
+            <h2 className="card-title">{t("tickets.comments")}</h2>
+            <ul className="comments-thread">
+              {ticket.comments?.map((comment) => {
+                const author = comment.user_name || comment.user_email || "User";
+                return (
+                  <li
+                    key={comment.id}
+                    className={`comment ${comment.is_developer ? "developer" : "user"} ${
+                      comment.type === "question" ? "question" : ""
+                    }`}
+                  >
+                    <div className="comment-avatar">{toInitial(author)}</div>
+                    <div className="comment-body">
+                      <div className="comment-meta">
+                        <span className="comment-author">{author}</span>
+                        {comment.is_developer ? (
+                          <span className="comment-developer-badge">Developer</span>
+                        ) : null}
+                        <span className="comment-time">{formatDate(comment.created_at)}</span>
+                        {comment.is_internal ? <span className="badge">{t("tickets.internal")}</span> : null}
+                      </div>
+                      <p className="comment-content">{comment.content}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
 
-      <article className="card">
-        <h2>{t("tickets.history")}</h2>
-        <ul className="list-plain">
-          {ticket.history?.map((entry) => (
-            <li key={entry.id}>
-              <span className="muted">{formatDate(entry.created_at)}</span>
-              <span>
-                {entry.user_name || entry.user_email || "System"}: {entry.field} {String(entry.old_value ?? "-")} → {String(entry.new_value ?? "-")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </article>
+            <form className="form-grid" onSubmit={handleAddComment}>
+              <label className="form-group">
+                <span className="form-label">{t("tickets.commentType")}</span>
+                <select
+                  className="form-select"
+                  value={commentType}
+                  onChange={(event) => setCommentType(event.target.value)}
+                >
+                  <option value="comment">comment</option>
+                  <option value="question">question</option>
+                  <option value="answer">answer</option>
+                </select>
+              </label>
+
+              {isDeveloper ? (
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={commentInternal}
+                    onChange={(event) => setCommentInternal(event.target.checked)}
+                  />
+                  <span>{t("tickets.internal")}</span>
+                </label>
+              ) : null}
+
+              <label className="form-group">
+                <span className="form-label">{t("tickets.addComment")}</span>
+                <textarea
+                  className="form-textarea"
+                  rows={3}
+                  value={commentText}
+                  onChange={(event) => setCommentText(event.target.value)}
+                />
+              </label>
+
+              <button className="btn btn-primary" type="submit">
+                {t("app.submit")}
+              </button>
+            </form>
+          </article>
+
+          <article className="card">
+            <h2 className="card-title">{t("tickets.history")}</h2>
+            <ul className="list-plain">
+              {ticket.history?.map((entry) => (
+                <li key={entry.id} className="history-item">
+                  <span className="history-dot" />
+                  <span>
+                    <span className="muted">{formatDate(entry.created_at)}</span>{" "}
+                    {entry.user_name || entry.user_email || "System"}: {entry.field}{" "}
+                    {String(entry.old_value ?? "-")} → {String(entry.new_value ?? "-")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
+
+        <aside className="ticket-sidebar">
+          <article className="ticket-meta-card">
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.status")}</span>
+              <StatusBadge status={ticket.status} />
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.priority")}</span>
+              <PriorityBadge priority={ticket.priority} />
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.category")}</span>
+              <span>{t(`category.${ticket.category}`)}</span>
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.assignee")}</span>
+              <span>{assigneeLabel}</span>
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.plannedDate")}</span>
+              <span>{formatDateShort(ticket.planned_date)}</span>
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.estimatedHours")}</span>
+              <span>{ticket.estimated_hours ?? "-"}</span>
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.createdAt")}</span>
+              <span>{formatDate(ticket.created_at)}</span>
+            </div>
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.updatedAt")}</span>
+              <span>{formatDate(ticket.updated_at)}</span>
+            </div>
+          </article>
+
+          {ticket.internal_note ? (
+            <article className="internal-note">
+              <div className="internal-note-header">{t("tickets.internalNote")}</div>
+              <p>{ticket.internal_note}</p>
+            </article>
+          ) : null}
+        </aside>
+      </div>
     </section>
   );
 }

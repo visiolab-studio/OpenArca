@@ -15,6 +15,11 @@ export async function getOverviewStats() {
   return response.data;
 }
 
+export async function getOverviewWorkload() {
+  const response = await client.get("/api/tickets/workload");
+  return response.data;
+}
+
 export async function getTicket(id) {
   const response = await client.get(`/api/tickets/${id}`);
   return response.data;

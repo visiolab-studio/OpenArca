@@ -8,8 +8,6 @@ const { writeLimiter } = require("../middleware/rate-limiters");
 
 const router = express.Router();
 
-const PRIORITY_ORDER = { critical: 0, high: 1, normal: 2, low: 3 };
-
 const idParamsSchema = z.object({ id: z.string().uuid() });
 const createTaskSchema = z
   .object({
@@ -46,54 +44,64 @@ const reorderSchema = z.object({
 
 router.use(authRequired, requireRole("developer"));
 
-function getTask(id) {
-  return db.prepare("SELECT * FROM dev_tasks WHERE id = ?").get(id);
+function getTaskForUser(id, userId) {
+  return db
+    .prepare("SELECT * FROM dev_tasks WHERE id = ? AND created_by = ?")
+    .get(id, userId);
+}
+
+function ensureTicketLinkAllowed(ticketId, userId) {
+  if (!ticketId) return { ok: true };
+
+  const ticket = db
+    .prepare("SELECT id, assignee_id FROM tickets WHERE id = ?")
+    .get(ticketId);
+
+  if (!ticket) {
+    return { ok: false, status: 400, error: "ticket_not_found" };
+  }
+
+  if (ticket.assignee_id && ticket.assignee_id !== userId) {
+    return { ok: false, status: 400, error: "ticket_not_available" };
+  }
+
+  return { ok: true };
 }
 
 function sortActiveTasks(items) {
   return [...items].sort((a, b) => {
-    const p = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-    if (p !== 0) return p;
-
-    const aHasDate = Boolean(a.planned_date);
-    const bHasDate = Boolean(b.planned_date);
-    if (aHasDate !== bHasDate) {
-      return aHasDate ? -1 : 1;
-    }
-
-    if (aHasDate && bHasDate) {
-      const d = a.planned_date.localeCompare(b.planned_date);
-      if (d !== 0) return d;
-    }
-
-    return (a.order_index || 0) - (b.order_index || 0);
+    const orderDiff = Number(a.order_index || 0) - Number(b.order_index || 0);
+    if (orderDiff !== 0) return orderDiff;
+    return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
   });
 }
 
 router.get("/", (req, res) => {
   const activeRows = db
-    .prepare("SELECT * FROM dev_tasks WHERE status IN ('todo', 'in_progress')")
-    .all();
+    .prepare(
+      "SELECT * FROM dev_tasks WHERE created_by = ? AND status IN ('todo', 'in_progress')"
+    )
+    .all(req.user.id);
   const done = db
-    .prepare("SELECT * FROM dev_tasks WHERE status = 'done' ORDER BY updated_at DESC LIMIT 20")
-    .all();
+    .prepare(
+      "SELECT * FROM dev_tasks WHERE created_by = ? AND status = 'done' ORDER BY updated_at DESC LIMIT 20"
+    )
+    .all(req.user.id);
   const active = sortActiveTasks(activeRows);
   return res.json({ active, done });
 });
 
 router.post("/", writeLimiter, validate({ body: createTaskSchema }), (req, res) => {
-  if (req.body.ticket_id) {
-    const ticketExists = db
-      .prepare("SELECT 1 FROM tickets WHERE id = ?")
-      .get(req.body.ticket_id);
-    if (!ticketExists) {
-      return res.status(400).json({ error: "ticket_not_found" });
-    }
+  const ticketAccess = ensureTicketLinkAllowed(req.body.ticket_id, req.user.id);
+  if (!ticketAccess.ok) {
+    return res.status(ticketAccess.status).json({ error: ticketAccess.error });
   }
 
   const maxOrder = db
-    .prepare("SELECT COALESCE(MAX(order_index), -1) AS max_order FROM dev_tasks WHERE status IN ('todo', 'in_progress')")
-    .get().max_order;
+    .prepare(
+      "SELECT COALESCE(MAX(order_index), -1) AS max_order FROM dev_tasks WHERE created_by = ? AND status IN ('todo', 'in_progress')"
+    )
+    .get(req.user.id).max_order;
 
   const id = uuidv4();
   db.prepare(
@@ -113,7 +121,7 @@ router.post("/", writeLimiter, validate({ body: createTaskSchema }), (req, res) 
     req.user.id
   );
 
-  return res.status(201).json(getTask(id));
+  return res.status(201).json(getTaskForUser(id, req.user.id));
 });
 
 router.patch(
@@ -121,17 +129,15 @@ router.patch(
   writeLimiter,
   validate({ params: idParamsSchema, body: patchTaskSchema }),
   (req, res) => {
-    const task = getTask(req.params.id);
+    const task = getTaskForUser(req.params.id, req.user.id);
     if (!task) {
       return res.status(404).json({ error: "task_not_found" });
     }
 
-    if (req.body.ticket_id) {
-      const ticketExists = db
-        .prepare("SELECT 1 FROM tickets WHERE id = ?")
-        .get(req.body.ticket_id);
-      if (!ticketExists) {
-        return res.status(400).json({ error: "ticket_not_found" });
+    if (Object.prototype.hasOwnProperty.call(req.body, "ticket_id") && req.body.ticket_id) {
+      const ticketAccess = ensureTicketLinkAllowed(req.body.ticket_id, req.user.id);
+      if (!ticketAccess.ok) {
+        return res.status(ticketAccess.status).json({ error: ticketAccess.error });
       }
     }
 
@@ -157,10 +163,12 @@ router.patch(
     }
 
     updates.push("updated_at = datetime('now')");
-    values.push(req.params.id);
+    values.push(req.params.id, req.user.id);
 
-    db.prepare(`UPDATE dev_tasks SET ${updates.join(", ")} WHERE id = ?`).run(...values);
-    return res.json(getTask(req.params.id));
+    db.prepare(`UPDATE dev_tasks SET ${updates.join(", ")} WHERE id = ? AND created_by = ?`).run(
+      ...values
+    );
+    return res.json(getTaskForUser(req.params.id, req.user.id));
   }
 );
 
@@ -169,12 +177,15 @@ router.delete(
   writeLimiter,
   validate({ params: idParamsSchema }),
   (req, res) => {
-    const task = getTask(req.params.id);
+    const task = getTaskForUser(req.params.id, req.user.id);
     if (!task) {
       return res.status(404).json({ error: "task_not_found" });
     }
 
-    db.prepare("DELETE FROM dev_tasks WHERE id = ?").run(req.params.id);
+    db.prepare("DELETE FROM dev_tasks WHERE id = ? AND created_by = ?").run(
+      req.params.id,
+      req.user.id
+    );
     return res.status(204).send();
   }
 );
@@ -182,11 +193,11 @@ router.delete(
 router.post("/reorder", writeLimiter, validate({ body: reorderSchema }), (req, res) => {
   const tx = db.transaction(() => {
     const update = db.prepare(
-      "UPDATE dev_tasks SET order_index = ?, updated_at = datetime('now') WHERE id = ? AND status IN ('todo', 'in_progress')"
+      "UPDATE dev_tasks SET order_index = ?, updated_at = datetime('now') WHERE id = ? AND created_by = ? AND status IN ('todo', 'in_progress')"
     );
 
     for (const item of req.body.order) {
-      const result = update.run(item.order_index, item.id);
+      const result = update.run(item.order_index, item.id, req.user.id);
       if (result.changes === 0) {
         const err = new Error("Task not found or not active");
         err.status = 400;
@@ -199,8 +210,10 @@ router.post("/reorder", writeLimiter, validate({ body: reorderSchema }), (req, r
   tx();
 
   const activeRows = db
-    .prepare("SELECT * FROM dev_tasks WHERE status IN ('todo', 'in_progress')")
-    .all();
+    .prepare(
+      "SELECT * FROM dev_tasks WHERE created_by = ? AND status IN ('todo', 'in_progress')"
+    )
+    .all(req.user.id);
 
   return res.json({ active: sortActiveTasks(activeRows) });
 });

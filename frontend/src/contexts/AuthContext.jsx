@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
 
       try {
         setAuthToken(token);
-        const currentUser = await authApi.me();
+        const currentUser = await authApi.me({ timeout: 3500 });
         if (active) {
           setUser(currentUser);
         }
@@ -87,6 +87,16 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function uploadAvatar(file) {
+    try {
+      const updatedUser = await authApi.uploadMyAvatar(file);
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (error) {
+      throw new Error(normalizeApiError(error));
+    }
+  }
+
   function logout() {
     setAuthToken(null);
     setToken(null);
@@ -104,6 +114,7 @@ export function AuthProvider({ children }) {
       verifyOtp,
       refreshMe,
       updateProfile,
+      uploadAvatar,
       logout
     }),
     [user, token, ready]

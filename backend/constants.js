@@ -25,12 +25,21 @@ const SETTING_KEYS = [
   "allowed_domains",
   "developer_emails",
   "app_name",
+  "app_logo_filename",
+  "app_logo_updated_at",
   "ticket_counter",
+  "mail_provider",
   "smtp_host",
   "smtp_port",
   "smtp_user",
   "smtp_pass",
   "smtp_from",
+  "ses_region",
+  "ses_access_key_id",
+  "ses_secret_access_key",
+  "ses_session_token",
+  "ses_from",
+  "ses_endpoint",
   "app_url"
 ];
 

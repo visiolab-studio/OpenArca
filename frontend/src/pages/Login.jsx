@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import appLogo from "../assets/edudoro_itsc_logo.png";
+import { API_BASE_URL } from "../api/client";
+import { getPublicSettings } from "../api/settings";
 
 const OTP_LIFETIME_SECONDS = 10 * 60;
 
@@ -36,16 +38,42 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [expiresAt, setExpiresAt] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const [branding, setBranding] = useState({
+    app_name: "",
+    app_logo_url: null
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicSettings()
+      .then((payload) => {
+        if (!isMounted || !payload) return;
+        setBranding({
+          app_name: String(payload.app_name || "").trim(),
+          app_logo_url: payload.app_logo_url || null
+        });
+      })
+      .catch(() => {
+        // Login uses static logo fallback when public settings are unavailable.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const countdown = useMemo(() => {
     if (!expiresAt) return OTP_LIFETIME_SECONDS;
     return Math.floor((expiresAt - now) / 1000);
   }, [expiresAt, now]);
+  const logoSrc = branding.app_logo_url ? `${API_BASE_URL}${branding.app_logo_url}` : appLogo;
+  const logoAlt = branding.app_name || "EdudoroIT logo";
 
   const code = digits.join("");
 
@@ -156,7 +184,7 @@ export default function LoginPage() {
         </div>
 
         <div className="login-logo login-logo-image">
-          <img src={appLogo} alt="EdudoroIT logo" className="auth-logo" />
+          <img src={logoSrc} alt={logoAlt} className="auth-logo" />
         </div>
 
         <h1 className="login-title">{t("auth.title")}</h1>

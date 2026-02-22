@@ -23,6 +23,8 @@ const schemaStatements = [
     name TEXT,
     role TEXT NOT NULL DEFAULT 'user',
     language TEXT NOT NULL DEFAULT 'pl',
+    avatar_filename TEXT,
+    avatar_updated_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_login TEXT
   )`,
@@ -123,12 +125,21 @@ const defaultSettings = [
   ["allowed_domains", '["example.com"]'],
   ["developer_emails", "[]"],
   ["app_name", "EdudoroIT_SupportCenter"],
+  ["app_logo_filename", ""],
+  ["app_logo_updated_at", ""],
   ["ticket_counter", "0"],
+  ["mail_provider", "smtp"],
   ["smtp_host", ""],
   ["smtp_port", "587"],
   ["smtp_user", ""],
   ["smtp_pass", ""],
   ["smtp_from", ""],
+  ["ses_region", ""],
+  ["ses_access_key_id", ""],
+  ["ses_secret_access_key", ""],
+  ["ses_session_token", ""],
+  ["ses_from", ""],
+  ["ses_endpoint", ""],
   ["app_url", "http://localhost:3000"]
 ];
 
@@ -136,6 +147,17 @@ function initDb() {
   const migrate = db.transaction(() => {
     for (const statement of schemaStatements) {
       db.prepare(statement).run();
+    }
+
+    const userColumns = db.prepare("PRAGMA table_info(users)").all();
+    const userColumnNames = new Set(userColumns.map((column) => String(column.name)));
+
+    if (!userColumnNames.has("avatar_filename")) {
+      db.prepare("ALTER TABLE users ADD COLUMN avatar_filename TEXT").run();
+    }
+
+    if (!userColumnNames.has("avatar_updated_at")) {
+      db.prepare("ALTER TABLE users ADD COLUMN avatar_updated_at TEXT").run();
     }
 
     const insertSetting = db.prepare(

@@ -440,19 +440,59 @@ export default function NewTicketPage() {
 
         {step === 4 ? (
           <>
-            <article className="preview-box">
-              <h3>{form.title || "-"}</h3>
-              <p>
-                <strong>{t("tickets.category")}:</strong> {t(`category.${form.category}`)}
-              </p>
-              <p>
-                <strong>{t("tickets.urgency")}:</strong> {t(`priority.${form.urgency_reporter}`)}
-              </p>
-              <p>{form.description || "-"}</p>
+            <article className="preview-box ticket-preview-jira">
+              <header className="preview-jira-header">
+                <span className="ticket-number">NEW-XXXX</span>
+                <div className="row-actions">
+                  <span className="badge badge-no-dot">{t(`category.${form.category}`)}</span>
+                  <span className="badge badge-no-dot">{t(`priority.${form.urgency_reporter}`)}</span>
+                </div>
+              </header>
+
+              <h3 className="preview-jira-title">{form.title || "-"}</h3>
+
+              <section className="preview-jira-section">
+                <p className="preview-jira-label">{t("tickets.description")}</p>
+                <div className="preview-jira-text">{form.description || "-"}</div>
+              </section>
+
+              {form.steps_to_reproduce ? (
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("tickets.steps")}</p>
+                  <div className="preview-jira-text">{form.steps_to_reproduce}</div>
+                </section>
+              ) : null}
+
+              {form.expected_result ? (
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("tickets.expected")}</p>
+                  <div className="preview-jira-text">{form.expected_result}</div>
+                </section>
+              ) : null}
+
+              {form.actual_result ? (
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("tickets.actual")}</p>
+                  <div className="preview-jira-text">{form.actual_result}</div>
+                </section>
+              ) : null}
+
+              {form.environment ? (
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("tickets.environment")}</p>
+                  <div className="preview-jira-text">{form.environment}</div>
+                </section>
+              ) : null}
+
               {files.length > 0 ? (
-                <p>
-                  <strong>{t("tickets.attachments")}:</strong> {files.map((file) => file.name).join(", ")}
-                </p>
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("tickets.attachments")}</p>
+                  <ul className="preview-file-list">
+                    {files.map((file) => (
+                      <li key={`${file.name}-${file.size}-${file.lastModified}`}>{file.name}</li>
+                    ))}
+                  </ul>
+                </section>
               ) : null}
             </article>
 

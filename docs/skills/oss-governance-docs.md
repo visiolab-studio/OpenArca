@@ -10,6 +10,7 @@ Dostarczyć minimalny, operacyjny pakiet dokumentów open-source: zasady współ
 
 ## Kroki (checklista)
 - [ ] Dodaj `CONTRIBUTING.md` (workflow PR, quality gates, standard commitów).
+- [ ] Dodaj `LICENSE` (zalecane: jawny SPDX + docelowa licencja projektu).
 - [ ] Dodaj `SECURITY.md` (kanał zgłoszeń, disclosure, SLA odpowiedzi).
 - [ ] Dodaj `CODE_OF_CONDUCT.md`.
 - [ ] Dodaj `CHANGELOG.md` (sekcja `Unreleased`).
@@ -19,6 +20,7 @@ Dostarczyć minimalny, operacyjny pakiet dokumentów open-source: zasady współ
 
 ## Przykłady
 Dokumenty:
+- `LICENSE`
 - `CONTRIBUTING.md`
 - `SECURITY.md`
 - `CODE_OF_CONDUCT.md`
@@ -27,6 +29,7 @@ Dokumenty:
 
 ## Definition of Done
 - [ ] Wszystkie dokumenty governance istnieją i mają praktyczną zawartość.
+- [ ] Licencja jest jednoznacznie określona (SPDX + plik `LICENSE`).
 - [ ] `README.md` linkuje pakiet governance.
 - [ ] Testy i smoke E2E przechodzą.
 
@@ -38,6 +41,7 @@ Dokumenty:
 
 ## Powiązane pliki w repo
 - `README.md`
+- `LICENSE`
 - `CONTRIBUTING.md`
 - `SECURITY.md`
 - `CODE_OF_CONDUCT.md`

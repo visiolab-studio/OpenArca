@@ -207,6 +207,7 @@ Checklista release/rollback: `docs/release-checklist.md`.
 
 ## Governance Open Source
 
+- `LICENSE` (AGPL-3.0-only)
 - `CONTRIBUTING.md`
 - `SECURITY.md`
 - `CODE_OF_CONDUCT.md`

@@ -505,7 +505,7 @@
 
 ## Step P5-governance-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `3f6b882`
 - Description: Dodać pakiet governance Open Source (CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG/ROADMAP) i podlinkować go w README.
 
 ### Implementation Plan
@@ -558,3 +558,46 @@
 
 ### Skills created/updated
 - `docs/skills/oss-governance-docs.md` (created)
+
+## Step P5-governance-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Dodać `LICENSE` (AGPL-3.0-only) i domknąć checklistę governance w dokumentacji.
+
+### Implementation Plan
+- Dodać plik `LICENSE` ze wskazaniem licencji AGPL-3.0-only i identyfikatorem SPDX.
+- Uzupełnić `README.md` o link do `LICENSE` w sekcji governance.
+- Uzupełnić `CHANGELOG.md` o wpis dotyczący licencji.
+- Zaktualizować skill governance, aby obejmował krok licencyjny.
+- Uruchomić pełne quality gates backend/frontend.
+- Wykonać smoke E2E baseline i route checks.
+
+### Files changed
+- `LICENSE`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/skills/oss-governance-docs.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (28/28)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Governance Open Source rozszerzone o jednoznaczny plik `LICENSE` dla wybranego modelu `AGPL-3.0-only`.
+- README i changelog wskazują nowy artefakt licencyjny.
+- Skill governance obejmuje teraz obowiązkowy krok licencji.
+- Brak regresji w testach automatycznych i smoke E2E.
+
+### Skills created/updated
+- `docs/skills/oss-governance-docs.md` (updated)

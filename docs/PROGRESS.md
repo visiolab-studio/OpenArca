@@ -2,6 +2,7 @@
 
 ## Step P5-telemetry-01
 - Status: Done (approved by user)
+- Commit: `aa9bca1`
 - Description: Minimalna telemetria produktowa w backendzie (`ticket.created`, `ticket.closed`) + fundament dokumentacji agentowej.
 
 ### Scope
@@ -52,3 +53,51 @@
 ### Skills created/updated
 - `docs/skills/telemetry-events.md` (created)
 - `docs/skills/e2e-browser-baseline.md` (created)
+
+## Step P5-telemetry-02
+- Status: Done (approved by user)
+- Description: Telemetria `devtodo.reorder` po udanym reorderze listy TODO developera.
+
+### Scope
+- emit event `devtodo.reorder` w backendzie
+- test integracyjny telemetry dla reorder
+- walidacja E2E z akcją reorder
+
+### Files changed
+- `backend/routes/devTasks.js`
+- `backend/tests/api.integration.test.js`
+- `docs/skills/telemetry-events.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (17/17)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- RBAC check (manual script):
+  - non-developer na `/api/dev-tasks/reorder` -> `403 forbidden` (PASS)
+  - drugi developer reordering cudzych tasków -> `400 invalid_task_order` (PASS)
+
+### E2E run
+- Manual scripted E2E baseline + reorder:
+  - OTP login user -> PASS
+  - create ticket + attachment -> PASS
+  - my tickets + ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status -> PASS
+  - DevTodo sync -> PASS
+  - reorder w DevTodo -> PASS
+  - telemetry `devtodo.reorder` persisted -> PASS
+  - route checks (`/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Event `devtodo.reorder` emitowany po udanym reorderze.
+- Payload eventu zawiera `items_count` i `active_count_after`.
+- Dodany test integracyjny backend potwierdzający zapis eventu.
+- Brak regresji backend/frontend i brak regresji RBAC dla endpointu reorder.
+
+### Skills created/updated
+- `docs/skills/telemetry-events.md` (updated)

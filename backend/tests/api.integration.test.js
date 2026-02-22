@@ -213,6 +213,57 @@ test("telemetry records ticket.created and ticket.closed events", async () => {
   assert.equal(JSON.parse(closedEvent.properties_json).new_status, "closed");
 });
 
+test("telemetry records devtodo.reorder event for developer reorder action", async () => {
+  const firstTask = await request
+    .post("/api/dev-tasks")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      title: "Telemetry reorder task A",
+      priority: "normal"
+    });
+  assert.equal(firstTask.statusCode, 201);
+
+  const secondTask = await request
+    .post("/api/dev-tasks")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      title: "Telemetry reorder task B",
+      priority: "high"
+    });
+  assert.equal(secondTask.statusCode, 201);
+
+  const reorderResult = await request
+    .post("/api/dev-tasks/reorder")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      order: [
+        { id: secondTask.body.id, order_index: 0 },
+        { id: firstTask.body.id, order_index: 1 }
+      ]
+    });
+  assert.equal(reorderResult.statusCode, 200);
+  assert.equal(Array.isArray(reorderResult.body.active), true);
+
+  const event = db
+    .prepare(
+      `SELECT event_name, user_id, ticket_id, properties_json
+       FROM telemetry_events
+       WHERE event_name = 'devtodo.reorder'
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+    .get();
+
+  assert.ok(event);
+  assert.equal(event.event_name, "devtodo.reorder");
+  assert.equal(event.user_id, devAuth.user.id);
+  assert.equal(event.ticket_id, null);
+
+  const properties = JSON.parse(event.properties_json);
+  assert.equal(properties.items_count, 2);
+  assert.ok(Number(properties.active_count_after) >= 2);
+});
+
 test("developer todo scope is isolated per user and linked ticket access is restricted", async () => {
   const secondDevEmail = uniqueEmail("dev2");
   db.prepare("UPDATE settings SET value = ? WHERE key = 'developer_emails'").run(

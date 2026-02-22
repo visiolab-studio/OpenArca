@@ -5,6 +5,7 @@ const db = require("../db");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
+const { trackTelemetryEvent } = require("../services/telemetry");
 
 const router = express.Router();
 
@@ -214,6 +215,15 @@ router.post("/reorder", writeLimiter, validate({ body: reorderSchema }), (req, r
       "SELECT * FROM dev_tasks WHERE created_by = ? AND status IN ('todo', 'in_progress')"
     )
     .all(req.user.id);
+
+  trackTelemetryEvent({
+    eventName: "devtodo.reorder",
+    userId: req.user.id,
+    properties: {
+      items_count: req.body.order.length,
+      active_count_after: activeRows.length
+    }
+  });
 
   return res.json({ active: sortActiveTasks(activeRows) });
 });

@@ -28,6 +28,7 @@ Przykładowe eventy:
 - `ticket.closed`
 - `board.drag`
 - `devtodo.reorder`
+- `closure_summary_added`
 
 ## Definition of Done
 - [ ] Event zapisuje się w DB z poprawnym `event_name`, `user_id`, `ticket_id`.
@@ -44,6 +45,7 @@ Przykładowe eventy:
 ## Powiązane pliki w repo
 - `backend/services/telemetry.js`
 - `backend/routes/tickets.js`
+- `backend/routes/devTasks.js`
 - `backend/db.js`
 - `backend/tests/api.integration.test.js`
 - `docs/PROGRESS.md`

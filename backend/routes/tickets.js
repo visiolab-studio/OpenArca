@@ -125,6 +125,7 @@ const createCommentSchema = z
   .object({
     content: z.string().trim().min(1).max(10000),
     is_internal: z.boolean().optional().default(false),
+    is_closure_summary: z.boolean().optional().default(false),
     type: z.enum(COMMENT_TYPES).optional().default("comment"),
     parent_id: z.string().uuid().nullable().optional()
   })
@@ -831,6 +832,14 @@ router.post(
         return res.status(403).json({ error: "forbidden" });
       }
 
+      if (req.body.is_closure_summary && req.user.role !== "developer") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      if (req.body.is_closure_summary && req.body.is_internal) {
+        return res.status(400).json({ error: "invalid_closure_summary_visibility" });
+      }
+
       if (req.body.parent_id) {
         const parent = db
           .prepare("SELECT id FROM comments WHERE id = ? AND ticket_id = ?")
@@ -844,9 +853,9 @@ router.post(
       db.prepare(
         `INSERT INTO comments (
           id, ticket_id, user_id, content,
-          is_developer, is_internal, type,
+          is_developer, is_internal, is_closure_summary, type,
           parent_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).run(
         commentId,
         req.params.id,
@@ -854,6 +863,7 @@ router.post(
         req.body.content,
         req.user.role === "developer" ? 1 : 0,
         req.body.is_internal ? 1 : 0,
+        req.body.is_closure_summary ? 1 : 0,
         req.body.type || "comment",
         req.body.parent_id || null
       );
@@ -872,6 +882,17 @@ router.post(
         } catch (error) {
           console.error("comment_notification_failed", error);
         }
+      }
+
+      if (req.user.role === "developer" && req.body.is_closure_summary) {
+        trackTelemetryEvent({
+          eventName: "closure_summary_added",
+          userId: req.user.id,
+          ticketId: req.params.id,
+          properties: {
+            comment_id: commentId
+          }
+        });
       }
 
       return res.status(201).json(comment);

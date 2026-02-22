@@ -656,7 +656,8 @@ export default function DevTodoPage() {
       if (completeTask.ticket_id) {
         const summaryHeader = t("dev.completionCommentHeader", { title: completeTask.title });
         await addComment(completeTask.ticket_id, {
-          content: `${summaryHeader}\n\n${comment}`
+          content: `${summaryHeader}\n\n${comment}`,
+          is_closure_summary: true
         });
         await patchTicket(completeTask.ticket_id, {
           status: mode === "close" ? "closed" : "waiting"

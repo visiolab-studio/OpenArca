@@ -51,3 +51,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 ## Skills
 - `docs/skills/e2e-browser-baseline.md`
 - `docs/skills/telemetry-events.md`
+- `docs/skills/closure-summary-flow.md`

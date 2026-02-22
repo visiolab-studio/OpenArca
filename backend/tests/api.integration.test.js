@@ -310,6 +310,70 @@ test("telemetry records board.drag event when developer moves ticket across stat
   assert.equal(properties.new_status, "in_progress");
 });
 
+test("telemetry records closure_summary_added when developer adds closure summary comment", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Closure summary telemetry event should be persisted"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+
+  const comment = await request
+    .post(`/api/tickets/${created.body.id}/comments`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      content: "Podsumowanie zamknięcia: naprawiono błąd i wdrożono poprawkę.",
+      is_closure_summary: true
+    });
+  assert.equal(comment.statusCode, 201);
+  assert.equal(comment.body.is_closure_summary, 1);
+
+  const event = db
+    .prepare(
+      `SELECT event_name, user_id, ticket_id, properties_json
+       FROM telemetry_events
+       WHERE event_name = 'closure_summary_added' AND ticket_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+    .get(created.body.id);
+
+  assert.ok(event);
+  assert.equal(event.event_name, "closure_summary_added");
+  assert.equal(event.user_id, devAuth.user.id);
+  assert.equal(event.ticket_id, created.body.id);
+
+  const properties = JSON.parse(event.properties_json);
+  assert.equal(typeof properties.comment_id, "string");
+  assert.ok(properties.comment_id.length > 10);
+});
+
+test("user cannot mark comment as closure summary", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Closure summary flag should be restricted to developer role"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+
+  const forbidden = await request
+    .post(`/api/tickets/${created.body.id}/comments`)
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .send({
+      content: "Próba ustawienia flagi closure summary przez usera.",
+      is_closure_summary: true
+    });
+
+  assert.equal(forbidden.statusCode, 403);
+  assert.equal(forbidden.body.error, "forbidden");
+});
+
 test("developer todo scope is isolated per user and linked ticket access is restricted", async () => {
   const secondDevEmail = uniqueEmail("dev2");
   db.prepare("UPDATE settings SET value = ? WHERE key = 'developer_emails'").run(

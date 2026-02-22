@@ -83,6 +83,7 @@ const schemaStatements = [
     content TEXT NOT NULL,
     is_developer INTEGER NOT NULL DEFAULT 0,
     is_internal INTEGER NOT NULL DEFAULT 0,
+    is_closure_summary INTEGER NOT NULL DEFAULT 0,
     type TEXT NOT NULL DEFAULT 'comment',
     parent_id TEXT REFERENCES comments(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -168,6 +169,13 @@ function initDb() {
 
     if (!userColumnNames.has("avatar_updated_at")) {
       db.prepare("ALTER TABLE users ADD COLUMN avatar_updated_at TEXT").run();
+    }
+
+    const commentColumns = db.prepare("PRAGMA table_info(comments)").all();
+    const commentColumnNames = new Set(commentColumns.map((column) => String(column.name)));
+
+    if (!commentColumnNames.has("is_closure_summary")) {
+      db.prepare("ALTER TABLE comments ADD COLUMN is_closure_summary INTEGER NOT NULL DEFAULT 0").run();
     }
 
     const insertSetting = db.prepare(

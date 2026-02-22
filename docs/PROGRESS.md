@@ -103,8 +103,62 @@
 ### Skills created/updated
 - `docs/skills/telemetry-events.md` (updated)
 
+## Step P5-telemetry-04
+- Status: Done (approved by user)
+- Description: Telemetria `closure_summary_added` przy finalizacji ticketu z komentarzem podsumowującym.
+
+### Scope
+- komentarz closure summary (`is_closure_summary`) w backend + DB
+- emit event `closure_summary_added`
+- podpięcie frontendu DevTodo finalization do flagi closure summary
+- testy telemetry + RBAC dla nowej flagi
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `frontend/src/pages/DevTodo.jsx`
+- `docs/AGENTS.md`
+- `docs/skills/closure-summary-flow.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (20/20)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- RBAC check (manual script):
+  - user comment z `is_closure_summary=true` -> `403 forbidden` (PASS)
+  - developer comment z `is_closure_summary=true` -> `201` + `is_closure_summary=1` (PASS)
+
+### E2E run
+- Manual scripted E2E baseline + closure summary:
+  - OTP login user -> PASS
+  - create ticket + attachment -> PASS
+  - my tickets + ticket detail -> PASS
+  - OTP login developer -> PASS
+  - board + status move -> PASS
+  - add closure summary comment (`is_closure_summary=true`) -> PASS
+  - close ticket -> PASS
+  - DevTodo sync to done -> PASS
+  - telemetry `closure_summary_added` persisted (`comment_id`) -> PASS
+  - route checks (`/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Dodana flaga komentarza `is_closure_summary` (DB + walidacja + zapis).
+- Event `closure_summary_added` emitowany dla komentarza closure summary od developera.
+- Frontend DevTodo finalization wysyła closure summary flagę.
+- Dodane testy integracyjne telemetry i RBAC dla closure summary.
+- Brak regresji backend/frontend i brak regresji bezpieczeństwa endpointów write.
+
+### Skills created/updated
+- `docs/skills/closure-summary-flow.md` (created)
+
 ## Step P5-telemetry-03
 - Status: Done (approved by user)
+- Commit: `1ceada9`
 - Description: Telemetria `board.drag` przy zmianie statusu ticketa w przepływie Kanban.
 
 ### Scope

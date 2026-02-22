@@ -163,6 +163,38 @@ CI: `.github/workflows/ci.yml` (GitHub Actions, Node 20, lint + test + build).
 
 Dane SQLite i uploady są trzymane na wolumenach Dockera (`backend_data`, `backend_uploads`).
 
+### Backup / restore (SQLite + uploads)
+
+Tworzenie backupu:
+```bash
+./scripts/backup.sh
+```
+
+Backup do wskazanego pliku:
+```bash
+./scripts/backup.sh --output backups/edudoroit-backup-manual.tar.gz
+```
+
+Szybki backup bez zatrzymywania usług (mniej spójny):
+```bash
+./scripts/backup.sh --hot
+```
+
+Przywracanie backupu:
+```bash
+./scripts/restore.sh --input backups/edudoroit-backup-manual.tar.gz --yes
+```
+
+Skróty przez `Makefile`:
+```bash
+make backup
+make restore BACKUP=backups/edudoroit-backup-manual.tar.gz
+```
+
+Uwaga:
+- `restore` nadpisuje dane (`/app/data`, `/app/uploads`) i jest operacją destrukcyjną.
+- Skrypty używają `docker compose run` na serwisie `backend`, więc działają z tymi samymi wolumenami co aplikacja.
+
 Pełny reset lokalnego środowiska (usuwa dane):
 
 ```bash

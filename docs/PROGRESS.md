@@ -333,7 +333,7 @@
 
 ## Step P5-stabilization-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po commicie)
+- Commit: `c424c1f`
 - Description: Wymuszenie reguły domknięcia: status `closed` wymaga wcześniejszego `closure summary`.
 
 ### Implementation Plan
@@ -394,3 +394,61 @@
 
 ### Skills created/updated
 - `docs/skills/ticket-closure-guard.md` (created)
+
+## Step P5-security-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po commicie)
+- Description: Backup/restore SQLite + uploads jako bezpieczny proces operacyjny dla lokalnego Docker Compose.
+
+### Implementation Plan
+- Dodać skrypty `scripts/backup.sh` i `scripts/restore.sh`.
+- Wymusić bezpieczne zachowanie skryptów (`set -euo pipefail`, walidacja wejścia, potwierdzenie `--yes` dla restore).
+- Domyślnie wykonywać backup w trybie spójnym (krótkie zatrzymanie backend/frontend), z opcją `--hot`.
+- Dodać cele `make backup` i `make restore BACKUP=...`.
+- Uzupełnić README o instrukcję backup/restore.
+- Dodać skill operacyjny dla agentów (`sqlite-backup-restore`).
+- Uruchomić pełne testy i smoke E2E po restore.
+
+### Files changed
+- `scripts/backup.sh`
+- `scripts/restore.sh`
+- `Makefile`
+- `README.md`
+- `docs/skills/sqlite-backup-restore.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (25/25)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- Backup/restore scripts:
+  - `./scripts/backup.sh --output backups/edudoroit-step-p5-security-01.tar.gz --force` -> PASS
+  - `./scripts/restore.sh --input backups/edudoroit-step-p5-security-01.tar.gz --yes` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline po restore (API + React routes):
+  - OTP login user -> PASS
+  - create ticket (+ attachment) -> PASS
+  - my tickets -> PASS
+  - ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status (`verified` -> `in_progress`) -> PASS
+  - close guard (`closed` bez summary -> `400`, po summary -> `200`) -> PASS
+  - DevTodo sync -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Dodane skrypty backup/restore działające na tych samych wolumenach co aplikacja.
+- Restore jest operacją świadomie destrukcyjną (wymaga `--yes`).
+- Backup domyślnie robi snapshot spójny (krótkie zatrzymanie usług), z opcją `--hot` dla szybkiego backupu.
+- Dokumentacja operacyjna i skill dla agentów zostały dodane.
+- Brak regresji funkcjonalnej po restore (potwierdzone smoke E2E).
+
+### Skills created/updated
+- `docs/skills/sqlite-backup-restore.md` (created)

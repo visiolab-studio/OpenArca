@@ -139,6 +139,9 @@
     "comments": "Comments",
     "history": "Change history",
     "addComment": "Add comment",
+    "closureSummaryLabel": "Closure summary",
+    "closureSummaryHint": "This summary will be saved as a final comment and is required before closing the ticket.",
+    "closureSummaryPlaceholder": "Describe what was delivered, how the fix was validated, and what was handed off.",
     "internal": "Internal",
     "commentType": "Comment type",
     "loadError": "Failed to load tickets",
@@ -283,6 +286,7 @@
     "validation_error": "Validation error",
     "unsupported_file_type": "Unsupported file type.",
     "completion_comment_required": "Add completion comment (minimum 5 characters).",
+    "closure_summary_required": "To close the ticket, add a closure summary first.",
     "ticket_not_available": "You cannot link a task to this ticket.",
     "internal_error": "Internal server error",
     "no_changes": "No changes to save"

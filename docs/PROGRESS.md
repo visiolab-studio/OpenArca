@@ -265,7 +265,7 @@
 
 ## Step P5-analytics-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po commicie)
+- Commit: `f4fc422`
 - Description: Metryki użycia funkcji na telemetry events (`GET /api/tickets/stats/usage`) z agregacją 30d + daily breakdown 14d.
 
 ### Implementation Plan
@@ -330,3 +330,67 @@
 
 ### Skills created/updated
 - `docs/skills/feature-usage-metrics.md` (created)
+
+## Step P5-stabilization-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po commicie)
+- Description: Wymuszenie reguły domknięcia: status `closed` wymaga wcześniejszego `closure summary`.
+
+### Implementation Plan
+- Dodać backend guard dla transition `* -> closed`.
+- Sprawdzać istnienie publicznego komentarza `is_closure_summary = 1`.
+- Zwracać jednoznaczny błąd `closure_summary_required` przy braku summary.
+- Uzupełnić i naprawić testy lifecycle zamknięcia ticketów.
+- Dodać test integracyjny dla reguły close guard (negative + positive path).
+- Dodać skill operacyjny dla tej reguły i checklisty regresji.
+- Uruchomić pełne quality gates i smoke E2E baseline.
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/i18n/en.json`
+- `docs/skills/ticket-closure-guard.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (25/25)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+- RBAC/ownership check (test + flow):
+  - zamknięcie ticketu bez closure summary -> `400 closure_summary_required` (PASS)
+  - zamknięcie po closure summary -> `200` (PASS)
+
+### E2E run
+- Manual scripted E2E baseline (API + React routes):
+  - OTP login user -> PASS
+  - create ticket (+ attachment) -> PASS
+  - my tickets -> PASS
+  - ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status (`verified` -> `in_progress`) -> PASS
+  - DevTodo sync -> PASS
+  - close ticket without closure summary -> PASS (`400 closure_summary_required`)
+  - add closure summary -> PASS
+  - close ticket with closure summary -> PASS (`200`)
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Backend blokuje transition do `closed` bez publicznego closure summary.
+- Dodany kod błędu `closure_summary_required` dla jednoznacznej obsługi po stronie UI/API.
+- W `TicketDetail` dodane pole `Podsumowanie zamknięcia` widoczne przy wyborze statusu `Zamknięte`.
+- Zapis z `TicketDetail` automatycznie dodaje komentarz closure summary przed zmianą statusu na `closed`.
+- Dodane tłumaczenia komunikatu `closure_summary_required` w PL/EN.
+- Testy lifecycle zostały dopasowane do nowej reguły, bez regresji pozostałych flow.
+- Dodany skill operacyjny dla reguły zamykania i checklisty regresji.
+
+### Skills created/updated
+- `docs/skills/ticket-closure-guard.md` (created)

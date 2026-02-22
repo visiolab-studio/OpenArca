@@ -20,6 +20,16 @@ let userAuth;
 let devAuth;
 let userTicket;
 
+async function addClosureSummary({ ticketId, token, content }) {
+  return request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      content: content || "Podsumowanie zamknięcia: wykonano poprawkę i wdrożono zmiany.",
+      is_closure_summary: true
+    });
+}
+
 test.before(async () => {
   const env = initTestEnv();
   envRoot = env.root;
@@ -181,6 +191,13 @@ test("telemetry records ticket.created and ticket.closed events", async () => {
       })
     );
   assert.equal(created.statusCode, 201);
+
+  const summary = await addClosureSummary({
+    ticketId: created.body.id,
+    token: devAuth.token,
+    content: "Podsumowanie zamknięcia dla telemetry ticket.closed."
+  });
+  assert.equal(summary.statusCode, 201);
 
   const closed = await request
     .patch(`/api/tickets/${created.body.id}`)
@@ -372,6 +389,45 @@ test("user cannot mark comment as closure summary", async () => {
 
   assert.equal(forbidden.statusCode, 403);
   assert.equal(forbidden.body.error, "forbidden");
+});
+
+test("closing ticket requires closure summary comment", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Closing workflow should require closure summary before closed status"
+      })
+    );
+  assert.equal(created.statusCode, 201);
+
+  const verify = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "verified" });
+  assert.equal(verify.statusCode, 200);
+
+  const closeWithoutSummary = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "closed" });
+  assert.equal(closeWithoutSummary.statusCode, 400);
+  assert.equal(closeWithoutSummary.body.error, "closure_summary_required");
+
+  const summary = await addClosureSummary({
+    ticketId: created.body.id,
+    token: devAuth.token,
+    content: "Closure summary wymagane przed zamknięciem: naprawiono i wdrożono."
+  });
+  assert.equal(summary.statusCode, 201);
+
+  const closeWithSummary = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "closed" });
+  assert.equal(closeWithSummary.statusCode, 200);
+  assert.equal(closeWithSummary.body.status, "closed");
 });
 
 test("developer todo scope is isolated per user and linked ticket access is restricted", async () => {
@@ -605,6 +661,13 @@ test("reopening ticket from kanban reactivates linked dev task", async () => {
   const linkedTask = tasksAfterAccept.body.active.find((task) => task.ticket_id === created.body.id);
   assert.ok(linkedTask);
   assert.equal(linkedTask.status, "todo");
+
+  const summary = await addClosureSummary({
+    ticketId: created.body.id,
+    token: devAuth.token,
+    content: "Podsumowanie dla scenariusza reopen w kanban."
+  });
+  assert.equal(summary.statusCode, 201);
 
   const closeTicket = await request
     .patch(`/api/tickets/${created.body.id}`)

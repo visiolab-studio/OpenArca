@@ -38,6 +38,7 @@ export default function TicketDetailPage() {
   const [uploadFiles, setUploadFiles] = useState([]);
   const [developerUsers, setDeveloperUsers] = useState([]);
   const [isQuickAccepting, setIsQuickAccepting] = useState(false);
+  const [closureSummaryText, setClosureSummaryText] = useState("");
 
   const [editForm, setEditForm] = useState(null);
 
@@ -110,6 +111,13 @@ export default function TicketDetailPage() {
     return !isDeveloper && ticket.status === "submitted";
   }, [ticket, isDeveloper]);
 
+  const hasClosureSummary = useMemo(() => {
+    if (!ticket?.comments) return false;
+    return ticket.comments.some(
+      (comment) => Number(comment.is_closure_summary) === 1 && Number(comment.is_internal) !== 1
+    );
+  }, [ticket?.comments]);
+
   async function handleUpdateTicket(event) {
     event.preventDefault();
     if (!editForm) return;
@@ -118,6 +126,25 @@ export default function TicketDetailPage() {
 
     try {
       if (isDeveloper) {
+        const isClosingTransition = ticket.status !== "closed" && editForm.status === "closed";
+        const summaryToSave = closureSummaryText.trim();
+
+        if (isClosingTransition) {
+          if (!summaryToSave && !hasClosureSummary) {
+            setError("closure_summary_required");
+            return;
+          }
+
+          if (summaryToSave) {
+            await addComment(id, {
+              content: summaryToSave,
+              type: "comment",
+              is_internal: false,
+              is_closure_summary: true
+            });
+          }
+        }
+
         await patchTicket(id, {
           status: editForm.status,
           priority: editForm.priority,
@@ -128,6 +155,7 @@ export default function TicketDetailPage() {
           internal_note: editForm.internal_note || null,
           category: editForm.category
         });
+        setClosureSummaryText("");
       } else {
         await patchTicket(id, {
           title: editForm.title,
@@ -430,6 +458,20 @@ export default function TicketDetailPage() {
                         }
                       />
                     </label>
+
+                    {ticket.status !== "closed" && editForm.status === "closed" ? (
+                      <label className="form-group form-group-wide">
+                        <span className="form-label">{t("tickets.closureSummaryLabel")}</span>
+                        <textarea
+                          className="form-textarea"
+                          rows={4}
+                          value={closureSummaryText}
+                          placeholder={t("tickets.closureSummaryPlaceholder")}
+                          onChange={(event) => setClosureSummaryText(event.target.value)}
+                        />
+                        <small className="form-hint">{t("tickets.closureSummaryHint")}</small>
+                      </label>
+                    ) : null}
                   </div>
                 ) : null}
 

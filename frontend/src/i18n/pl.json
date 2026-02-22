@@ -139,6 +139,9 @@
     "comments": "Komentarze",
     "history": "Historia zmian",
     "addComment": "Dodaj komentarz",
+    "closureSummaryLabel": "Podsumowanie zamknięcia",
+    "closureSummaryHint": "To podsumowanie zostanie zapisane jako komentarz końcowy i jest wymagane przed zamknięciem zgłoszenia.",
+    "closureSummaryPlaceholder": "Opisz co zostało wykonane, jak zweryfikowano poprawkę i co zostało przekazane.",
     "internal": "Wewnętrzny",
     "commentType": "Typ komentarza",
     "loadError": "Nie udało się pobrać zgłoszeń",
@@ -283,6 +286,7 @@
     "validation_error": "Błąd walidacji",
     "unsupported_file_type": "Nieobsługiwany typ pliku.",
     "completion_comment_required": "Dodaj komentarz realizacji (minimum 5 znaków).",
+    "closure_summary_required": "Aby zamknąć zgłoszenie, dodaj podsumowanie zamknięcia.",
     "ticket_not_available": "Nie możesz powiązać zadania z tym zgłoszeniem.",
     "internal_error": "Wystąpił błąd serwera",
     "no_changes": "Brak zmian do zapisania"

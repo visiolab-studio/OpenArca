@@ -787,6 +787,10 @@ button {
   gap: 6px;
 }
 
+.form-group-wide {
+  grid-column: 1 / -1;
+}
+
 .form-label {
   font-size: 14px;
   font-weight: 500;

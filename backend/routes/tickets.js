@@ -209,6 +209,21 @@ function historyValue(value) {
   return String(value);
 }
 
+function hasClosureSummaryComment(ticketId) {
+  const row = db
+    .prepare(
+      `SELECT 1
+       FROM comments
+       WHERE ticket_id = ?
+         AND is_closure_summary = 1
+         AND is_internal = 0
+       LIMIT 1`
+    )
+    .get(ticketId);
+
+  return Boolean(row);
+}
+
 function parseSqliteDateToEpochMs(value) {
   if (value == null) return null;
 
@@ -1014,6 +1029,12 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
     const newStatus = Object.prototype.hasOwnProperty.call(payload, "status")
       ? payload.status
       : oldStatus;
+
+    const isClosingTransition = isDeveloper && oldStatus !== "closed" && newStatus === "closed";
+    if (isClosingTransition && !hasClosureSummaryComment(req.params.id)) {
+      return res.status(400).json({ error: "closure_summary_required" });
+    }
+
     const nextAssigneeId = Object.prototype.hasOwnProperty.call(payload, "assignee_id")
       ? payload.assignee_id
       : current.assignee_id;

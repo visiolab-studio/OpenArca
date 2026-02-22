@@ -397,7 +397,7 @@
 
 ## Step P5-security-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po commicie)
+- Commit: `17dc7db`
 - Description: Backup/restore SQLite + uploads jako bezpieczny proces operacyjny dla lokalnego Docker Compose.
 
 ### Implementation Plan
@@ -452,3 +452,53 @@
 
 ### Skills created/updated
 - `docs/skills/sqlite-backup-restore.md` (created)
+
+## Step P5-security-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po commicie)
+- Description: Audyt RBAC i ownership checks dla krytycznych endpointów write.
+
+### Implementation Plan
+- Dodać dedykowany test integracyjny audytu RBAC/ownership.
+- Pokryć endpointy developer-only: `projects`, `settings`, `users`.
+- Pokryć ownership dla ticketów i komentarzy internal.
+- Potwierdzić pozytywne ścieżki dla roli developer.
+- Dodać skill operacyjny i aktualizację playbooka agentów.
+- Uruchomić pełne quality gates + smoke E2E.
+
+### Files changed
+- `backend/tests/rbac.ownership.audit.integration.test.js`
+- `docs/skills/rbac-ownership-checks.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (28/28)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline (API + React routes):
+  - OTP login user -> PASS
+  - create ticket (+ attachment) -> PASS
+  - my tickets -> PASS
+  - ticket detail -> PASS
+  - OTP login developer -> PASS
+  - overview + board -> PASS
+  - move ticket status (`verified` -> `in_progress`) -> PASS
+  - close guard flow (`closed` bez summary -> 400, po summary -> 200) -> PASS
+  - DevTodo sync -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/ticket/:id`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+
+### Result
+- Dodany test regresyjny RBAC/ownership obejmujący krytyczne endpointy write.
+- Potwierdzony brak dostępu usera do akcji developer-only.
+- Potwierdzona ochrona ownership dla cudzych ticketów i komentarzy internal.
+- Potwierdzone dozwolone ścieżki mutacji dla developera.
+
+### Skills created/updated
+- `docs/skills/rbac-ownership-checks.md` (created)

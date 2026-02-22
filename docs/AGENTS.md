@@ -56,3 +56,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/feature-usage-metrics.md`
 - `docs/skills/ticket-closure-guard.md`
 - `docs/skills/sqlite-backup-restore.md`
+- `docs/skills/rbac-ownership-checks.md`

@@ -280,3 +280,91 @@ test("tickets service activation stats returns null metrics when samples are mis
     sample_size: 0
   });
 });
+
+test("tickets service returns usage stats payload with coverage and 14-day timeline", () => {
+  const capture = { sql: "", params: [] };
+  const today = new Date();
+  const utcDate = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-${String(today.getUTCDate()).padStart(2, "0")}`;
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql) => {
+        if (sql.includes("GROUP BY event_name")) {
+          return [
+            {
+              event_name: "ticket.created",
+              count: 4,
+              unique_users: 3,
+              last_event_at: "2026-02-22 10:00:00"
+            },
+            {
+              event_name: "board.drag",
+              count: 2,
+              unique_users: 1,
+              last_event_at: "2026-02-23 08:30:00"
+            }
+          ];
+        }
+        if (sql.includes("GROUP BY day, event_name")) {
+          return [
+            { day: utcDate, event_name: "ticket.created", count: 1 },
+            { day: utcDate, event_name: "board.drag", count: 1 }
+          ];
+        }
+        return [];
+      },
+      getFactory: (sql) => {
+        if (sql.includes("events_count")) {
+          return { events_count: 6, unique_users_count: 4, active_days_count: 3 };
+        }
+        if (sql.includes("WHERE event_name IN")) {
+          return { count: 6 };
+        }
+        return { count: 8 };
+      }
+    })
+  });
+
+  const payload = service.getUsageStats();
+
+  assert.equal(payload.window_days, 30);
+  assert.equal(payload.events.ticket_created.count_30d, 4);
+  assert.equal(payload.events.board_drag.count_30d, 2);
+  assert.equal(payload.events.closure_summary_added.count_30d, 0);
+  assert.deepEqual(payload.totals, {
+    events_30d: 6,
+    unique_users_30d: 4,
+    active_days_30d: 3
+  });
+  assert.equal(payload.daily_breakdown_14d.length, 14);
+  const timelineTotal = payload.daily_breakdown_14d.reduce((sum, row) => sum + (row.total || 0), 0);
+  assert.equal(timelineTotal, 2);
+  assert.deepEqual(payload.known_events_coverage_30d, {
+    known_events_count: 6,
+    all_events_count: 8,
+    coverage_percent: 75
+  });
+});
+
+test("tickets service usage stats defaults coverage to 100 for empty telemetry window", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: () => [],
+      getFactory: (sql) => {
+        if (sql.includes("events_count")) {
+          return { events_count: 0, unique_users_count: 0, active_days_count: 0 };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  const payload = service.getUsageStats();
+
+  assert.equal(payload.daily_breakdown_14d.length, 14);
+  assert.deepEqual(payload.known_events_coverage_30d, {
+    known_events_count: 0,
+    all_events_count: 0,
+    coverage_percent: 100
+  });
+});

@@ -1320,7 +1320,7 @@
 
 ## Step P6A-09
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `253dc41`
 - Description: Migracja endpointu `GET /api/tickets/stats/activation` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1364,6 +1364,56 @@
 - Dodano testy unit dla metody service:
   - scenariusz deterministyczny,
   - brak próbek i fallback `null/0`.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-10
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/stats/usage` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Przenieść `buildFeatureUsageStats` i helpery timeline do `backend/services/tickets.js`.
+- Dodać `ticketsService.getUsageStats()` z zachowaniem obecnego kontraktu odpowiedzi.
+- Przepiąć route `/api/tickets/stats/usage` na wywołanie service.
+- Dodać testy unit dla `getUsageStats` (agregacja eventów + coverage + timeline 14d).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (67/67)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets/stats/usage` został przeniesiony do `ticketsService.getUsageStats()`.
+- Helpery usage (event map + timeline 14d + coverage 30d) zostały przeniesione do service.
+- Route `tickets` została odchudzona i utrzymuje ten sam kontrakt odpowiedzi.
+- Dodano testy unit dla:
+  - agregacji usage i coverage,
+  - fallbacku coverage=100 przy pustym oknie telemetry.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

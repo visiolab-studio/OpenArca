@@ -651,7 +651,7 @@
 
 ## Step P5-stabilization-03
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `5dd62e0`
 - Description: Ujednolicenie finalizacji `closed` vs `waiting` tak, aby zadanie deva trafiało do zakończonych również przy `waiting`.
 
 ### Implementation Plan
@@ -693,3 +693,64 @@
 
 ### Skills created/updated
 - `docs/skills/devtodo-ticket-sync.md` (updated)
+
+## Step P5.5-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Related tickets linking (MVP) w TicketDetail.
+
+### Implementation Plan
+- Dodać model relacji ticketów w DB (`ticket_relations`) z ochroną przed duplikatami i self-link.
+- Dodać endpointy backend:
+  - `GET /api/tickets/:id/related`
+  - `POST /api/tickets/:id/related` (developer-only)
+  - `DELETE /api/tickets/:id/related/:relatedId` (developer-only)
+- Rozszerzyć `GET /api/tickets/:id` o `related_tickets`.
+- Dodać testy integracyjne RBAC/ownership i flow create/list/delete relacji.
+- Dodać API frontend i prostą sekcję „Powiązane zgłoszenia” w `TicketDetail`.
+- Dodać i18n PL/EN dla nowych komunikatów.
+- Dodać skill operacyjny dla wzorca `related tickets linking`.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `frontend/src/api/tickets.js`
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/i18n/en.json`
+- `docs/skills/related-tickets-linking.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (32/32)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+- Dodatkowa walidacja flow relacji:
+  - test integracyjny `developer can create, list and remove related ticket links` -> PASS
+  - test integracyjny `related ticket links keep RBAC on write and visibility filter on read` -> PASS
+
+### Result
+- Dodano model relacji ticketów (`ticket_relations`) z unikalną parą i ochroną przed self-link.
+- Dodano endpointy `GET/POST/DELETE` dla relacji oraz wpięcie `related_tickets` do `GET /api/tickets/:id`.
+- Dodano prosty panel relacji w `TicketDetail` (lista + add/remove po numerze dla developera).
+- Poprawiono UX/CSS panelu relacji: cały wiersz jest kartą (tytuł + statusy + akcje), bez wąskiej ramki na sam tytuł.
+- Poprawiono globalne style formularzy: checkbox w `check-row` ma rozmiar natywny i nie rozciąga się do `100%` szerokości.
+- Zabezpieczono RBAC/ownership:
+  - user nie może mutować relacji,
+  - user widzi tylko relacje do ticketów, do których ma dostęp.
+
+### Skills created/updated
+- `docs/skills/related-tickets-linking.md` (created)

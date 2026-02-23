@@ -42,6 +42,20 @@ export async function addComment(id, payload) {
   return response.data;
 }
 
+export async function getRelatedTickets(id) {
+  const response = await client.get(`/api/tickets/${id}/related`);
+  return response.data;
+}
+
+export async function addRelatedTicket(id, payload) {
+  const response = await client.post(`/api/tickets/${id}/related`, payload);
+  return response.data;
+}
+
+export async function deleteRelatedTicket(id, relatedId) {
+  await client.delete(`/api/tickets/${id}/related/${relatedId}`);
+}
+
 export async function addAttachments(id, files) {
   const formData = new FormData();
   for (const file of files) {

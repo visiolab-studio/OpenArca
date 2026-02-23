@@ -37,6 +37,11 @@ const idParamsSchema = z.object({
   id: z.string().uuid()
 });
 
+const relatedParamsSchema = z.object({
+  id: z.string().uuid(),
+  relatedId: z.string().uuid()
+});
+
 const createTicketSchema = z
   .object({
     title: z.string().min(10).max(300),
@@ -131,6 +136,24 @@ const createCommentSchema = z
   })
   .strict();
 
+const createRelationSchema = z
+  .object({
+    related_ticket_id: z.string().uuid().optional(),
+    related_ticket_number: z.coerce.number().int().min(1).optional()
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const hasId = Boolean(value.related_ticket_id);
+    const hasNumber = value.related_ticket_number != null;
+    if (hasId === hasNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["related_ticket_id"],
+        message: "Provide exactly one: related_ticket_id or related_ticket_number"
+      });
+    }
+  });
+
 function normalizeText(input) {
   if (typeof input !== "string") return undefined;
   const value = input.trim();
@@ -222,6 +245,53 @@ function hasClosureSummaryComment(ticketId) {
     .get(ticketId);
 
   return Boolean(row);
+}
+
+function normalizeRelationPair(ticketIdA, ticketIdB) {
+  return ticketIdA < ticketIdB ? [ticketIdA, ticketIdB] : [ticketIdB, ticketIdA];
+}
+
+function getRelatedTickets(ticketId, user) {
+  const params = [ticketId, ticketId, ticketId];
+  let reporterFilterSql = "";
+
+  if (user.role !== "developer") {
+    reporterFilterSql = "AND t.reporter_id = ?";
+    params.push(user.id);
+  }
+
+  return db
+    .prepare(
+      `SELECT
+        t.id,
+        t.number,
+        t.title,
+        t.status,
+        t.priority,
+        t.category,
+        t.assignee_id,
+        t.reporter_id,
+        t.updated_at
+      FROM ticket_relations tr
+      JOIN tickets t ON t.id = CASE
+        WHEN tr.ticket_id_a = ? THEN tr.ticket_id_b
+        ELSE tr.ticket_id_a
+      END
+      WHERE (tr.ticket_id_a = ? OR tr.ticket_id_b = ?)
+        ${reporterFilterSql}
+      ORDER BY datetime(t.updated_at) DESC`
+    )
+    .all(...params);
+}
+
+function resolveRelatedTicket({ relatedTicketId, relatedTicketNumber }) {
+  if (relatedTicketId) {
+    return db.prepare("SELECT id, number FROM tickets WHERE id = ?").get(relatedTicketId);
+  }
+
+  return db
+    .prepare("SELECT id, number FROM tickets WHERE number = ?")
+    .get(Number(relatedTicketNumber));
 }
 
 function parseSqliteDateToEpochMs(value) {
@@ -906,6 +976,87 @@ router.get("/workload", authRequired, (req, res) => {
   return res.json(payload);
 });
 
+router.get(
+  "/:id/related",
+  authRequired,
+  validate({ params: idParamsSchema }),
+  (req, res) => {
+    const ticket = getTicket(req.params.id);
+    ensureTicketAccess(ticket, req.user);
+    return res.json(getRelatedTickets(req.params.id, req.user));
+  }
+);
+
+router.post(
+  "/:id/related",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: idParamsSchema, body: createRelationSchema }),
+  (req, res) => {
+    const sourceTicket = getTicket(req.params.id);
+    ensureTicketAccess(sourceTicket, req.user);
+
+    const relatedTicket = resolveRelatedTicket({
+      relatedTicketId: req.body.related_ticket_id,
+      relatedTicketNumber: req.body.related_ticket_number
+    });
+
+    if (!relatedTicket) {
+      return res.status(404).json({ error: "related_ticket_not_found" });
+    }
+
+    if (relatedTicket.id === req.params.id) {
+      return res.status(400).json({ error: "ticket_relation_self_ref" });
+    }
+
+    const [ticketIdA, ticketIdB] = normalizeRelationPair(req.params.id, relatedTicket.id);
+    const existing = db
+      .prepare(
+        "SELECT id FROM ticket_relations WHERE ticket_id_a = ? AND ticket_id_b = ? LIMIT 1"
+      )
+      .get(ticketIdA, ticketIdB);
+
+    if (!existing) {
+      db.prepare(
+        `INSERT INTO ticket_relations (
+          id, ticket_id_a, ticket_id_b, relation_type, created_by, created_at
+        ) VALUES (?, ?, ?, 'related', ?, datetime('now'))`
+      ).run(uuidv4(), ticketIdA, ticketIdB, req.user.id);
+    }
+
+    return res.status(existing ? 200 : 201).json(getRelatedTickets(req.params.id, req.user));
+  }
+);
+
+router.delete(
+  "/:id/related/:relatedId",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: relatedParamsSchema }),
+  (req, res) => {
+    const sourceTicket = getTicket(req.params.id);
+    ensureTicketAccess(sourceTicket, req.user);
+
+    const relatedTicket = getTicket(req.params.relatedId);
+    if (!relatedTicket) {
+      return res.status(404).json({ error: "related_ticket_not_found" });
+    }
+
+    const [ticketIdA, ticketIdB] = normalizeRelationPair(req.params.id, req.params.relatedId);
+    const result = db
+      .prepare("DELETE FROM ticket_relations WHERE ticket_id_a = ? AND ticket_id_b = ?")
+      .run(ticketIdA, ticketIdB);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: "ticket_relation_not_found" });
+    }
+
+    return res.status(204).send();
+  }
+);
+
 router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res) => {
   const ticket = getTicket(req.params.id);
   if (!ticket) {
@@ -943,7 +1094,9 @@ router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res
     )
     .all(ticket.id);
 
-  return res.json({ ...ticket, comments, attachments, history });
+  const relatedTickets = getRelatedTickets(ticket.id, req.user);
+
+  return res.json({ ...ticket, comments, attachments, history, related_tickets: relatedTickets });
 });
 
 router.post(

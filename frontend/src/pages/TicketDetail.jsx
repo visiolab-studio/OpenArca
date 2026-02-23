@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  addRelatedTicket,
   addAttachments,
   addComment,
+  deleteRelatedTicket,
   getTicket,
   patchTicket
 } from "../api/tickets";
@@ -39,6 +41,8 @@ export default function TicketDetailPage() {
   const [developerUsers, setDeveloperUsers] = useState([]);
   const [isQuickAccepting, setIsQuickAccepting] = useState(false);
   const [closureSummaryText, setClosureSummaryText] = useState("");
+  const [relatedTicketNumber, setRelatedTicketNumber] = useState("");
+  const [relatedBusy, setRelatedBusy] = useState(false);
 
   const [editForm, setEditForm] = useState(null);
 
@@ -246,6 +250,43 @@ export default function TicketDetailPage() {
       setError(parseError(acceptError));
     } finally {
       setIsQuickAccepting(false);
+    }
+  }
+
+  async function handleAddRelated(event) {
+    event.preventDefault();
+    if (!isDeveloper || !relatedTicketNumber.trim()) return;
+
+    const number = Number.parseInt(relatedTicketNumber, 10);
+    if (!Number.isInteger(number) || number <= 0) {
+      setError("validation_error");
+      return;
+    }
+
+    setError("");
+    setRelatedBusy(true);
+    try {
+      await addRelatedTicket(id, { related_ticket_number: number });
+      setRelatedTicketNumber("");
+      await loadTicket();
+    } catch (relatedError) {
+      setError(parseError(relatedError));
+    } finally {
+      setRelatedBusy(false);
+    }
+  }
+
+  async function handleRemoveRelated(relatedId) {
+    if (!isDeveloper) return;
+    setError("");
+    setRelatedBusy(true);
+    try {
+      await deleteRelatedTicket(id, relatedId);
+      await loadTicket();
+    } catch (relatedError) {
+      setError(parseError(relatedError));
+    } finally {
+      setRelatedBusy(false);
     }
   }
 
@@ -639,6 +680,55 @@ export default function TicketDetailPage() {
               <p>{ticket.internal_note}</p>
             </article>
           ) : null}
+
+          <article className="card">
+            <h2 className="card-title">{t("tickets.relatedTitle")}</h2>
+
+            {Array.isArray(ticket.related_tickets) && ticket.related_tickets.length > 0 ? (
+              <ul className="list-plain">
+                {ticket.related_tickets.map((related) => (
+                  <li key={related.id} className="related-ticket-item">
+                    <Link to={`/ticket/${related.id}`} className="related-ticket-link">
+                      <span className="related-ticket-ref">#{String(related.number).padStart(3, "0")}</span>
+                      <span className="related-ticket-title">{related.title}</span>
+                    </Link>
+                    <div className="related-ticket-badges">
+                      <StatusBadge status={related.status} />
+                      <PriorityBadge priority={related.priority} />
+                      {isDeveloper ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleRemoveRelated(related.id)}
+                          disabled={relatedBusy}
+                        >
+                          {t("tickets.relatedRemove")}
+                        </button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{t("tickets.relatedEmpty")}</p>
+            )}
+
+            {isDeveloper ? (
+              <form className="row-actions" onSubmit={handleAddRelated}>
+                <input
+                  className="form-input"
+                  type="number"
+                  min="1"
+                  value={relatedTicketNumber}
+                  placeholder={t("tickets.relatedAddPlaceholder")}
+                  onChange={(event) => setRelatedTicketNumber(event.target.value)}
+                />
+                <button type="submit" className="btn btn-primary" disabled={relatedBusy}>
+                  {relatedBusy ? t("app.loading") : t("tickets.relatedAdd")}
+                </button>
+              </form>
+            ) : null}
+          </article>
         </aside>
       </div>
     </section>

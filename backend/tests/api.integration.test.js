@@ -93,6 +93,118 @@ test("rbac blocks user from developer-only endpoint", async () => {
   assert.ok(Array.isArray(allowed.body.done));
 });
 
+test("developer can create, list and remove related ticket links", async () => {
+  const ticketA = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(makeBugPayload({ title: "Related link source ticket" }));
+  assert.equal(ticketA.statusCode, 201);
+
+  const ticketB = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(makeBugPayload({ title: "Related link target ticket" }));
+  assert.equal(ticketB.statusCode, 201);
+
+  const createRelation = await request
+    .post(`/api/tickets/${ticketA.body.id}/related`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ related_ticket_id: ticketB.body.id });
+  assert.equal(createRelation.statusCode, 201);
+  assert.equal(createRelation.body.length, 1);
+  assert.equal(createRelation.body[0].id, ticketB.body.id);
+
+  const createDuplicate = await request
+    .post(`/api/tickets/${ticketA.body.id}/related`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ related_ticket_number: ticketB.body.number });
+  assert.equal(createDuplicate.statusCode, 200);
+  assert.equal(createDuplicate.body.length, 1);
+
+  const listRelation = await request
+    .get(`/api/tickets/${ticketA.body.id}/related`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(listRelation.statusCode, 200);
+  assert.equal(listRelation.body.length, 1);
+  assert.equal(listRelation.body[0].id, ticketB.body.id);
+
+  const ticketDetail = await request
+    .get(`/api/tickets/${ticketA.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(ticketDetail.statusCode, 200);
+  assert.ok(Array.isArray(ticketDetail.body.related_tickets));
+  assert.equal(ticketDetail.body.related_tickets.length, 1);
+  assert.equal(ticketDetail.body.related_tickets[0].id, ticketB.body.id);
+
+  const deleteRelation = await request
+    .delete(`/api/tickets/${ticketA.body.id}/related/${ticketB.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(deleteRelation.statusCode, 204);
+
+  const listAfterDelete = await request
+    .get(`/api/tickets/${ticketA.body.id}/related`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(listAfterDelete.statusCode, 200);
+  assert.equal(listAfterDelete.body.length, 0);
+});
+
+test("related ticket links keep RBAC on write and visibility filter on read", async () => {
+  const otherUserAuth = await loginByOtp({
+    request,
+    db,
+    email: uniqueEmail("related-other")
+  });
+  assert.equal(otherUserAuth.user.role, "user");
+
+  const mineA = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(makeBugPayload({ title: "Related visibility source" }));
+  assert.equal(mineA.statusCode, 201);
+
+  const mineB = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(makeBugPayload({ title: "Related visibility allowed target" }));
+  assert.equal(mineB.statusCode, 201);
+
+  const foreignTicket = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${otherUserAuth.token}`)
+    .field(makeBugPayload({ title: "Related visibility hidden target" }));
+  assert.equal(foreignTicket.statusCode, 201);
+
+  const userCannotCreate = await request
+    .post(`/api/tickets/${mineA.body.id}/related`)
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .send({ related_ticket_id: mineB.body.id });
+  assert.equal(userCannotCreate.statusCode, 403);
+
+  const devCreatesOwnRelation = await request
+    .post(`/api/tickets/${mineA.body.id}/related`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ related_ticket_id: mineB.body.id });
+  assert.equal(devCreatesOwnRelation.statusCode, 201);
+
+  const devCreatesForeignRelation = await request
+    .post(`/api/tickets/${mineA.body.id}/related`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ related_ticket_id: foreignTicket.body.id });
+  assert.equal(devCreatesForeignRelation.statusCode, 201);
+
+  const mineVisible = await request
+    .get(`/api/tickets/${mineA.body.id}/related`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(mineVisible.statusCode, 200);
+  assert.equal(mineVisible.body.some((ticket) => ticket.id === mineB.body.id), true);
+  assert.equal(mineVisible.body.some((ticket) => ticket.id === foreignTicket.body.id), false);
+
+  const userCannotDelete = await request
+    .delete(`/api/tickets/${mineA.body.id}/related/${mineB.body.id}`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(userCannotDelete.statusCode, 403);
+});
+
 test("user can upload avatar and profile exposes avatar metadata", async () => {
   const tinyPng = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6p9RkAAAAASUVORK5CYII=",

@@ -112,6 +112,14 @@ const schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS ticket_relations (
+    id TEXT PRIMARY KEY,
+    ticket_id_a TEXT NOT NULL REFERENCES tickets(id),
+    ticket_id_b TEXT NOT NULL REFERENCES tickets(id),
+    relation_type TEXT NOT NULL DEFAULT 'related',
+    created_by TEXT REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS telemetry_events (
     id TEXT PRIMARY KEY,
     event_name TEXT NOT NULL,
@@ -128,6 +136,9 @@ const schemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_otp_codes_email_used ON otp_codes(email, used)`,
   `CREATE INDEX IF NOT EXISTS idx_tickets_reporter_status ON tickets(reporter_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_comments_ticket ON comments(ticket_id, created_at)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_relations_pair_unique ON ticket_relations(ticket_id_a, ticket_id_b)`,
+  `CREATE INDEX IF NOT EXISTS idx_ticket_relations_a ON ticket_relations(ticket_id_a)`,
+  `CREATE INDEX IF NOT EXISTS idx_ticket_relations_b ON ticket_relations(ticket_id_b)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_event_created ON telemetry_events(event_name, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ticket_created ON telemetry_events(ticket_id, created_at)`
 ];

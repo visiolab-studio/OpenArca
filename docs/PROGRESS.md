@@ -1470,7 +1470,7 @@
 
 ## Step P6A-12
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `09cd75e`
 - Description: Migracja endpointu `GET /api/tickets/board` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1514,6 +1514,56 @@
   - `_stats` liczone per status.
 - Route Kanban została odchudzona do adaptera HTTP.
 - Dodano test unit dla grupowania board i poprawności `_stats`.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-13
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/:id/external-references` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.getExternalReferences({ ticketId })` i przenieść SQL z helpera route.
+- Dodać `ticketsService.getTicketById({ ticketId })` jako bezpieczny accessor dla read endpointów.
+- Przepiąć route `GET /api/tickets/:id/external-references` na service layer.
+- Dodać testy unit metody `getExternalReferences`.
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (72/72)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dla flow `external-references` dodano service methods:
+  - `ticketsService.getTicketById({ ticketId })`
+  - `ticketsService.getExternalReferences({ ticketId })`
+- Endpoint `GET /api/tickets/:id/external-references` działa przez service layer.
+- Zredukowano SQL w route (helpery route delegują do service).
+- Dodano testy unit dla metod service: ticket by id + external references.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

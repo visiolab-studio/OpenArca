@@ -328,27 +328,11 @@ function resolveRelatedTicket({ relatedTicketId, relatedTicketNumber }) {
 }
 
 function getExternalReferences(ticketId) {
-  return db
-    .prepare(
-      `SELECT
-        r.id,
-        r.ref_type,
-        r.url,
-        r.title,
-        r.created_by,
-        r.created_at,
-        u.name AS created_by_name,
-        u.email AS created_by_email
-      FROM ticket_external_references r
-      LEFT JOIN users u ON u.id = r.created_by
-      WHERE r.ticket_id = ?
-      ORDER BY datetime(r.created_at) DESC`
-    )
-    .all(ticketId);
+  return ticketsService.getExternalReferences({ ticketId });
 }
 
 function getTicket(ticketId) {
-  return db.prepare("SELECT * FROM tickets WHERE id = ?").get(ticketId);
+  return ticketsService.getTicketById({ ticketId });
 }
 
 function validateForeignRefs(payload) {

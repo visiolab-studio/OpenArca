@@ -92,6 +92,43 @@ test("tickets service validates user context", () => {
   }, /invalid_user_context/);
 });
 
+test("tickets service returns ticket by id", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        assert.match(sql, /SELECT \* FROM tickets WHERE id = \?/);
+        assert.deepEqual(params, ["ticket-1"]);
+        return { id: "ticket-1", title: "Sample ticket" };
+      }
+    })
+  });
+
+  const ticket = service.getTicketById({ ticketId: "ticket-1" });
+  assert.deepEqual(ticket, { id: "ticket-1", title: "Sample ticket" });
+});
+
+test("tickets service returns external references ordered by created_at desc", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [
+    { id: "ref-2", ref_type: "deployment", url: "https://example.com/deploy/2" },
+    { id: "ref-1", ref_type: "git_pr", url: "https://example.com/pr/1" }
+  ];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql, params) => {
+        assert.match(sql, /FROM ticket_external_references r/);
+        assert.match(sql, /ORDER BY datetime\(r\.created_at\) DESC/);
+        assert.deepEqual(params, ["ticket-1"]);
+        return rows;
+      }
+    })
+  });
+
+  const result = service.getExternalReferences({ ticketId: "ticket-1" });
+  assert.deepEqual(result, rows);
+});
+
 test("tickets service returns board grouped by known statuses with _stats", () => {
   const capture = { sql: "", params: [] };
   const rows = [

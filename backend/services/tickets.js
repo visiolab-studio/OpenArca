@@ -294,6 +294,32 @@ function createTicketsService(options = {}) {
   const database = options.db || db;
 
   return {
+    getTicketById({ ticketId }) {
+      return database
+        .prepare("SELECT * FROM tickets WHERE id = ?")
+        .get(ticketId);
+    },
+
+    getExternalReferences({ ticketId }) {
+      return database
+        .prepare(
+          `SELECT
+            r.id,
+            r.ref_type,
+            r.url,
+            r.title,
+            r.created_by,
+            r.created_at,
+            u.name AS created_by_name,
+            u.email AS created_by_email
+          FROM ticket_external_references r
+          LEFT JOIN users u ON u.id = r.created_by
+          WHERE r.ticket_id = ?
+          ORDER BY datetime(r.created_at) DESC`
+        )
+        .all(ticketId);
+    },
+
     listTickets({ user, query }) {
       const filters = [];
       const params = [];

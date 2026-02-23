@@ -1783,7 +1783,7 @@
 
 ## Step P6A-18
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `1095ae5`
 - Description: Migracja endpointu `DELETE /api/tickets/:id/external-references/:refId` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1832,6 +1832,65 @@
 - Endpoint `DELETE /api/tickets/:id/external-references/:refId` działa jako cienki adapter route->service.
 - Kontrakt endpointu zachowany: `204` przy sukcesie.
 - Dodano testy unit dla scenariuszy success + wszystkie ścieżki błędów.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-19
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `POST /api/tickets/:id/related` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.createTicketRelation({ ticketId, user, payload })`.
+- Przenieść do service rozpoznanie ticketu powiązanego (`related_ticket_id` lub `related_ticket_number`).
+- Zachować istniejącą semantykę błędów:
+  - `ticket_not_found`,
+  - `related_ticket_not_found`,
+  - `ticket_relation_self_ref`,
+  - `forbidden`.
+- Przenieść logikę insert/fallback existing relation do service i zwracać listę related tickets.
+- Przepiąć route `POST /api/tickets/:id/related` do schematu route->service->response.
+- Dodać testy unit service (success + wszystkie ścieżki błędów).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (95/95)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.createTicketRelation({ ticketId, user, payload })`.
+- Przeniesiono do service:
+  - rozpoznanie powiązanego ticketu po `related_ticket_id` lub `related_ticket_number`,
+  - walidację błędów (`ticket_not_found`, `related_ticket_not_found`, `ticket_relation_self_ref`, `forbidden`),
+  - insert relacji z idempotencją (duplikat zwraca istniejący stan bez nowego wpisu).
+- Endpoint `POST /api/tickets/:id/related` działa przez route->service i zachowuje kontrakt:
+  - `201` przy nowej relacji,
+  - `200` przy istniejącej relacji.
+- Dodano testy unit service dla scenariuszy success + wszystkie ścieżki błędów.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

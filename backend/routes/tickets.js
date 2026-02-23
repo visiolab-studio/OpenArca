@@ -288,16 +288,6 @@ function getRelatedTickets(ticketId, user) {
   return ticketsService.getRelatedTickets({ ticketId, user });
 }
 
-function resolveRelatedTicket({ relatedTicketId, relatedTicketNumber }) {
-  if (relatedTicketId) {
-    return db.prepare("SELECT id, number FROM tickets WHERE id = ?").get(relatedTicketId);
-  }
-
-  return db
-    .prepare("SELECT id, number FROM tickets WHERE number = ?")
-    .get(Number(relatedTicketNumber));
-}
-
 function getTicket(ticketId) {
   return ticketsService.getTicketById({ ticketId });
 }
@@ -528,39 +518,29 @@ router.post(
   requireRole("developer"),
   writeLimiter,
   validate({ params: idParamsSchema, body: createRelationSchema }),
-  (req, res) => {
-    const sourceTicket = getTicket(req.params.id);
-    ensureTicketAccess(sourceTicket, req.user);
-
-    const relatedTicket = resolveRelatedTicket({
-      relatedTicketId: req.body.related_ticket_id,
-      relatedTicketNumber: req.body.related_ticket_number
-    });
-
-    if (!relatedTicket) {
-      return res.status(404).json({ error: "related_ticket_not_found" });
+  (req, res, next) => {
+    try {
+      const result = ticketsService.createTicketRelation({
+        ticketId: req.params.id,
+        user: req.user,
+        payload: req.body
+      });
+      return res.status(result.created ? 201 : 200).json(result.items);
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "related_ticket_not_found") {
+        return res.status(404).json({ error: "related_ticket_not_found" });
+      }
+      if (error?.code === "ticket_relation_self_ref") {
+        return res.status(400).json({ error: "ticket_relation_self_ref" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      return next(error);
     }
-
-    if (relatedTicket.id === req.params.id) {
-      return res.status(400).json({ error: "ticket_relation_self_ref" });
-    }
-
-    const [ticketIdA, ticketIdB] = normalizeRelationPair(req.params.id, relatedTicket.id);
-    const existing = db
-      .prepare(
-        "SELECT id FROM ticket_relations WHERE ticket_id_a = ? AND ticket_id_b = ? LIMIT 1"
-      )
-      .get(ticketIdA, ticketIdB);
-
-    if (!existing) {
-      db.prepare(
-        `INSERT INTO ticket_relations (
-          id, ticket_id_a, ticket_id_b, relation_type, created_by, created_at
-        ) VALUES (?, ?, ?, 'related', ?, datetime('now'))`
-      ).run(uuidv4(), ticketIdA, ticketIdB, req.user.id);
-    }
-
-    return res.status(existing ? 200 : 201).json(getRelatedTickets(req.params.id, req.user));
   }
 );
 

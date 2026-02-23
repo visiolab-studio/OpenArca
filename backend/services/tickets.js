@@ -34,6 +34,10 @@ function getReadableTicketOrThrow({ database, ticketId, user }) {
   return ticket;
 }
 
+function normalizeRelationPair(ticketIdA, ticketIdB) {
+  return ticketIdA < ticketIdB ? [ticketIdA, ticketIdB] : [ticketIdB, ticketIdA];
+}
+
 function parseSqliteDateToEpochMs(value) {
   if (value == null) return null;
 
@@ -359,6 +363,58 @@ function createTicketsService(options = {}) {
           ORDER BY datetime(t.updated_at) DESC`
         )
         .all(...params);
+    },
+
+    createTicketRelation({ ticketId, user, payload }) {
+      assertUserContext(user);
+
+      if (user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      const sourceTicket = this.getTicketById({ ticketId });
+      if (!sourceTicket) {
+        throw createServiceError("ticket_not_found", 404);
+      }
+
+      let relatedTicket = null;
+      if (payload?.related_ticket_id) {
+        relatedTicket = database
+          .prepare("SELECT id, number FROM tickets WHERE id = ?")
+          .get(payload.related_ticket_id);
+      } else if (payload?.related_ticket_number != null) {
+        relatedTicket = database
+          .prepare("SELECT id, number FROM tickets WHERE number = ?")
+          .get(Number(payload.related_ticket_number));
+      }
+
+      if (!relatedTicket) {
+        throw createServiceError("related_ticket_not_found", 404);
+      }
+
+      if (relatedTicket.id === ticketId) {
+        throw createServiceError("ticket_relation_self_ref", 400);
+      }
+
+      const [ticketIdA, ticketIdB] = normalizeRelationPair(ticketId, relatedTicket.id);
+      const existing = database
+        .prepare("SELECT id FROM ticket_relations WHERE ticket_id_a = ? AND ticket_id_b = ? LIMIT 1")
+        .get(ticketIdA, ticketIdB);
+
+      if (!existing) {
+        database
+          .prepare(
+            `INSERT INTO ticket_relations (
+              id, ticket_id_a, ticket_id_b, relation_type, created_by, created_at
+            ) VALUES (?, ?, ?, 'related', ?, datetime('now'))`
+          )
+          .run(uuidv4(), ticketIdA, ticketIdB, user.id);
+      }
+
+      return {
+        created: !existing,
+        items: this.getRelatedTickets({ ticketId, user })
+      };
     },
 
     getExternalReferences({ ticketId }) {

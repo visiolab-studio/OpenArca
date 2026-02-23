@@ -159,6 +159,192 @@ test("tickets service returns related tickets for user with reporter filter", ()
   assert.deepEqual(result, rows);
 });
 
+test("tickets service creates ticket relation and returns refreshed related list", () => {
+  const capture = { sql: "", params: [] };
+  const insertedPairs = [];
+  const relatedRows = [{ id: "ticket-related", number: 2 }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          if (params[0] === "ticket-source") {
+            return { id: "ticket-source", reporter_id: "user-1" };
+          }
+          return undefined;
+        }
+        if (sql.includes("SELECT id, number FROM tickets WHERE id = ?")) {
+          if (params[0] === "ticket-related") {
+            return { id: "ticket-related", number: 2 };
+          }
+          return undefined;
+        }
+        if (sql.includes("SELECT id FROM ticket_relations")) {
+          return undefined;
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM ticket_relations tr")) {
+          return relatedRows;
+        }
+        return [];
+      },
+      runFactory: (sql, params) => {
+        if (sql.includes("INSERT INTO ticket_relations")) {
+          insertedPairs.push(params);
+          return { changes: 1 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  const result = service.createTicketRelation({
+    ticketId: "ticket-source",
+    user: { id: "dev-1", role: "developer" },
+    payload: { related_ticket_id: "ticket-related" }
+  });
+
+  assert.equal(result.created, true);
+  assert.deepEqual(result.items, relatedRows);
+  assert.equal(insertedPairs.length, 1);
+  assert.equal(insertedPairs[0][1], "ticket-related");
+  assert.equal(insertedPairs[0][2], "ticket-source");
+  assert.equal(insertedPairs[0][3], "dev-1");
+});
+
+test("tickets service create relation returns existing list when relation already exists", () => {
+  const capture = { sql: "", params: [] };
+  const insertCalls = [];
+  const relatedRows = [{ id: "ticket-related", number: 2 }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-source", reporter_id: "user-1" };
+        }
+        if (sql.includes("SELECT id, number FROM tickets WHERE number = ?")) {
+          assert.deepEqual(params, [2]);
+          return { id: "ticket-related", number: 2 };
+        }
+        if (sql.includes("SELECT id FROM ticket_relations")) {
+          return { id: "existing-relation" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM ticket_relations tr")) {
+          return relatedRows;
+        }
+        return [];
+      },
+      runFactory: (sql) => {
+        if (sql.includes("INSERT INTO ticket_relations")) {
+          insertCalls.push(1);
+        }
+        return { changes: 1 };
+      }
+    })
+  });
+
+  const result = service.createTicketRelation({
+    ticketId: "ticket-source",
+    user: { id: "dev-1", role: "developer" },
+    payload: { related_ticket_number: 2 }
+  });
+
+  assert.equal(result.created, false);
+  assert.deepEqual(result.items, relatedRows);
+  assert.equal(insertCalls.length, 0);
+});
+
+test("tickets service create relation throws ticket_not_found for missing source", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketRelation({
+      ticketId: "missing-source",
+      user: { id: "dev-1", role: "developer" },
+      payload: { related_ticket_id: "ticket-related" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service create relation throws related_ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-source", reporter_id: "user-1" };
+        }
+        if (sql.includes("SELECT id, number FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketRelation({
+      ticketId: "ticket-source",
+      user: { id: "dev-1", role: "developer" },
+      payload: { related_ticket_id: "missing-target" }
+    });
+  }, (error) => error.code === "related_ticket_not_found" && error.status === 404);
+});
+
+test("tickets service create relation throws ticket_relation_self_ref", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-source", reporter_id: "user-1" };
+        }
+        if (sql.includes("SELECT id, number FROM tickets WHERE id = ?")) {
+          return { id: "ticket-source", number: 1 };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketRelation({
+      ticketId: "ticket-source",
+      user: { id: "dev-1", role: "developer" },
+      payload: { related_ticket_id: "ticket-source" }
+    });
+  }, (error) => error.code === "ticket_relation_self_ref" && error.status === 400);
+});
+
+test("tickets service create relation throws forbidden for non-developer", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture)
+  });
+
+  assert.throws(() => {
+    service.createTicketRelation({
+      ticketId: "ticket-source",
+      user: { id: "user-1", role: "user" },
+      payload: { related_ticket_id: "ticket-related" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
 test("tickets service returns external references ordered by created_at desc", () => {
   const capture = { sql: "", params: [] };
   const rows = [

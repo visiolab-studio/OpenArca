@@ -200,6 +200,86 @@ test("tickets service creates ticket with attachments and returns telemetry meta
   assert.equal(attachmentInsertCalls[1].params[6], "user-1");
 });
 
+test("tickets service appends ticket.created domain event to outbox contract", () => {
+  const capture = { sql: "", params: [] };
+  const dbStub = createDbStub(capture, {
+    getFactory: (sql) => {
+      if (sql.includes("SELECT value FROM settings WHERE key = 'ticket_counter'")) {
+        return { value: "12" };
+      }
+      return undefined;
+    },
+    runFactory: () => ({ changes: 1 })
+  });
+  const appendedEvents = [];
+  const service = createTicketsService({
+    db: dbStub,
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-1", outbox_id: "outbox-1", status: "pending" };
+    }
+  });
+
+  const result = service.createTicket({
+    user: { id: "user-1", role: "user" },
+    payload: {
+      title: "Ticket title long enough",
+      description: "A".repeat(120),
+      urgency_reporter: "high",
+      category: "bug"
+    },
+    files: []
+  });
+
+  assert.equal(result.shouldTrackTicketCreated, true);
+  assert.equal(appendedEvents.length, 1);
+  assert.equal(appendedEvents[0].database, dbStub);
+  assert.equal(appendedEvents[0].eventName, "ticket.created");
+  assert.equal(appendedEvents[0].aggregateType, "ticket");
+  assert.equal(typeof appendedEvents[0].aggregateId, "string");
+  assert.ok(appendedEvents[0].aggregateId.length > 10);
+  assert.equal(appendedEvents[0].actorUserId, "user-1");
+  assert.deepEqual(appendedEvents[0].payload, {
+    status: "submitted",
+    category: "bug",
+    urgency_reporter: "high"
+  });
+  assert.equal(appendedEvents[0].source, "core");
+});
+
+test("tickets service create ticket propagates append-domain-event errors", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT value FROM settings WHERE key = 'ticket_counter'")) {
+          return { value: "3" };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    appendDomainEventToOutbox: () => {
+      const error = new Error("domain_event_failed");
+      error.code = "domain_event_failed";
+      throw error;
+    }
+  });
+
+  assert.throws(() => {
+    service.createTicket({
+      user: { id: "user-1", role: "user" },
+      payload: {
+        title: "Ticket title long enough",
+        description: "A".repeat(120),
+        urgency_reporter: "normal",
+        category: "other"
+      },
+      files: []
+    });
+  }, (error) => error.code === "domain_event_failed");
+});
+
 test("tickets service create ticket validates project reference", () => {
   const capture = { sql: "", params: [] };
   const service = createTicketsService({

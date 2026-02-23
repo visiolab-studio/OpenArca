@@ -3,6 +3,123 @@ const db = require("../db");
 
 const OUTBOX_STATUSES = new Set(["pending", "processing", "failed", "sent"]);
 
+function normalizeDomainEventInput({
+  eventName,
+  aggregateType,
+  aggregateId,
+  actorUserId = null,
+  payload = {},
+  correlationId = null,
+  source = "core",
+  occurredAt = null
+}) {
+  const normalizedEventName = String(eventName || "").trim();
+  const normalizedAggregateType = String(aggregateType || "").trim();
+  const normalizedAggregateId = String(aggregateId || "").trim();
+  const normalizedSource = String(source || "core").trim() || "core";
+
+  if (!normalizedEventName) {
+    const error = new Error("event_name_required");
+    error.code = "event_name_required";
+    error.status = 400;
+    throw error;
+  }
+
+  if (!normalizedAggregateType || !normalizedAggregateId) {
+    const error = new Error("aggregate_reference_required");
+    error.code = "aggregate_reference_required";
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    normalizedEventName,
+    normalizedAggregateType,
+    normalizedAggregateId,
+    actorUserId: actorUserId || null,
+    payloadJson: JSON.stringify(payload || {}),
+    correlationId: correlationId || null,
+    normalizedSource,
+    occurredAt: occurredAt || null
+  };
+}
+
+function appendDomainEventToOutbox({
+  database,
+  eventName,
+  aggregateType,
+  aggregateId,
+  actorUserId = null,
+  payload = {},
+  correlationId = null,
+  source = "core",
+  occurredAt = null
+}) {
+  const normalized = normalizeDomainEventInput({
+    eventName,
+    aggregateType,
+    aggregateId,
+    actorUserId,
+    payload,
+    correlationId,
+    source,
+    occurredAt
+  });
+
+  const eventId = uuidv4();
+  const outboxId = uuidv4();
+
+  database
+    .prepare(
+      `INSERT INTO domain_events (
+        id,
+        event_name,
+        aggregate_type,
+        aggregate_id,
+        actor_user_id,
+        payload_json,
+        correlation_id,
+        source,
+        occurred_at,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), datetime('now'))`
+    )
+    .run(
+      eventId,
+      normalized.normalizedEventName,
+      normalized.normalizedAggregateType,
+      normalized.normalizedAggregateId,
+      normalized.actorUserId,
+      normalized.payloadJson,
+      normalized.correlationId,
+      normalized.normalizedSource,
+      normalized.occurredAt
+    );
+
+  database
+    .prepare(
+      `INSERT INTO event_outbox (
+        id,
+        event_id,
+        event_name,
+        payload_json,
+        status,
+        attempts,
+        next_attempt_at,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, 'pending', 0, datetime('now'), datetime('now'), datetime('now'))`
+    )
+    .run(outboxId, eventId, normalized.normalizedEventName, normalized.payloadJson);
+
+  return {
+    outbox_id: outboxId,
+    event_id: eventId,
+    event_name: normalized.normalizedEventName,
+    status: "pending"
+  };
+}
+
 function createDomainEventsService(options = {}) {
   const database = options.db || db;
 
@@ -17,83 +134,21 @@ function createDomainEventsService(options = {}) {
       source = "core",
       occurredAt = null
     }) {
-      const normalizedEventName = String(eventName || "").trim();
-      const normalizedAggregateType = String(aggregateType || "").trim();
-      const normalizedAggregateId = String(aggregateId || "").trim();
-      const normalizedSource = String(source || "core").trim() || "core";
-
-      if (!normalizedEventName) {
-        const error = new Error("event_name_required");
-        error.code = "event_name_required";
-        error.status = 400;
-        throw error;
-      }
-
-      if (!normalizedAggregateType || !normalizedAggregateId) {
-        const error = new Error("aggregate_reference_required");
-        error.code = "aggregate_reference_required";
-        error.status = 400;
-        throw error;
-      }
-
-      const payloadJson = JSON.stringify(payload || {});
-      const eventId = uuidv4();
-      const outboxId = uuidv4();
-      const effectiveOccurredAt = occurredAt || null;
-
       const tx = database.transaction(() => {
-        database
-          .prepare(
-            `INSERT INTO domain_events (
-              id,
-              event_name,
-              aggregate_type,
-              aggregate_id,
-              actor_user_id,
-              payload_json,
-              correlation_id,
-              source,
-              occurred_at,
-              created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), datetime('now'))`
-          )
-          .run(
-            eventId,
-            normalizedEventName,
-            normalizedAggregateType,
-            normalizedAggregateId,
-            actorUserId || null,
-            payloadJson,
-            correlationId || null,
-            normalizedSource,
-            effectiveOccurredAt
-          );
-
-        database
-          .prepare(
-            `INSERT INTO event_outbox (
-              id,
-              event_id,
-              event_name,
-              payload_json,
-              status,
-              attempts,
-              next_attempt_at,
-              created_at,
-              updated_at
-            ) VALUES (?, ?, ?, ?, 'pending', 0, datetime('now'), datetime('now'), datetime('now'))`
-          )
-          .run(outboxId, eventId, normalizedEventName, payloadJson);
+        return appendDomainEventToOutbox({
+          database,
+          eventName,
+          aggregateType,
+          aggregateId,
+          actorUserId,
+          payload,
+          correlationId,
+          source,
+          occurredAt
+        });
       });
 
-      tx();
-
-      return {
-        outbox_id: outboxId,
-        event_id: eventId,
-        event_name: normalizedEventName,
-        status: "pending"
-      };
+      return tx();
     },
 
     getOutboxEntries({ limit = 100, status = null } = {}) {
@@ -154,6 +209,7 @@ function createDomainEventsService(options = {}) {
 const domainEventsService = createDomainEventsService();
 
 module.exports = {
+  appendDomainEventToOutbox,
   createDomainEventsService,
   domainEventsService
 };

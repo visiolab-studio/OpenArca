@@ -2,6 +2,7 @@ const db = require("../db");
 const { z } = require("zod");
 const { v4: uuidv4 } = require("uuid");
 const { TELEMETRY_EVENT_NAMES } = require("./telemetry");
+const { appendDomainEventToOutbox } = require("./domain-events");
 const { taskSyncService: defaultTaskSyncService } = require("./task-sync");
 const {
   TICKET_STATUSES,
@@ -396,6 +397,7 @@ function buildBoardPayload(database) {
 function createTicketsService(options = {}) {
   const database = options.db || db;
   const taskSyncService = options.taskSyncService || defaultTaskSyncService;
+  const appendDomainEvent = options.appendDomainEventToOutbox || appendDomainEventToOutbox;
 
   return {
     getTicketById({ ticketId }) {
@@ -473,6 +475,20 @@ function createTicketsService(options = {}) {
             );
           }
         }
+
+        appendDomainEvent({
+          database,
+          eventName: "ticket.created",
+          aggregateType: "ticket",
+          aggregateId: ticketId,
+          actorUserId: user.id,
+          payload: {
+            status: "submitted",
+            category: payload.category || "other",
+            urgency_reporter: payload.urgency_reporter || "normal"
+          },
+          source: "core"
+        });
 
         return {
           ticketId,

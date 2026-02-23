@@ -1404,7 +1404,7 @@
 
 ## Step P6B-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `67d77b7`
 - Description: Fundament event backbone + durable outbox (infra i API publish bez zmiany flow biznesowego).
 
 ### Implementation Plan
@@ -1468,6 +1468,56 @@
 ### Skills created/updated
 - `docs/skills/domain-events-outbox.md` (created)
 - `docs/AGENTS.md` (updated links list)
+
+## Step P6B-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Publikacja pierwszego eventu domenowego `ticket.created` do `domain_events` + `event_outbox`.
+
+### Implementation Plan
+- Dodać helper `appendDomainEventToOutbox(...)` w `domain-events` do użycia w transakcjach domenowych.
+- Wpiąć publikację `ticket.created` bezpośrednio w transakcji `ticketsService.createTicket(...)` (atomowo z zapisem ticketu).
+- Zachować dotychczasowe telemetry `ticket.created` (bez zmiany kontraktu API).
+- Dodać testy unit dla `ticketsService.createTicket(...)` sprawdzające insert event/outbox.
+- Dodać test integracyjny API: po utworzeniu ticketu outbox zawiera `ticket.created`.
+- Zaktualizować skill outbox o wzorzec publish w transakcji domenowej.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/domain-events.js`
+- `backend/services/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/domain-events-outbox.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (137/137)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /login` -> 200
+  - `GET /health` -> 200
+
+### Result
+- Dodano helper `appendDomainEventToOutbox(...)` i wspólną normalizację payloadu w `domain-events`.
+- `ticketsService.createTicket(...)` publikuje teraz `ticket.created` atomowo w tej samej transakcji co insert ticketu.
+- Zachowano istniejące telemetry `ticket.created` i kontrakt API.
+- Dodano testy:
+  - unit: kontrakt eventu outbox przy `createTicket`,
+  - unit: propagacja błędu publikacji eventu w flow create ticket,
+  - integration: po `POST /api/tickets` istnieje wpis `ticket.created` w `domain_events/event_outbox`.
+- Uzupełniono skill o wzorzec publikacji eventu wewnątrz transakcji domenowej.
+
+### Skills created/updated
+- `docs/skills/domain-events-outbox.md` (updated)
 
 ## Step P6A-08
 - Status: Done (approved by user)

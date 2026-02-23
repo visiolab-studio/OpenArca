@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const supertest = require("supertest");
-const { cleanupTestEnv, initTestEnv, loginByOtp, uniqueEmail } = require("./helpers");
+const { cleanupTestEnv, initTestEnv, loginByOtp, makeBugPayload, uniqueEmail } = require("./helpers");
 
 let envRoot;
 let db;
@@ -49,6 +49,48 @@ test("events outbox endpoint keeps RBAC for standard user", async () => {
 
   assert.equal(response.statusCode, 403);
   assert.equal(response.body.error, "forbidden");
+});
+
+test("creating ticket writes ticket.created event into durable outbox", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Outbox domain event should exist after create ticket"
+      })
+    );
+
+  assert.equal(created.statusCode, 201);
+  assert.equal(typeof created.body.id, "string");
+
+  const row = db
+    .prepare(
+      `SELECT
+        eo.event_name AS event_name,
+        eo.status AS outbox_status,
+        de.aggregate_id AS aggregate_id,
+        de.actor_user_id AS actor_user_id,
+        de.payload_json AS payload_json
+      FROM event_outbox eo
+      JOIN domain_events de ON de.id = eo.event_id
+      WHERE de.aggregate_type = 'ticket'
+        AND de.aggregate_id = ?
+        AND eo.event_name = 'ticket.created'
+      ORDER BY datetime(eo.created_at) DESC
+      LIMIT 1`
+    )
+    .get(created.body.id);
+
+  assert.ok(row);
+  assert.equal(row.event_name, "ticket.created");
+  assert.equal(row.outbox_status, "pending");
+  assert.equal(row.aggregate_id, created.body.id);
+  assert.equal(row.actor_user_id, userAuth.user.id);
+
+  const payload = JSON.parse(row.payload_json || "{}");
+  assert.equal(payload.status, "submitted");
+  assert.equal(payload.category, "bug");
 });
 
 test("events outbox endpoint returns persisted outbox items for developer", async () => {

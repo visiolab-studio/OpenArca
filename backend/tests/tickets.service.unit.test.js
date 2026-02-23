@@ -345,6 +345,134 @@ test("tickets service create relation throws forbidden for non-developer", () =>
   }, (error) => error.code === "forbidden" && error.status === 403);
 });
 
+test("tickets service deletes ticket relation for developer", () => {
+  const capture = { sql: "", params: [] };
+  const deleteCalls = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          if (params[0] === "ticket-source") {
+            return { id: "ticket-source", reporter_id: "user-1" };
+          }
+          if (params[0] === "ticket-related") {
+            return { id: "ticket-related", reporter_id: "user-1" };
+          }
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql, params) => {
+        if (sql.includes("DELETE FROM ticket_relations")) {
+          deleteCalls.push(params);
+          return { changes: 1 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  service.deleteTicketRelation({
+    ticketId: "ticket-source",
+    relatedTicketId: "ticket-related",
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.equal(deleteCalls.length, 1);
+  assert.deepEqual(deleteCalls[0], ["ticket-related", "ticket-source"]);
+});
+
+test("tickets service delete relation throws ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?") && params[0] === "missing-source") {
+          return undefined;
+        }
+        return { id: "ticket-related", reporter_id: "user-1" };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.deleteTicketRelation({
+      ticketId: "missing-source",
+      relatedTicketId: "ticket-related",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service delete relation throws related_ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          if (params[0] === "ticket-source") {
+            return { id: "ticket-source", reporter_id: "user-1" };
+          }
+          if (params[0] === "missing-related") {
+            return undefined;
+          }
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.deleteTicketRelation({
+      ticketId: "ticket-source",
+      relatedTicketId: "missing-related",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "related_ticket_not_found" && error.status === 404);
+});
+
+test("tickets service delete relation throws ticket_relation_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-source", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql) => {
+        if (sql.includes("DELETE FROM ticket_relations")) {
+          return { changes: 0 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.deleteTicketRelation({
+      ticketId: "ticket-source",
+      relatedTicketId: "ticket-related",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "ticket_relation_not_found" && error.status === 404);
+});
+
+test("tickets service delete relation throws forbidden for non-developer", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture)
+  });
+
+  assert.throws(() => {
+    service.deleteTicketRelation({
+      ticketId: "ticket-source",
+      relatedTicketId: "ticket-related",
+      user: { id: "user-1", role: "user" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
 test("tickets service returns external references ordered by created_at desc", () => {
   const capture = { sql: "", params: [] };
   const rows = [

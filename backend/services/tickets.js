@@ -417,6 +417,33 @@ function createTicketsService(options = {}) {
       };
     },
 
+    deleteTicketRelation({ ticketId, relatedTicketId, user }) {
+      assertUserContext(user);
+
+      if (user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      const sourceTicket = this.getTicketById({ ticketId });
+      if (!sourceTicket) {
+        throw createServiceError("ticket_not_found", 404);
+      }
+
+      const relatedTicket = this.getTicketById({ ticketId: relatedTicketId });
+      if (!relatedTicket) {
+        throw createServiceError("related_ticket_not_found", 404);
+      }
+
+      const [ticketIdA, ticketIdB] = normalizeRelationPair(ticketId, relatedTicketId);
+      const result = database
+        .prepare("DELETE FROM ticket_relations WHERE ticket_id_a = ? AND ticket_id_b = ?")
+        .run(ticketIdA, ticketIdB);
+
+      if (result.changes === 0) {
+        throw createServiceError("ticket_relation_not_found", 404);
+      }
+    },
+
     getExternalReferences({ ticketId }) {
       return database
         .prepare(

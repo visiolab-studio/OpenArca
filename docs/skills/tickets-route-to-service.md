@@ -112,6 +112,15 @@ return res.status(result.created ? 201 : 200).json(result.items);
 ```
 
 ```js
+ticketsService.deleteTicketRelation({
+  ticketId: req.params.id,
+  relatedTicketId: req.params.relatedId,
+  user: req.user
+});
+return res.status(204).send();
+```
+
+```js
 const payload = ticketsService.getTicketDetail({
   ticketId: req.params.id,
   user: req.user
@@ -138,6 +147,7 @@ return res.json(payload);
 - Brak mapowania `external_reference_not_found` na 404 przy DELETE endpointu.
 - Rozjechanie widoczności related tickets (developer globalnie, user tylko własne).
 - Brak mapowania `related_ticket_not_found` i `ticket_relation_self_ref` przy POST endpointu related.
+- Brak mapowania `ticket_relation_not_found` przy DELETE endpointu related.
 - Rozjechanie widoczności komentarzy w detailu (developer wszystkie, user bez internal).
 - Brak walidacji kontekstu użytkownika w service.
 

@@ -280,10 +280,6 @@ function hasClosureSummaryComment(ticketId) {
   return Boolean(row);
 }
 
-function normalizeRelationPair(ticketIdA, ticketIdB) {
-  return ticketIdA < ticketIdB ? [ticketIdA, ticketIdB] : [ticketIdB, ticketIdA];
-}
-
 function getRelatedTickets(ticketId, user) {
   return ticketsService.getRelatedTickets({ ticketId, user });
 }
@@ -550,25 +546,29 @@ router.delete(
   requireRole("developer"),
   writeLimiter,
   validate({ params: relatedParamsSchema }),
-  (req, res) => {
-    const sourceTicket = getTicket(req.params.id);
-    ensureTicketAccess(sourceTicket, req.user);
-
-    const relatedTicket = getTicket(req.params.relatedId);
-    if (!relatedTicket) {
-      return res.status(404).json({ error: "related_ticket_not_found" });
+  (req, res, next) => {
+    try {
+      ticketsService.deleteTicketRelation({
+        ticketId: req.params.id,
+        relatedTicketId: req.params.relatedId,
+        user: req.user
+      });
+      return res.status(204).send();
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "related_ticket_not_found") {
+        return res.status(404).json({ error: "related_ticket_not_found" });
+      }
+      if (error?.code === "ticket_relation_not_found") {
+        return res.status(404).json({ error: "ticket_relation_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      return next(error);
     }
-
-    const [ticketIdA, ticketIdB] = normalizeRelationPair(req.params.id, req.params.relatedId);
-    const result = db
-      .prepare("DELETE FROM ticket_relations WHERE ticket_id_a = ? AND ticket_id_b = ?")
-      .run(ticketIdA, ticketIdB);
-
-    if (result.changes === 0) {
-      return res.status(404).json({ error: "ticket_relation_not_found" });
-    }
-
-    return res.status(204).send();
   }
 );
 

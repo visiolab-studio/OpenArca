@@ -13,6 +13,13 @@ function createDbStub(capture, options = {}) {
             return options.rowsFactory(sql, params);
           }
           return [{ id: "ticket-1" }];
+        },
+        get(...params) {
+          capture.params = params;
+          if (typeof options.getFactory === "function") {
+            return options.getFactory(sql, params);
+          }
+          return { count: 0 };
         }
       };
     }
@@ -136,4 +143,63 @@ test("tickets service sets can_open by role and ownership in workload payload", 
   });
   assert.equal(payloadForDeveloper.queue[0].can_open, true);
   assert.equal(payloadForDeveloper.queue[1].can_open, true);
+});
+
+test("tickets service returns overview stats from grouped counts and closed_today query", () => {
+  const capture = { sql: "", params: [] };
+  const groupedRows = [
+    { status: "in_progress", count: 2 },
+    { status: "verified", count: 3 },
+    { status: "submitted", count: 1 },
+    { status: "blocked", count: 4 },
+    { status: "waiting", count: 5 }
+  ];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql) => {
+        if (sql.includes("GROUP BY status")) {
+          return groupedRows;
+        }
+        return [];
+      },
+      getFactory: (sql) => {
+        if (sql.includes("date(closed_at) = date('now')")) {
+          return { count: 7 };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  const payload = service.getOverviewStats();
+
+  assert.deepEqual(payload, {
+    in_progress: 2,
+    waiting: 5,
+    submitted: 1,
+    verified: 3,
+    blocked: 4,
+    closed_today: 7
+  });
+});
+
+test("tickets service overview stats fallback to zeros when rows are missing", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: () => [],
+      getFactory: () => ({ count: 0 })
+    })
+  });
+
+  const payload = service.getOverviewStats();
+
+  assert.deepEqual(payload, {
+    in_progress: 0,
+    waiting: 0,
+    submitted: 0,
+    verified: 0,
+    blocked: 0,
+    closed_today: 0
+  });
 });

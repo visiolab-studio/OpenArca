@@ -160,6 +160,35 @@ function createTicketsService(options = {}) {
       }
 
       return payload;
+    },
+
+    getOverviewStats() {
+      const counts = database
+        .prepare("SELECT status, COUNT(*) AS count FROM tickets GROUP BY status")
+        .all()
+        .reduce((acc, row) => {
+          acc[row.status] = row.count;
+          return acc;
+        }, {});
+
+      const closedToday = database
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM tickets
+           WHERE status = 'closed'
+             AND closed_at IS NOT NULL
+             AND date(closed_at) = date('now')`
+        )
+        .get().count;
+
+      return {
+        in_progress: counts.in_progress || 0,
+        waiting: counts.waiting || 0,
+        submitted: counts.submitted || 0,
+        verified: counts.verified || 0,
+        blocked: counts.blocked || 0,
+        closed_today: closedToday || 0
+      };
     }
   };
 }

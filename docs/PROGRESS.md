@@ -1214,7 +1214,7 @@
 
 ## Step P6A-07
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `a29578c`
 - Description: Migracja endpointu `GET /api/tickets/workload` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1263,6 +1263,57 @@
   - developer otwiera wszystkie rekordy,
   - user tylko własne.
 - Dodano testy unit service dla mapowania workload i reguł `can_open`.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-08
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/stats/overview` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.getOverviewStats()` z aktualną logiką agregacji statusów + `closed_today`.
+- Przepiąć route `/api/tickets/stats/overview` na wywołanie service i zachować kontrakt JSON.
+- Dodać testy unit service dla agregacji i domyślnych zer.
+- Utrzymać RBAC bez zmian (endpoint nadal dostępny dla authenticated user).
+- Zaktualizować skill/checklistę migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (63/63)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets/stats/overview` został przeniesiony do `ticketsService.getOverviewStats()`.
+- Route zachowuje ten sam kontrakt JSON (statusy + `closed_today`).
+- Dodano testy unit dla:
+  - poprawnej agregacji z `GROUP BY status`,
+  - poprawnego wyliczenia `closed_today`,
+  - fallbacku zer dla brakujących danych.
+- Endpoint nadal wymaga `authRequired` i nie zmienia reguł dostępu.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

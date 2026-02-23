@@ -6,6 +6,7 @@ Przenieść logikę endpointów ticketowych do service layer bez zmiany kontrakt
 ## Kiedy stosować
 - Przy refaktorze route `GET /api/tickets`.
 - Przy refaktorze route `GET /api/tickets/workload`.
+- Przy refaktorze route `GET /api/tickets/stats/overview`.
 - Przy przygotowaniu override logic przez Open/Enterprise engine split.
 
 ## Kroki
@@ -34,6 +35,11 @@ const payload = ticketsService.getWorkload({
 return res.json(payload);
 ```
 
+```js
+const payload = ticketsService.getOverviewStats();
+return res.json(payload);
+```
+
 ## Definition of Done
 - [ ] Route jest cienki i nie trzyma logiki SQL.
 - [ ] Payload endpointu nie zmienia się.
@@ -43,6 +49,7 @@ return res.json(payload);
 - Utrata filtra `my=1` dla roli developer.
 - Zmiana kolejności/warunków filtrów i rozjechanie wyników.
 - Utrata mapowania kolejek workload (`in_progress`, `queue`, `blocked`, `submitted`).
+- Rozjechanie licznika `closed_today` lub brak fallbacku zer dla statystyk overview.
 - Brak walidacji kontekstu użytkownika w service.
 
 ## Powiązane pliki w repo

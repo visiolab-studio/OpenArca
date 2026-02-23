@@ -895,32 +895,8 @@ router.get("/board", authRequired, requireRole("developer"), (req, res) => {
 });
 
 router.get("/stats/overview", authRequired, (req, res) => {
-  const counts = db
-    .prepare("SELECT status, COUNT(*) AS count FROM tickets GROUP BY status")
-    .all()
-    .reduce((acc, row) => {
-      acc[row.status] = row.count;
-      return acc;
-    }, {});
-
-  const closedToday = db
-    .prepare(
-      `SELECT COUNT(*) AS count
-       FROM tickets
-       WHERE status = 'closed'
-         AND closed_at IS NOT NULL
-         AND date(closed_at) = date('now')`
-    )
-    .get().count;
-
-  return res.json({
-    in_progress: counts.in_progress || 0,
-    waiting: counts.waiting || 0,
-    submitted: counts.submitted || 0,
-    verified: counts.verified || 0,
-    blocked: counts.blocked || 0,
-    closed_today: closedToday || 0
-  });
+  const payload = ticketsService.getOverviewStats();
+  return res.json(payload);
 });
 
 router.get("/stats/activation", authRequired, requireRole("developer"), (req, res) => {

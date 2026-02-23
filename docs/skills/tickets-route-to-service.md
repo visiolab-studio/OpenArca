@@ -9,6 +9,7 @@ Przenieść logikę endpointów ticketowych do service layer bez zmiany kontrakt
 - Przy refaktorze route `GET /api/tickets/stats/overview`.
 - Przy refaktorze route `GET /api/tickets/stats/activation`.
 - Przy refaktorze route `GET /api/tickets/stats/usage`.
+- Przy refaktorze route `GET /api/tickets/closure-summaries/index-feed`.
 - Przy przygotowaniu override logic przez Open/Enterprise engine split.
 
 ## Kroki
@@ -52,6 +53,14 @@ const payload = ticketsService.getUsageStats();
 return res.json(payload);
 ```
 
+```js
+const payload = ticketsService.getClosureSummaryIndexFeed({
+  limit: req.query.limit ?? 200,
+  updatedSince: req.query.updated_since || null
+});
+return res.json(payload);
+```
+
 ## Definition of Done
 - [ ] Route jest cienki i nie trzyma logiki SQL.
 - [ ] Payload endpointu nie zmienia się.
@@ -64,6 +73,7 @@ return res.json(payload);
 - Rozjechanie licznika `closed_today` lub brak fallbacku zer dla statystyk overview.
 - Rozjechanie wyliczeń activation metrics (pierwszy ticket / pierwsze przypisanie / <=30m).
 - Rozjechanie metryk usage (coverage 30d + timeline 14d).
+- Rozjechanie mapowania feedu closure summary (publiczne podsumowania + updated_since).
 - Brak walidacji kontekstu użytkownika w service.
 
 ## Powiązane pliki w repo

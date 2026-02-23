@@ -1370,7 +1370,7 @@
 
 ## Step P6A-10
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `d6f7df8`
 - Description: Migracja endpointu `GET /api/tickets/stats/usage` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1414,6 +1414,56 @@
 - Dodano testy unit dla:
   - agregacji usage i coverage,
   - fallbacku coverage=100 przy pustym oknie telemetry.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-11
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/closure-summaries/index-feed` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Przenieść `buildClosureSummaryIndexFeed` do `backend/services/tickets.js`.
+- Dodać metodę `ticketsService.getClosureSummaryIndexFeed({ limit, updatedSince })`.
+- Przepiąć route `/api/tickets/closure-summaries/index-feed` na wywołanie service.
+- Dodać testy unit metody feed (mapowanie elementów + filtr `updated_since`).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (69/69)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets/closure-summaries/index-feed` został przeniesiony do `ticketsService.getClosureSummaryIndexFeed(...)`.
+- Logika mapowania feedu i filtra `updated_since` została usunięta z route i przeniesiona do service.
+- Zachowano kontrakt odpowiedzi (`generated_at`, `count`, `items`).
+- Dodano testy unit dla:
+  - mapowania pojedynczego rekordu feedu,
+  - poprawnego użycia filtra `updatedSince`.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

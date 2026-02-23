@@ -368,3 +368,80 @@ test("tickets service usage stats defaults coverage to 100 for empty telemetry w
     coverage_percent: 100
   });
 });
+
+test("tickets service returns closure summary index feed with mapped items", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql, params) => {
+        if (!sql.includes("WITH latest_summaries")) {
+          return [];
+        }
+        assert.deepEqual(params, [5]);
+        return [
+          {
+            summary_id: "comment-1",
+            summary_content: "Naprawiono błąd logowania.",
+            summary_created_at: "2026-02-20 10:00:00",
+            ticket_id: "ticket-1",
+            ticket_number: 1,
+            ticket_title: "Login crash",
+            ticket_status: "closed",
+            ticket_priority: "critical",
+            ticket_category: "bug",
+            ticket_updated_at: "2026-02-20 10:05:00",
+            summary_author_name: "Dev User",
+            summary_author_email: "dev@example.com"
+          }
+        ];
+      }
+    })
+  });
+
+  const payload = service.getClosureSummaryIndexFeed({
+    limit: 5
+  });
+
+  assert.equal(typeof payload.generated_at, "string");
+  assert.equal(payload.count, 1);
+  assert.equal(payload.items.length, 1);
+  assert.deepEqual(payload.items[0], {
+    index_key: "ticket:ticket-1:summary:comment-1",
+    summary_comment_id: "comment-1",
+    summary_content: "Naprawiono błąd logowania.",
+    summary_created_at: "2026-02-20 10:00:00",
+    summary_author_name: "Dev User",
+    summary_author_email: "dev@example.com",
+    ticket_id: "ticket-1",
+    ticket_number: 1,
+    ticket_title: "Login crash",
+    ticket_status: "closed",
+    ticket_priority: "critical",
+    ticket_category: "bug",
+    ticket_updated_at: "2026-02-20 10:05:00"
+  });
+});
+
+test("tickets service closure summary index feed applies updatedSince filter param", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql, params) => {
+        if (!sql.includes("WITH latest_summaries")) {
+          return [];
+        }
+        assert.match(sql, /WHERE datetime\(ls\.summary_created_at\) >= datetime\(\?\)/);
+        assert.deepEqual(params, ["2026-02-20T00:00:00Z", 10]);
+        return [];
+      }
+    })
+  });
+
+  const payload = service.getClosureSummaryIndexFeed({
+    limit: 10,
+    updatedSince: "2026-02-20T00:00:00Z"
+  });
+
+  assert.equal(payload.count, 0);
+  assert.equal(payload.items.length, 0);
+});

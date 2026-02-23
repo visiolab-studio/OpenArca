@@ -1267,6 +1267,65 @@
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)
 
+## Step P6A-25
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Wydzielenie logiki synchronizacji ticket <-> dev tasks do `taskSyncService`.
+
+### Implementation Plan
+- Dodać nowy serwis `backend/services/task-sync.js`:
+  - `ensureDevTaskForAcceptedTicket`,
+  - `normalizeLinkedDevTasksForTicket`.
+- Przenieść zależne helpery (`getNextActiveTaskOrderForUser`) do nowego serwisu.
+- Uprościć `backend/routes/tickets.js`: usunąć lokalne funkcje i używać `taskSyncService`.
+- Nie zmieniać kontraktu API ani event flow.
+- Dodać testy unit dla `taskSyncService` (kluczowe scenariusze sync).
+- Zaktualizować dokumentację skill dla splitu service layer.
+- Zaktualizować `docs/AGENTS.md` o nowy skill.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/task-sync.js`
+- `backend/routes/tickets.js`
+- `backend/tests/task-sync.service.unit.test.js`
+- `docs/skills/task-sync-service-split.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (121/121)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Manual scripted browser baseline (repo nie zawiera Playwright/Cypress):
+  - `GET /health` -> 200
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Wydzielono `taskSyncService` do `backend/services/task-sync.js`.
+- Przeniesiono logikę:
+  - `ensureDevTaskForAcceptedTicket(...)`,
+  - `normalizeLinkedDevTasksForTicket(...)`,
+  - wewnętrzny helper `getNextActiveTaskOrderForUser(...)`.
+- Uproszczono `backend/routes/tickets.js` przez usunięcie lokalnych helperów sync.
+- Zachowano istniejący kontrakt API i flow statusów.
+- Dodano testy unit `backend/tests/task-sync.service.unit.test.js` dla kluczowych scenariuszy sync.
+
+### Skills created/updated
+- `docs/skills/task-sync-service-split.md` (created)
+- `docs/AGENTS.md` (updated links list)
+
 ## Step P6A-08
 - Status: Done (approved by user)
 - Commit: `4a18980`
@@ -2137,7 +2196,7 @@
 
 ## Step P6A-24
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `fc531d9`
 - Description: Migracja endpointu `POST /api/tickets` do warstwy `ticketsService`.
 
 ### Implementation Plan

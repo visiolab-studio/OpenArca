@@ -120,6 +120,15 @@ const schemaStatements = [
     created_by TEXT REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS ticket_external_references (
+    id TEXT PRIMARY KEY,
+    ticket_id TEXT NOT NULL REFERENCES tickets(id),
+    ref_type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    title TEXT,
+    created_by TEXT REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS telemetry_events (
     id TEXT PRIMARY KEY,
     event_name TEXT NOT NULL,
@@ -139,6 +148,7 @@ const schemaStatements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_relations_pair_unique ON ticket_relations(ticket_id_a, ticket_id_b)`,
   `CREATE INDEX IF NOT EXISTS idx_ticket_relations_a ON ticket_relations(ticket_id_a)`,
   `CREATE INDEX IF NOT EXISTS idx_ticket_relations_b ON ticket_relations(ticket_id_b)`,
+  `CREATE INDEX IF NOT EXISTS idx_ticket_external_refs_ticket ON ticket_external_references(ticket_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_event_created ON telemetry_events(event_name, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ticket_created ON telemetry_events(ticket_id, created_at)`
 ];

@@ -60,3 +60,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/oss-governance-docs.md`
 - `docs/skills/devtodo-ticket-sync.md`
 - `docs/skills/related-tickets-linking.md`
+- `docs/skills/external-references.md`

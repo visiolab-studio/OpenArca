@@ -56,6 +56,20 @@ export async function deleteRelatedTicket(id, relatedId) {
   await client.delete(`/api/tickets/${id}/related/${relatedId}`);
 }
 
+export async function getExternalReferences(id) {
+  const response = await client.get(`/api/tickets/${id}/external-references`);
+  return response.data;
+}
+
+export async function addExternalReference(id, payload) {
+  const response = await client.post(`/api/tickets/${id}/external-references`, payload);
+  return response.data;
+}
+
+export async function deleteExternalReference(id, refId) {
+  await client.delete(`/api/tickets/${id}/external-references/${refId}`);
+}
+
 export async function addAttachments(id, files) {
   const formData = new FormData();
   for (const file of files) {

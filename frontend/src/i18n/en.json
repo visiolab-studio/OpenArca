@@ -144,6 +144,18 @@
     "relatedAdd": "Link",
     "relatedAddPlaceholder": "Ticket number (e.g. 123)",
     "relatedRemove": "Unlink",
+    "externalRefsTitle": "External references",
+    "externalRefsEmpty": "No external references.",
+    "externalRefAdd": "Add reference",
+    "externalRefRemove": "Remove",
+    "externalRefUrlPlaceholder": "https://...",
+    "externalRefTitlePlaceholder": "Title (optional)",
+    "externalRefType": {
+      "git_pr": "Git PR",
+      "deployment": "Deployment",
+      "monitoring": "Monitoring",
+      "other": "Other"
+    },
     "closureSummaryLabel": "Closure summary",
     "closureSummaryHint": "This summary will be saved as a final comment and is required before closing the ticket.",
     "closureSummaryPlaceholder": "Describe what was delivered, how the fix was validated, and what was handed off.",
@@ -295,6 +307,7 @@
     "related_ticket_not_found": "Related ticket was not found.",
     "ticket_relation_self_ref": "A ticket cannot be related to itself.",
     "ticket_relation_not_found": "Ticket relation was not found.",
+    "external_reference_not_found": "External reference was not found.",
     "ticket_not_available": "You cannot link a task to this ticket.",
     "internal_error": "Internal server error",
     "no_changes": "No changes to save"

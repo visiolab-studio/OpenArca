@@ -2420,6 +2420,40 @@ table th {
   flex-wrap: wrap;
 }
 
+.external-ref-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+}
+
+.external-ref-item:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.external-ref-link {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.external-ref-title {
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.external-ref-meta {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .comments-thread {
   display: flex;
   flex-direction: column;

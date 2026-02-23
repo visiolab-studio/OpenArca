@@ -144,6 +144,18 @@
     "relatedAdd": "Powiąż",
     "relatedAddPlaceholder": "Numer zgłoszenia (np. 123)",
     "relatedRemove": "Odłącz",
+    "externalRefsTitle": "Referencje zewnętrzne",
+    "externalRefsEmpty": "Brak referencji zewnętrznych.",
+    "externalRefAdd": "Dodaj referencję",
+    "externalRefRemove": "Usuń",
+    "externalRefUrlPlaceholder": "https://...",
+    "externalRefTitlePlaceholder": "Tytuł (opcjonalnie)",
+    "externalRefType": {
+      "git_pr": "Git PR",
+      "deployment": "Deployment",
+      "monitoring": "Monitoring",
+      "other": "Inne"
+    },
     "closureSummaryLabel": "Podsumowanie zamknięcia",
     "closureSummaryHint": "To podsumowanie zostanie zapisane jako komentarz końcowy i jest wymagane przed zamknięciem zgłoszenia.",
     "closureSummaryPlaceholder": "Opisz co zostało wykonane, jak zweryfikowano poprawkę i co zostało przekazane.",
@@ -295,6 +307,7 @@
     "related_ticket_not_found": "Nie znaleziono powiązanego zgłoszenia.",
     "ticket_relation_self_ref": "Nie można powiązać zgłoszenia z samym sobą.",
     "ticket_relation_not_found": "Powiązanie zgłoszeń nie istnieje.",
+    "external_reference_not_found": "Nie znaleziono referencji zewnętrznej.",
     "ticket_not_available": "Nie możesz powiązać zadania z tym zgłoszeniem.",
     "internal_error": "Wystąpił błąd serwera",
     "no_changes": "Brak zmian do zapisania"

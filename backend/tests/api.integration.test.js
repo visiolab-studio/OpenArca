@@ -205,6 +205,110 @@ test("related ticket links keep RBAC on write and visibility filter on read", as
   assert.equal(userCannotDelete.statusCode, 403);
 });
 
+test("developer can create, list and remove external references", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(makeBugPayload({ title: "External references source ticket" }));
+  assert.equal(created.statusCode, 201);
+
+  const createRef = await request
+    .post(`/api/tickets/${created.body.id}/external-references`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      ref_type: "git_pr",
+      url: "https://github.com/visiolab-studio/EdudoroIT_SupportCenter/pull/42",
+      title: "PR #42"
+    });
+  assert.equal(createRef.statusCode, 201);
+  assert.equal(createRef.body.length, 1);
+  assert.equal(createRef.body[0].ref_type, "git_pr");
+
+  const listRefs = await request
+    .get(`/api/tickets/${created.body.id}/external-references`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(listRefs.statusCode, 200);
+  assert.equal(listRefs.body.length, 1);
+  assert.equal(listRefs.body[0].url.includes("github.com"), true);
+
+  const ticketDetail = await request
+    .get(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(ticketDetail.statusCode, 200);
+  assert.ok(Array.isArray(ticketDetail.body.external_references));
+  assert.equal(ticketDetail.body.external_references.length, 1);
+
+  const deleteRef = await request
+    .delete(`/api/tickets/${created.body.id}/external-references/${listRefs.body[0].id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(deleteRef.statusCode, 204);
+
+  const afterDelete = await request
+    .get(`/api/tickets/${created.body.id}/external-references`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(afterDelete.statusCode, 200);
+  assert.equal(afterDelete.body.length, 0);
+});
+
+test("external references keep RBAC and ownership constraints", async () => {
+  const otherUserAuth = await loginByOtp({
+    request,
+    db,
+    email: uniqueEmail("extref-other")
+  });
+
+  const mine = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(makeBugPayload({ title: "External refs ownership source" }));
+  assert.equal(mine.statusCode, 201);
+
+  const foreign = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${otherUserAuth.token}`)
+    .field(makeBugPayload({ title: "External refs foreign ticket" }));
+  assert.equal(foreign.statusCode, 201);
+
+  const userCannotCreate = await request
+    .post(`/api/tickets/${mine.body.id}/external-references`)
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .send({
+      ref_type: "monitoring",
+      url: "https://monitoring.example.com/alerts/123"
+    });
+  assert.equal(userCannotCreate.statusCode, 403);
+
+  const devCreatesMine = await request
+    .post(`/api/tickets/${mine.body.id}/external-references`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      ref_type: "deployment",
+      url: "https://deploy.example.com/releases/2026-02-23"
+    });
+  assert.equal(devCreatesMine.statusCode, 201);
+
+  const userCanReadOwn = await request
+    .get(`/api/tickets/${mine.body.id}/external-references`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(userCanReadOwn.statusCode, 200);
+  assert.equal(userCanReadOwn.body.length, 1);
+
+  const userCannotReadForeign = await request
+    .get(`/api/tickets/${foreign.body.id}/external-references`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(userCannotReadForeign.statusCode, 403);
+
+  const invalidProtocol = await request
+    .post(`/api/tickets/${mine.body.id}/external-references`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      ref_type: "other",
+      url: "ftp://example.com/ref"
+    });
+  assert.equal(invalidProtocol.statusCode, 400);
+  assert.equal(invalidProtocol.body.error, "validation_error");
+});
+
 test("user can upload avatar and profile exposes avatar metadata", async () => {
   const tinyPng = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6p9RkAAAAASUVORK5CYII=",

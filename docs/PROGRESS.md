@@ -696,7 +696,7 @@
 
 ## Step P5.5-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `b802062`
 - Description: Related tickets linking (MVP) w TicketDetail.
 
 ### Implementation Plan
@@ -754,3 +754,60 @@
 
 ### Skills created/updated
 - `docs/skills/related-tickets-linking.md` (created)
+
+## Step P5.5-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: External references (Git PR, deployment, monitoring) dla ticketów.
+
+### Implementation Plan
+- Dodać model danych `ticket_external_references` z typem referencji i URL.
+- Dodać endpointy:
+  - `GET /api/tickets/:id/external-references`
+  - `POST /api/tickets/:id/external-references` (developer-only)
+  - `DELETE /api/tickets/:id/external-references/:refId` (developer-only)
+- Rozszerzyć `GET /api/tickets/:id` o `external_references`.
+- Dodać walidację URL (`http/https`) i dozwolone typy (`git_pr`, `deployment`, `monitoring`, `other`).
+- Dodać testy integracyjne: create/list/delete + RBAC/ownership.
+- Dodać prostą sekcję UI w `TicketDetail` (lista + add/remove dla developera).
+- Dodać i18n PL/EN dla nowych etykiet i błędów.
+- Dodać skill operacyjny dla external references i uruchomić pełne quality gates + smoke E2E.
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `frontend/src/api/tickets.js`
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/i18n/en.json`
+- `docs/skills/external-references.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (34/34)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Manual scripted E2E baseline:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - route checks (`/`, `/login`, `/my-tickets`, `/overview`, `/board`, `/dev-todo`) -> PASS (HTTP 200)
+- Dodatkowa walidacja external references:
+  - test integracyjny `developer can create, list and remove external references` -> PASS
+  - test integracyjny `external references keep RBAC and ownership constraints` -> PASS
+
+### Result
+- Dodano model `ticket_external_references` dla linków operacyjnych powiązanych z ticketem.
+- Dodano endpointy `GET/POST/DELETE` dla external references i rozszerzono `GET /api/tickets/:id` o `external_references`.
+- Dodano sekcję UI w `TicketDetail` do podglądu i zarządzania referencjami (`git_pr`, `deployment`, `monitoring`, `other`).
+- Zabezpieczono RBAC/ownership i walidację URL (`http/https`).
+
+### Skills created/updated
+- `docs/skills/external-references.md` (created)

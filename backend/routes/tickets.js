@@ -42,6 +42,11 @@ const relatedParamsSchema = z.object({
   relatedId: z.string().uuid()
 });
 
+const externalRefParamsSchema = z.object({
+  id: z.string().uuid(),
+  refId: z.string().uuid()
+});
+
 const createTicketSchema = z
   .object({
     title: z.string().min(10).max(300),
@@ -150,6 +155,26 @@ const createRelationSchema = z
         code: z.ZodIssueCode.custom,
         path: ["related_ticket_id"],
         message: "Provide exactly one: related_ticket_id or related_ticket_number"
+      });
+    }
+  });
+
+const EXTERNAL_REFERENCE_TYPES = ["git_pr", "deployment", "monitoring", "other"];
+
+const createExternalReferenceSchema = z
+  .object({
+    ref_type: z.enum(EXTERNAL_REFERENCE_TYPES),
+    url: z.string().trim().url(),
+    title: z.string().trim().max(300).optional()
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const url = String(value.url || "").toLowerCase();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "URL must start with http:// or https://"
       });
     }
   });
@@ -292,6 +317,26 @@ function resolveRelatedTicket({ relatedTicketId, relatedTicketNumber }) {
   return db
     .prepare("SELECT id, number FROM tickets WHERE number = ?")
     .get(Number(relatedTicketNumber));
+}
+
+function getExternalReferences(ticketId) {
+  return db
+    .prepare(
+      `SELECT
+        r.id,
+        r.ref_type,
+        r.url,
+        r.title,
+        r.created_by,
+        r.created_at,
+        u.name AS created_by_name,
+        u.email AS created_by_email
+      FROM ticket_external_references r
+      LEFT JOIN users u ON u.id = r.created_by
+      WHERE r.ticket_id = ?
+      ORDER BY datetime(r.created_at) DESC`
+    )
+    .all(ticketId);
 }
 
 function parseSqliteDateToEpochMs(value) {
@@ -1057,6 +1102,69 @@ router.delete(
   }
 );
 
+router.get(
+  "/:id/external-references",
+  authRequired,
+  validate({ params: idParamsSchema }),
+  (req, res) => {
+    const ticket = getTicket(req.params.id);
+    ensureTicketAccess(ticket, req.user);
+    return res.json(getExternalReferences(req.params.id));
+  }
+);
+
+router.post(
+  "/:id/external-references",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: idParamsSchema, body: createExternalReferenceSchema }),
+  (req, res) => {
+    const ticket = getTicket(req.params.id);
+    ensureTicketAccess(ticket, req.user);
+
+    const id = uuidv4();
+    const title = req.body.title ? String(req.body.title).trim() : null;
+
+    db.prepare(
+      `INSERT INTO ticket_external_references (
+        id, ticket_id, ref_type, url, title, created_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    ).run(
+      id,
+      req.params.id,
+      req.body.ref_type,
+      String(req.body.url).trim(),
+      title || null,
+      req.user.id
+    );
+
+    return res.status(201).json(getExternalReferences(req.params.id));
+  }
+);
+
+router.delete(
+  "/:id/external-references/:refId",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: externalRefParamsSchema }),
+  (req, res) => {
+    const ticket = getTicket(req.params.id);
+    ensureTicketAccess(ticket, req.user);
+
+    const result = db
+      .prepare("DELETE FROM ticket_external_references WHERE id = ? AND ticket_id = ?")
+      .run(req.params.refId, req.params.id);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: "external_reference_not_found" });
+    }
+
+    return res.status(204).send();
+  }
+);
+
 router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res) => {
   const ticket = getTicket(req.params.id);
   if (!ticket) {
@@ -1095,8 +1203,16 @@ router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res
     .all(ticket.id);
 
   const relatedTickets = getRelatedTickets(ticket.id, req.user);
+  const externalReferences = getExternalReferences(ticket.id);
 
-  return res.json({ ...ticket, comments, attachments, history, related_tickets: relatedTickets });
+  return res.json({
+    ...ticket,
+    comments,
+    attachments,
+    history,
+    related_tickets: relatedTickets,
+    external_references: externalReferences
+  });
 });
 
 router.post(

@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  addExternalReference,
   addRelatedTicket,
   addAttachments,
   addComment,
+  deleteExternalReference,
   deleteRelatedTicket,
   getTicket,
   patchTicket
@@ -43,6 +45,12 @@ export default function TicketDetailPage() {
   const [closureSummaryText, setClosureSummaryText] = useState("");
   const [relatedTicketNumber, setRelatedTicketNumber] = useState("");
   const [relatedBusy, setRelatedBusy] = useState(false);
+  const [externalRefForm, setExternalRefForm] = useState({
+    ref_type: "git_pr",
+    url: "",
+    title: ""
+  });
+  const [externalRefBusy, setExternalRefBusy] = useState(false);
 
   const [editForm, setEditForm] = useState(null);
 
@@ -287,6 +295,51 @@ export default function TicketDetailPage() {
       setError(parseError(relatedError));
     } finally {
       setRelatedBusy(false);
+    }
+  }
+
+  async function handleAddExternalReference(event) {
+    event.preventDefault();
+    if (!isDeveloper) return;
+
+    const url = String(externalRefForm.url || "").trim();
+    if (!url) {
+      setError("validation_error");
+      return;
+    }
+
+    setError("");
+    setExternalRefBusy(true);
+    try {
+      await addExternalReference(id, {
+        ref_type: externalRefForm.ref_type,
+        url,
+        title: String(externalRefForm.title || "").trim() || undefined
+      });
+      setExternalRefForm({
+        ref_type: externalRefForm.ref_type,
+        url: "",
+        title: ""
+      });
+      await loadTicket();
+    } catch (externalError) {
+      setError(parseError(externalError));
+    } finally {
+      setExternalRefBusy(false);
+    }
+  }
+
+  async function handleDeleteExternalReference(refId) {
+    if (!isDeveloper) return;
+    setError("");
+    setExternalRefBusy(true);
+    try {
+      await deleteExternalReference(id, refId);
+      await loadTicket();
+    } catch (externalError) {
+      setError(parseError(externalError));
+    } finally {
+      setExternalRefBusy(false);
     }
   }
 
@@ -726,6 +779,88 @@ export default function TicketDetailPage() {
                 <button type="submit" className="btn btn-primary" disabled={relatedBusy}>
                   {relatedBusy ? t("app.loading") : t("tickets.relatedAdd")}
                 </button>
+              </form>
+            ) : null}
+          </article>
+
+          <article className="card">
+            <h2 className="card-title">{t("tickets.externalRefsTitle")}</h2>
+
+            {Array.isArray(ticket.external_references) && ticket.external_references.length > 0 ? (
+              <ul className="list-plain">
+                {ticket.external_references.map((ref) => (
+                  <li key={ref.id} className="external-ref-item">
+                    <a
+                      className="external-ref-link"
+                      href={ref.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span className="badge badge-no-dot">{t(`tickets.externalRefType.${ref.ref_type}`)}</span>
+                      <span className="external-ref-title">
+                        {ref.title || ref.url}
+                      </span>
+                    </a>
+                    <div className="external-ref-meta">
+                      {isDeveloper ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDeleteExternalReference(ref.id)}
+                          disabled={externalRefBusy}
+                        >
+                          {t("tickets.externalRefRemove")}
+                        </button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{t("tickets.externalRefsEmpty")}</p>
+            )}
+
+            {isDeveloper ? (
+              <form className="form-grid" onSubmit={handleAddExternalReference}>
+                <div className="filters-grid">
+                  <select
+                    className="form-select"
+                    value={externalRefForm.ref_type}
+                    onChange={(event) =>
+                      setExternalRefForm((current) => ({ ...current, ref_type: event.target.value }))
+                    }
+                  >
+                    <option value="git_pr">{t("tickets.externalRefType.git_pr")}</option>
+                    <option value="deployment">{t("tickets.externalRefType.deployment")}</option>
+                    <option value="monitoring">{t("tickets.externalRefType.monitoring")}</option>
+                    <option value="other">{t("tickets.externalRefType.other")}</option>
+                  </select>
+
+                  <input
+                    className="form-input"
+                    type="url"
+                    placeholder={t("tickets.externalRefUrlPlaceholder")}
+                    value={externalRefForm.url}
+                    onChange={(event) =>
+                      setExternalRefForm((current) => ({ ...current, url: event.target.value }))
+                    }
+                  />
+
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder={t("tickets.externalRefTitlePlaceholder")}
+                    value={externalRefForm.title}
+                    onChange={(event) =>
+                      setExternalRefForm((current) => ({ ...current, title: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="row-actions">
+                  <button type="submit" className="btn btn-primary" disabled={externalRefBusy}>
+                    {externalRefBusy ? t("app.loading") : t("tickets.externalRefAdd")}
+                  </button>
+                </div>
               </form>
             ) : null}
           </article>

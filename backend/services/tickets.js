@@ -528,6 +528,47 @@ function createTicketsService(options = {}) {
       }
     },
 
+    createTicketAttachments({ ticketId, user, files, maxUploadBytesTotal }) {
+      getReadableTicketOrThrow({ database, ticketId, user });
+
+      if (!Array.isArray(files) || files.length === 0) {
+        throw createServiceError("attachments_required", 400);
+      }
+
+      const totalSize = files.reduce((sum, file) => sum + Number(file?.size || 0), 0);
+      if (Number.isFinite(maxUploadBytesTotal) && totalSize > maxUploadBytesTotal) {
+        throw createServiceError("attachments_too_large", 400);
+      }
+
+      const insertAttachment = database.prepare(
+        `INSERT INTO attachments (
+          id, ticket_id, filename, original_name,
+          mime_type, size, uploaded_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      );
+      const selectAttachment = database.prepare("SELECT * FROM attachments WHERE id = ?");
+      const created = [];
+
+      const tx = database.transaction(() => {
+        for (const file of files) {
+          const attachmentId = uuidv4();
+          insertAttachment.run(
+            attachmentId,
+            ticketId,
+            file.filename,
+            file.originalname,
+            file.mimetype,
+            file.size,
+            user.id
+          );
+          created.push(selectAttachment.get(attachmentId));
+        }
+      });
+
+      tx();
+      return created;
+    },
+
     getTicketDetail({ ticketId, user }) {
       const ticket = getReadableTicketOrThrow({ database, ticketId, user });
 

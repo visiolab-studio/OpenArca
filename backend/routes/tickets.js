@@ -1063,45 +1063,27 @@ router.post(
   upload.array("attachments", 10),
   (req, res, next) => {
     try {
-      const ticket = getTicket(req.params.id);
-      ensureTicketAccess(ticket, req.user);
-
-      if (!Array.isArray(req.files) || req.files.length === 0) {
-        return res.status(400).json({ error: "attachments_required" });
-      }
-
-      enforceUploadLimit(req.files);
-
-      const insertAttachment = db.prepare(
-        `INSERT INTO attachments (
-          id, ticket_id, filename, original_name,
-          mime_type, size, uploaded_by, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      );
-
-      const created = [];
-      const tx = db.transaction(() => {
-        for (const file of req.files) {
-          const id = uuidv4();
-          insertAttachment.run(
-            id,
-            req.params.id,
-            file.filename,
-            file.originalname,
-            file.mimetype,
-            file.size,
-            req.user.id
-          );
-          created.push(
-            db.prepare("SELECT * FROM attachments WHERE id = ?").get(id)
-          );
-        }
+      const payload = ticketsService.createTicketAttachments({
+        ticketId: req.params.id,
+        user: req.user,
+        files: req.files,
+        maxUploadBytesTotal: MAX_UPLOAD_BYTES_TOTAL
       });
-
-      tx();
-      return res.status(201).json(created);
+      return res.status(201).json(payload);
     } catch (error) {
       removeUploadedFiles(req.files);
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      if (error?.code === "attachments_required") {
+        return res.status(400).json({ error: "attachments_required" });
+      }
+      if (error?.code === "attachments_too_large") {
+        return res.status(400).json({ error: "attachments_too_large" });
+      }
       return next(error);
     }
   }

@@ -5,6 +5,12 @@ const { TICKET_STATUSES } = require("../constants");
 
 function createDbStub(capture, options = {}) {
   return {
+    transaction(callback) {
+      if (typeof options.transactionFactory === "function") {
+        return options.transactionFactory(callback);
+      }
+      return (...args) => callback(...args);
+    },
     prepare(sql) {
       capture.sql = sql;
       return {
@@ -571,6 +577,153 @@ test("tickets service delete relation throws forbidden for non-developer", () =>
       ticketId: "ticket-source",
       relatedTicketId: "ticket-related",
       user: { id: "user-1", role: "user" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
+test("tickets service creates ticket attachments and returns created records", () => {
+  const capture = { sql: "", params: [] };
+  const inserted = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        if (sql.includes("SELECT * FROM attachments WHERE id = ?")) {
+          return { id: params[0], ticket_id: "ticket-1" };
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql, params) => {
+        if (sql.includes("INSERT INTO attachments")) {
+          inserted.push(params);
+          return { changes: 1 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  const files = [
+    {
+      filename: "a.txt",
+      originalname: "a.txt",
+      mimetype: "text/plain",
+      size: 5
+    },
+    {
+      filename: "b.txt",
+      originalname: "b.txt",
+      mimetype: "text/plain",
+      size: 7
+    }
+  ];
+
+  const result = service.createTicketAttachments({
+    ticketId: "ticket-1",
+    user: { id: "user-1", role: "user" },
+    files,
+    maxUploadBytesTotal: 20
+  });
+
+  assert.equal(Array.isArray(result), true);
+  assert.equal(result.length, 2);
+  assert.equal(inserted.length, 2);
+  assert.equal(inserted[0][1], "ticket-1");
+  assert.equal(inserted[0][2], "a.txt");
+  assert.equal(inserted[0][6], "user-1");
+});
+
+test("tickets service create attachments throws attachments_required for empty files", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketAttachments({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      files: [],
+      maxUploadBytesTotal: 20
+    });
+  }, (error) => error.code === "attachments_required" && error.status === 400);
+});
+
+test("tickets service create attachments throws attachments_too_large", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketAttachments({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      files: [{ size: 21 }],
+      maxUploadBytesTotal: 20
+    });
+  }, (error) => error.code === "attachments_too_large" && error.status === 400);
+});
+
+test("tickets service create attachments throws ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketAttachments({
+      ticketId: "missing-ticket",
+      user: { id: "dev-1", role: "developer" },
+      files: [{ size: 5 }],
+      maxUploadBytesTotal: 20
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service create attachments throws forbidden for non-owner user", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "owner-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketAttachments({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      files: [{ size: 5 }],
+      maxUploadBytesTotal: 20
     });
   }, (error) => error.code === "forbidden" && error.status === 403);
 });

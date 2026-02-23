@@ -1957,7 +1957,7 @@
 
 ## Step P6A-21
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `2598a52`
 - Description: Migracja endpointu `GET /api/tickets/:id/related` do warstwy `ticketsService` z ownership guard w service.
 
 ### Implementation Plan
@@ -2009,6 +2009,64 @@
   - success developer/user owner,
   - `ticket_not_found`,
   - `forbidden`.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-22
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `POST /api/tickets/:id/attachments` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.createTicketAttachments({ ticketId, user, files, maxUploadBytesTotal })`.
+- Przenieść do service:
+  - ownership guard (`ticket_not_found`, `forbidden`),
+  - walidację `attachments_required`,
+  - limit sumy rozmiaru uploadu (`attachments_too_large`).
+- Przenieść insert + odczyt utworzonych attachmentów do service i zwracać listę attachmentów.
+- Przepiąć route `POST /api/tickets/:id/attachments` do schematu route->service->response.
+- Zachować kontrakt endpointu (`201` + lista attachmentów).
+- Dodać testy unit service (success + ścieżki błędów).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (109/109)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.createTicketAttachments({ ticketId, user, files, maxUploadBytesTotal })`.
+- Przeniesiono do service:
+  - ownership guard (`ticket_not_found`, `forbidden`),
+  - walidację `attachments_required`,
+  - limit sumy uploadu `attachments_too_large`.
+- Przeniesiono insert + odczyt utworzonych attachmentów do service.
+- Endpoint `POST /api/tickets/:id/attachments` działa jako cienki adapter route->service.
+- Zachowano kontrakt endpointu: `201` + lista attachmentów.
+- Dodano testy unit service dla success i wszystkich ścieżek błędów.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

@@ -8,6 +8,13 @@ function assertUserContext(user) {
   }
 }
 
+function createServiceError(code, status) {
+  const error = new Error(code);
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
 function parseSqliteDateToEpochMs(value) {
   if (value == null) return null;
 
@@ -353,6 +360,65 @@ function createTicketsService(options = {}) {
           ORDER BY datetime(r.created_at) DESC`
         )
         .all(ticketId);
+    },
+
+    getTicketDetail({ ticketId, user }) {
+      assertUserContext(user);
+
+      const ticket = database
+        .prepare("SELECT * FROM tickets WHERE id = ?")
+        .get(ticketId);
+
+      if (!ticket) {
+        throw createServiceError("ticket_not_found", 404);
+      }
+
+      if (user.role !== "developer" && ticket.reporter_id !== user.id) {
+        throw createServiceError("forbidden", 403);
+      }
+
+      const commentsQuery =
+        user.role === "developer"
+          ? `SELECT c.*, u.name AS user_name, u.email AS user_email
+             FROM comments c
+             LEFT JOIN users u ON u.id = c.user_id
+             WHERE c.ticket_id = ?
+             ORDER BY c.created_at ASC`
+          : `SELECT c.*, u.name AS user_name, u.email AS user_email
+             FROM comments c
+             LEFT JOIN users u ON u.id = c.user_id
+             WHERE c.ticket_id = ? AND c.is_internal = 0
+             ORDER BY c.created_at ASC`;
+
+      const comments = database.prepare(commentsQuery).all(ticket.id);
+      const attachments = database
+        .prepare("SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at ASC")
+        .all(ticket.id);
+      const history = database
+        .prepare(
+          `SELECT h.*, u.name AS user_name, u.email AS user_email
+           FROM ticket_history h
+           LEFT JOIN users u ON u.id = h.user_id
+           WHERE h.ticket_id = ?
+           ORDER BY h.created_at DESC`
+        )
+        .all(ticket.id);
+      const relatedTickets = this.getRelatedTickets({
+        ticketId: ticket.id,
+        user
+      });
+      const externalReferences = this.getExternalReferences({
+        ticketId: ticket.id
+      });
+
+      return {
+        ...ticket,
+        comments,
+        attachments,
+        history,
+        related_tickets: relatedTickets,
+        external_references: externalReferences
+      };
     },
 
     listTickets({ user, query }) {

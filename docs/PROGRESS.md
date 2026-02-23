@@ -1570,7 +1570,7 @@
 
 ## Step P6A-14
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `e188d64`
 - Description: Migracja endpointu `GET /api/tickets/:id/related` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1613,6 +1613,59 @@
 - Endpoint `GET /api/tickets/:id/related` działa przez service layer.
 - Dodano testy unit dla scenariusza developer i user (SQL filter + params).
 - Zmiana nie narusza kontraktu odpowiedzi endpointu.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-15
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/:id` (ticket detail) do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.getTicketDetail({ ticketId, user })` z pełnym payloadem detail.
+- W service zachować regułę widoczności komentarzy: developer widzi wszystkie, user tylko publiczne.
+- Przepiąć route `GET /api/tickets/:id` na service layer + mapowanie błędów (`ticket_not_found`, `forbidden`).
+- Dodać testy unit dla `getTicketDetail` (developer/user, brak ticketu, forbidden).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (78/78)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.getTicketDetail({ ticketId, user })` z pełnym payloadem detail.
+- Zachowano RBAC/ownership:
+  - `ticket_not_found` -> 404,
+  - `forbidden` -> 403.
+- Zachowano widoczność komentarzy:
+  - developer widzi wszystkie komentarze,
+  - user widzi tylko komentarze publiczne (`is_internal = 0`).
+- Endpoint `GET /api/tickets/:id` został odchudzony do adaptera HTTP (`auth + validate + service + response mapping`).
+- Dodano testy unit dla scenariuszy success/failure i reguł widoczności.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

@@ -173,6 +173,137 @@ test("tickets service returns external references ordered by created_at desc", (
   assert.deepEqual(result, rows);
 });
 
+test("tickets service returns ticket detail for developer with full comments", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1", title: "Sample ticket" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql, params) => {
+        if (sql.includes("FROM comments c")) {
+          assert.doesNotMatch(sql, /c\.is_internal = 0/);
+          assert.deepEqual(params, ["ticket-1"]);
+          return [{ id: "comment-1", is_internal: 1 }];
+        }
+        if (sql.includes("FROM attachments")) {
+          return [{ id: "attachment-1" }];
+        }
+        if (sql.includes("FROM ticket_history h")) {
+          return [{ id: "history-1" }];
+        }
+        if (sql.includes("FROM ticket_relations tr")) {
+          return [{ id: "related-1" }];
+        }
+        if (sql.includes("FROM ticket_external_references r")) {
+          return [{ id: "ref-1" }];
+        }
+        return [];
+      }
+    })
+  });
+
+  const payload = service.getTicketDetail({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.equal(payload.id, "ticket-1");
+  assert.equal(payload.comments.length, 1);
+  assert.equal(payload.attachments.length, 1);
+  assert.equal(payload.history.length, 1);
+  assert.equal(payload.related_tickets.length, 1);
+  assert.equal(payload.external_references.length, 1);
+});
+
+test("tickets service returns ticket detail for user with only public comments", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1", title: "Sample ticket" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM comments c")) {
+          assert.match(sql, /c\.is_internal = 0/);
+          return [{ id: "comment-public-1", is_internal: 0 }];
+        }
+        if (sql.includes("FROM attachments")) {
+          return [{ id: "attachment-1" }];
+        }
+        if (sql.includes("FROM ticket_history h")) {
+          return [{ id: "history-1" }];
+        }
+        if (sql.includes("FROM ticket_relations tr")) {
+          return [{ id: "related-1" }];
+        }
+        if (sql.includes("FROM ticket_external_references r")) {
+          return [{ id: "ref-1" }];
+        }
+        return [];
+      }
+    })
+  });
+
+  const payload = service.getTicketDetail({
+    ticketId: "ticket-1",
+    user: { id: "user-1", role: "user" }
+  });
+
+  assert.equal(payload.comments.length, 1);
+  assert.equal(payload.comments[0].id, "comment-public-1");
+});
+
+test("tickets service ticket detail throws ticket_not_found when ticket is missing", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.getTicketDetail({
+      ticketId: "ticket-missing",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service ticket detail throws forbidden for non-owner user", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "other-user" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.getTicketDetail({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
 test("tickets service returns board grouped by known statuses with _stats", () => {
   const capture = { sql: "", params: [] };
   const rows = [

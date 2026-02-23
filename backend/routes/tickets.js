@@ -659,54 +659,22 @@ router.delete(
   }
 );
 
-router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res) => {
-  const ticket = getTicket(req.params.id);
-  if (!ticket) {
-    return res.status(404).json({ error: "ticket_not_found" });
+router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res, next) => {
+  try {
+    const payload = ticketsService.getTicketDetail({
+      ticketId: req.params.id,
+      user: req.user
+    });
+    return res.json(payload);
+  } catch (error) {
+    if (error?.code === "ticket_not_found") {
+      return res.status(404).json({ error: "ticket_not_found" });
+    }
+    if (error?.code === "forbidden") {
+      return res.status(403).json({ error: "forbidden" });
+    }
+    return next(error);
   }
-
-  if (req.user.role !== "developer" && ticket.reporter_id !== req.user.id) {
-    return res.status(403).json({ error: "forbidden" });
-  }
-
-  const commentsQuery =
-    req.user.role === "developer"
-      ? `SELECT c.*, u.name AS user_name, u.email AS user_email
-         FROM comments c
-         LEFT JOIN users u ON u.id = c.user_id
-         WHERE c.ticket_id = ?
-         ORDER BY c.created_at ASC`
-      : `SELECT c.*, u.name AS user_name, u.email AS user_email
-         FROM comments c
-         LEFT JOIN users u ON u.id = c.user_id
-         WHERE c.ticket_id = ? AND c.is_internal = 0
-         ORDER BY c.created_at ASC`;
-
-  const comments = db.prepare(commentsQuery).all(ticket.id);
-  const attachments = db
-    .prepare("SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at ASC")
-    .all(ticket.id);
-  const history = db
-    .prepare(
-      `SELECT h.*, u.name AS user_name, u.email AS user_email
-       FROM ticket_history h
-       LEFT JOIN users u ON u.id = h.user_id
-       WHERE h.ticket_id = ?
-       ORDER BY h.created_at DESC`
-    )
-    .all(ticket.id);
-
-  const relatedTickets = getRelatedTickets(ticket.id, req.user);
-  const externalReferences = getExternalReferences(ticket.id);
-
-  return res.json({
-    ...ticket,
-    comments,
-    attachments,
-    history,
-    related_tickets: relatedTickets,
-    external_references: externalReferences
-  });
 });
 
 router.post(

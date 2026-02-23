@@ -994,7 +994,7 @@
 
 ## Step P6A-03
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `6bfe826`
 - Description: Modularny szkielet splitu Open/Enterprise (extension registry + service contracts).
 
 ### Implementation Plan
@@ -1052,3 +1052,56 @@
 
 ### Skills created/updated
 - `docs/skills/open-enterprise-engine-split.md` (created)
+
+## Step P6A-04
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Przeniesienie logiki endpointu enterprise-check do dedykowanej warstwy service + response mapping.
+
+### Implementation Plan
+- Dodać dedykowany moduł service dla `settings/enterprise-check`.
+- W route `settings` zostawić tylko: middleware + wywołanie service + response.
+- Przygotować mechanizm łatwego podmiany service przez registry/override.
+- Dodać testy jednostkowe service.
+- Utrzymać istniejące testy integracyjne endpointu bez zmian kontraktu.
+- Dodać skill/checklistę dla patternu route->service->response.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/enterpriseCheck.js`
+- `backend/routes/settings.js`
+- `backend/tests/enterprise.check.service.unit.test.js`
+- `docs/skills/route-service-response-mapping.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (53/53)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano dedykowaną warstwę `enterpriseCheckService` (`backend/services/enterpriseCheck.js`).
+- Handler `/api/settings/enterprise-check` został uproszczony do wywołania service i mapowania odpowiedzi.
+- Dodano testy unit service:
+  - poprawny payload przez DI workflowService,
+  - walidacja brakującego `featureKey`,
+  - walidacja kontraktu zależności.
+- Utrzymano istniejący kontrakt endpointu i testy integracyjne bez regresji.
+
+### Skills created/updated
+- `docs/skills/route-service-response-mapping.md` (created)

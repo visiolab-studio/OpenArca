@@ -329,6 +329,103 @@ test("tickets service create external reference throws forbidden for non-develop
   }, (error) => error.code === "forbidden" && error.status === 403);
 });
 
+test("tickets service deletes external reference for developer", () => {
+  const capture = { sql: "", params: [] };
+  const runCalls = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql, params) => {
+        if (sql.includes("DELETE FROM ticket_external_references")) {
+          runCalls.push(params);
+          return { changes: 1 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  service.deleteTicketExternalReference({
+    ticketId: "ticket-1",
+    refId: "ref-1",
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.equal(runCalls.length, 1);
+  assert.deepEqual(runCalls[0], ["ref-1", "ticket-1"]);
+});
+
+test("tickets service delete external reference throws ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.deleteTicketExternalReference({
+      ticketId: "missing-ticket",
+      refId: "ref-1",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service delete external reference throws forbidden for non-developer", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture)
+  });
+
+  assert.throws(() => {
+    service.deleteTicketExternalReference({
+      ticketId: "ticket-1",
+      refId: "ref-1",
+      user: { id: "user-1", role: "user" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
+test("tickets service delete external reference throws external_reference_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql) => {
+        if (sql.includes("DELETE FROM ticket_external_references")) {
+          return { changes: 0 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.deleteTicketExternalReference({
+      ticketId: "ticket-1",
+      refId: "missing-ref",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "external_reference_not_found" && error.status === 404);
+});
+
 test("tickets service ticket external references throws ticket_not_found", () => {
   const capture = { sql: "", params: [] };
   const service = createTicketsService({

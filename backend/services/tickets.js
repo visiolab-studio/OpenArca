@@ -419,6 +419,27 @@ function createTicketsService(options = {}) {
       return this.getExternalReferences({ ticketId });
     },
 
+    deleteTicketExternalReference({ ticketId, refId, user }) {
+      assertUserContext(user);
+
+      if (user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      const ticket = this.getTicketById({ ticketId });
+      if (!ticket) {
+        throw createServiceError("ticket_not_found", 404);
+      }
+
+      const result = database
+        .prepare("DELETE FROM ticket_external_references WHERE id = ? AND ticket_id = ?")
+        .run(refId, ticketId);
+
+      if (result.changes === 0) {
+        throw createServiceError("external_reference_not_found", 404);
+      }
+    },
+
     getTicketDetail({ ticketId, user }) {
       const ticket = getReadableTicketOrThrow({ database, ticketId, user });
 

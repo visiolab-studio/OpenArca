@@ -647,19 +647,26 @@ router.delete(
   requireRole("developer"),
   writeLimiter,
   validate({ params: externalRefParamsSchema }),
-  (req, res) => {
-    const ticket = getTicket(req.params.id);
-    ensureTicketAccess(ticket, req.user);
-
-    const result = db
-      .prepare("DELETE FROM ticket_external_references WHERE id = ? AND ticket_id = ?")
-      .run(req.params.refId, req.params.id);
-
-    if (result.changes === 0) {
-      return res.status(404).json({ error: "external_reference_not_found" });
+  (req, res, next) => {
+    try {
+      ticketsService.deleteTicketExternalReference({
+        ticketId: req.params.id,
+        refId: req.params.refId,
+        user: req.user
+      });
+      return res.status(204).send();
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      if (error?.code === "external_reference_not_found") {
+        return res.status(404).json({ error: "external_reference_not_found" });
+      }
+      return next(error);
     }
-
-    return res.status(204).send();
   }
 );
 

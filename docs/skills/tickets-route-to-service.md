@@ -88,6 +88,15 @@ return res.status(201).json(payload);
 ```
 
 ```js
+ticketsService.deleteTicketExternalReference({
+  ticketId: req.params.id,
+  refId: req.params.refId,
+  user: req.user
+});
+return res.status(204).send();
+```
+
+```js
 const ticket = ticketsService.getTicketById({ ticketId: req.params.id });
 ensureTicketAccess(ticket, req.user);
 return res.json(ticketsService.getRelatedTickets({ ticketId: req.params.id, user: req.user }));
@@ -117,6 +126,7 @@ return res.json(payload);
 - Rozjechanie mapowania feedu closure summary (publiczne podsumowania + updated_since).
 - Rozjechanie listy external references lub utrata ownership check przed odczytem.
 - Brak walidacji roli `developer` przy write endpointach external references.
+- Brak mapowania `external_reference_not_found` na 404 przy DELETE endpointu.
 - Rozjechanie widoczności related tickets (developer globalnie, user tylko własne).
 - Rozjechanie widoczności komentarzy w detailu (developer wszystkie, user bez internal).
 - Brak walidacji kontekstu użytkownika w service.

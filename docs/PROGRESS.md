@@ -864,7 +864,7 @@
 
 ## Step P6A-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `43307a0`
 - Description: Capabilities foundation (`edition`, `feature_flags`, endpoint `/api/settings/capabilities`, frontend `useCapabilities`).
 
 ### Implementation Plan
@@ -926,3 +926,68 @@
 
 ### Skills created/updated
 - `docs/skills/capabilities-foundation.md` (created)
+
+## Step P6A-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Middleware `requireFeature` + pierwszy endpoint enterprise-gated.
+
+### Implementation Plan
+- Dodać middleware `requireFeature(featureKey)` z deny-by-default.
+- Podpiąć `requireFeature("enterprise_automation")` do endpointu kontrolnego dla developera.
+- Zachować kolejność zabezpieczeń: `authRequired` + `requireRole` + `requireFeature`.
+- Dodać testy backend dla scenariuszy auth/RBAC/feature-on/feature-off.
+- Dodać prosty check endpointu w popupie capabilities (bez ingerencji w główne flow appki).
+- Dodać tłumaczenie błędu `feature_not_enabled` (PL/EN).
+- Dodać skill operacyjny dla `requireFeature`.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/middleware/features.js`
+- `backend/routes/settings.js`
+- `backend/tests/feature.middleware.integration.test.js`
+- `frontend/src/api/settings.js`
+- `frontend/src/pages/Profile.jsx`
+- `frontend/src/pages/__tests__/Profile.capabilities.test.jsx`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/i18n/en.json`
+- `docs/skills/require-feature-middleware.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (45/45)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano middleware `requireFeature(featureKey)` i spójny błąd `feature_not_enabled`.
+- Dodano endpoint kontrolny `GET /api/settings/enterprise-check`:
+  - wymaga auth,
+  - wymaga roli `developer`,
+  - wymaga aktywnej flagi `enterprise_automation`.
+- Dodano testy backend:
+  - `401` bez tokena,
+  - `403 forbidden` dla usera,
+  - `403 feature_not_enabled` przy wyłączonej fladze,
+  - `200` po włączeniu (edition `enterprise`),
+  - `403` przy ręcznym override flagi na `false`.
+- Dodano check endpointu w popupie capabilities na profilu.
+- Dodano tłumaczenia `feature_not_enabled` w PL/EN.
+
+### Skills created/updated
+- `docs/skills/require-feature-middleware.md` (created)

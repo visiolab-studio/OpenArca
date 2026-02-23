@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "../Profile";
+import * as SettingsApi from "../../api/settings";
 import * as AuthContext from "../../contexts/AuthContext";
 import * as CapabilitiesContext from "../../contexts/CapabilitiesContext";
 
@@ -10,6 +11,10 @@ vi.mock("../../contexts/AuthContext", () => ({
 
 vi.mock("../../contexts/CapabilitiesContext", () => ({
   useCapabilities: vi.fn()
+}));
+
+vi.mock("../../api/settings", () => ({
+  getEnterpriseCheck: vi.fn()
 }));
 
 vi.mock("react-i18next", () => ({
@@ -31,6 +36,10 @@ describe("Profile capabilities modal", () => {
       user: { email: "user@example.com", name: "User Name" },
       updateProfile: vi.fn().mockResolvedValue(undefined),
       uploadAvatar: vi.fn().mockResolvedValue(undefined)
+    });
+    SettingsApi.getEnterpriseCheck.mockResolvedValue({
+      ok: true,
+      checked_feature: "enterprise_automation"
     });
     CapabilitiesContext.useCapabilities.mockReturnValue({
       ready: true,
@@ -54,5 +63,15 @@ describe("Profile capabilities modal", () => {
     expect(screen.getByText("core_tickets")).toBeInTheDocument();
     expect(screen.getByText("enterprise_automation")).toBeInTheDocument();
     expect(refreshCapabilitiesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows enterprise check result in capabilities modal", async () => {
+    render(<ProfilePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "profile.showCapabilities" }));
+    fireEvent.click(screen.getByRole("button", { name: "profile.enterpriseCheckBtn" }));
+
+    expect(await screen.findByText("OK · enterprise_automation")).toBeInTheDocument();
+    expect(SettingsApi.getEnterpriseCheck).toHaveBeenCalledTimes(1);
   });
 });

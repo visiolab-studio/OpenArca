@@ -15,6 +15,11 @@ export async function getCapabilities() {
   return response.data;
 }
 
+export async function getEnterpriseCheck() {
+  const response = await client.get("/api/settings/enterprise-check");
+  return response.data;
+}
+
 export async function patchSettings(payload) {
   const response = await client.patch("/api/settings", payload);
   return response.data;

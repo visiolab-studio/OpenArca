@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../api/client";
+import { getEnterpriseCheck } from "../api/settings";
 import { useAuth } from "../contexts/AuthContext";
 import { useCapabilities } from "../contexts/CapabilitiesContext";
 
@@ -30,6 +31,9 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [showCapabilitiesModal, setShowCapabilitiesModal] = useState(false);
   const [capabilitiesError, setCapabilitiesError] = useState("");
+  const [enterpriseCheckLoading, setEnterpriseCheckLoading] = useState(false);
+  const [enterpriseCheckResult, setEnterpriseCheckResult] = useState("");
+  const [enterpriseCheckError, setEnterpriseCheckError] = useState("");
 
   useEffect(() => {
     setName(user?.name || "");
@@ -83,11 +87,29 @@ export default function ProfilePage() {
 
   async function handleOpenCapabilitiesModal() {
     setCapabilitiesError("");
+    setEnterpriseCheckResult("");
+    setEnterpriseCheckError("");
     setShowCapabilitiesModal(true);
     try {
       await refreshCapabilities();
     } catch (loadError) {
       setCapabilitiesError(normalizeError(loadError));
+    }
+  }
+
+  async function handleEnterpriseCheck() {
+    setEnterpriseCheckLoading(true);
+    setEnterpriseCheckError("");
+    setEnterpriseCheckResult("");
+    try {
+      const payload = await getEnterpriseCheck();
+      setEnterpriseCheckResult(
+        `${payload.ok ? "OK" : "ERR"} · ${payload.checked_feature || "enterprise_automation"}`
+      );
+    } catch (checkError) {
+      setEnterpriseCheckError(normalizeError(checkError));
+    } finally {
+      setEnterpriseCheckLoading(false);
     }
   }
 
@@ -189,6 +211,23 @@ export default function ProfilePage() {
             ) : null}
 
             {!capabilitiesReady ? <p className="muted">{t("app.loading")}</p> : null}
+
+            <div className="row-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleEnterpriseCheck}
+                disabled={enterpriseCheckLoading}
+              >
+                {enterpriseCheckLoading ? t("app.loading") : t("profile.enterpriseCheckBtn")}
+              </button>
+              {enterpriseCheckResult ? <span className="badge badge-closed">{enterpriseCheckResult}</span> : null}
+              {enterpriseCheckError ? (
+                <span className="badge badge-blocked">
+                  {t(`errors.${enterpriseCheckError}`, { defaultValue: enterpriseCheckError })}
+                </span>
+              ) : null}
+            </div>
 
             <ul className="list-plain capabilities-list">
               {sortedCapabilities.map(([key, enabled]) => (

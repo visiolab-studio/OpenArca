@@ -47,6 +47,7 @@
     "capabilitiesHint": "Preview of active engine features (Open Core / Enterprise).",
     "editionLabel": "Edition",
     "flagsCount": "Flags: {{count}}",
+    "enterpriseCheckBtn": "Check Enterprise endpoint",
     "enabled": "Enabled",
     "disabled": "Disabled"
   },
@@ -316,6 +317,7 @@
     "ticket_relation_not_found": "Ticket relation was not found.",
     "external_reference_not_found": "External reference was not found.",
     "ticket_not_available": "You cannot link a task to this ticket.",
+    "feature_not_enabled": "This Enterprise feature is disabled.",
     "internal_error": "Internal server error",
     "no_changes": "No changes to save"
   }

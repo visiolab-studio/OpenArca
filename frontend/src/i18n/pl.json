@@ -47,6 +47,7 @@
     "capabilitiesHint": "Podgląd aktywnych funkcji silnika (Open Core / Enterprise).",
     "editionLabel": "Edycja",
     "flagsCount": "Flagi: {{count}}",
+    "enterpriseCheckBtn": "Sprawdź endpoint Enterprise",
     "enabled": "Włączone",
     "disabled": "Wyłączone"
   },
@@ -316,6 +317,7 @@
     "ticket_relation_not_found": "Powiązanie zgłoszeń nie istnieje.",
     "external_reference_not_found": "Nie znaleziono referencji zewnętrznej.",
     "ticket_not_available": "Nie możesz powiązać zadania z tym zgłoszeniem.",
+    "feature_not_enabled": "Funkcja Enterprise jest wyłączona.",
     "internal_error": "Wystąpił błąd serwera",
     "no_changes": "Brak zmian do zapisania"
   }

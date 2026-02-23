@@ -3,6 +3,7 @@ const path = require("path");
 const express = require("express");
 const { z } = require("zod");
 const { authRequired, requireRole } = require("../middleware/auth");
+const { requireFeature } = require("../middleware/features");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
@@ -152,6 +153,14 @@ router.get("/capabilities", authRequired, (req, res) => {
 });
 
 router.use(authRequired, requireRole("developer"));
+
+router.get("/enterprise-check", requireFeature("enterprise_automation"), (req, res) => {
+  return res.json({
+    ok: true,
+    checked_feature: "enterprise_automation",
+    generated_at: new Date().toISOString()
+  });
+});
 
 router.get("/", (req, res) => {
   const map = getSettingsMap();

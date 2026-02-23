@@ -8,6 +8,7 @@ const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
 const { enterpriseCheckService } = require("../services/enterpriseCheck");
+const { domainEventsService } = require("../services/domain-events");
 const { uploadsDir } = require("../config");
 const {
   getSetting,
@@ -49,6 +50,11 @@ const patchSettingsSchema = z
   });
 const testSmtpSchema = z.object({
   to: z.string().trim().email()
+}).strict();
+
+const outboxQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  status: z.enum(["pending", "processing", "failed", "sent"]).optional()
 }).strict();
 
 const privateKeys = new Set([
@@ -158,6 +164,21 @@ router.use(authRequired, requireRole("developer"));
 router.get("/enterprise-check", requireFeature("enterprise_automation"), (req, res) => {
   const payload = enterpriseCheckService.buildPayload("enterprise_automation");
   return res.json(payload);
+});
+
+router.get("/events/outbox", validate({ query: outboxQuerySchema }), (req, res, next) => {
+  try {
+    const payload = domainEventsService.getOutboxEntries({
+      limit: req.query.limit,
+      status: req.query.status || null
+    });
+    return res.json(payload);
+  } catch (error) {
+    if (error?.code === "invalid_outbox_status") {
+      return res.status(400).json({ error: "invalid_outbox_status" });
+    }
+    return next(error);
+  }
 });
 
 router.get("/", (req, res) => {

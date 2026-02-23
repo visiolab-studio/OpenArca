@@ -69,3 +69,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/enterprise-repo-wiring.md`
 - `docs/skills/tickets-route-to-service.md`
 - `docs/skills/task-sync-service-split.md`
+- `docs/skills/domain-events-outbox.md`

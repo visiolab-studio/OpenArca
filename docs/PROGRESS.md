@@ -1328,7 +1328,7 @@
 
 ## Step P6A-26
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `f04f2ca`
 - Description: Migracja logiki `PATCH /api/tickets/:id` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1401,6 +1401,73 @@
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6B-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Fundament event backbone + durable outbox (infra i API publish bez zmiany flow biznesowego).
+
+### Implementation Plan
+- Dodać tabele SQLite dla event backbone/outbox:
+  - `domain_events`,
+  - `event_outbox`.
+- Dodać serwis `backend/services/domain-events.js`:
+  - `publishDomainEvent(...)`,
+  - zapis do `domain_events`,
+  - zapis do `event_outbox` (durable).
+- Dodać podstawowe testy unit serwisu (persist + walidacja danych wejściowych).
+- Dodać test integracyjny endpointu diagnostycznego dla deva (read-only) do podglądu outbox.
+- Nie podłączać jeszcze nowych eventów do flow ticketów (bez ryzyka regresji funkcjonalnej).
+- Dodać skill operacyjny dla event backbone/outbox.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/db.js`
+- `backend/services/domain-events.js`
+- `backend/routes/settings.js`
+- `backend/tests/domain.events.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/domain-events-outbox.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (134/134)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Manual scripted browser baseline (repo nie zawiera Playwright/Cypress):
+  - `GET /health` -> 200
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano tabele i indeksy dla backbone/outbox:
+  - `domain_events`,
+  - `event_outbox`.
+- Dodano serwis `domainEventsService`:
+  - `publishDomainEvent(...)` (event + outbox atomowo),
+  - `getOutboxEntries(...)` (filtry status/limit).
+- Dodano dev-only endpoint diagnostyczny:
+  - `GET /api/settings/events/outbox`.
+- Dodano testy:
+  - unit serwisu domain events,
+  - integracyjne endpointu outbox (auth + RBAC + payload).
+- Nie zmieniono istniejącego flow ticketów (krok infra-only pod P6B).
+
+### Skills created/updated
+- `docs/skills/domain-events-outbox.md` (created)
+- `docs/AGENTS.md` (updated links list)
 
 ## Step P6A-08
 - Status: Done (approved by user)

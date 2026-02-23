@@ -137,6 +137,31 @@ const schemaStatements = [
     properties_json TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS domain_events (
+    id TEXT PRIMARY KEY,
+    event_name TEXT NOT NULL,
+    aggregate_type TEXT NOT NULL,
+    aggregate_id TEXT NOT NULL,
+    actor_user_id TEXT REFERENCES users(id),
+    payload_json TEXT NOT NULL,
+    correlation_id TEXT,
+    source TEXT NOT NULL DEFAULT 'core',
+    occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS event_outbox (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL UNIQUE REFERENCES domain_events(id) ON DELETE CASCADE,
+    event_name TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_error TEXT,
+    processed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -150,7 +175,11 @@ const schemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_ticket_relations_b ON ticket_relations(ticket_id_b)`,
   `CREATE INDEX IF NOT EXISTS idx_ticket_external_refs_ticket ON ticket_external_references(ticket_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_event_created ON telemetry_events(event_name, created_at)`,
-  `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ticket_created ON telemetry_events(ticket_id, created_at)`
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ticket_created ON telemetry_events(ticket_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_domain_events_aggregate ON domain_events(aggregate_type, aggregate_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_domain_events_name_created ON domain_events(event_name, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_event_outbox_status_next_attempt ON event_outbox(status, next_attempt_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_event_outbox_event_name_created ON event_outbox(event_name, created_at)`
 ];
 
 const defaultSettings = [

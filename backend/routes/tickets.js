@@ -1,8 +1,6 @@
 const fs = require("fs");
 const express = require("express");
 const { z } = require("zod");
-const { v4: uuidv4 } = require("uuid");
-const db = require("../db");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
@@ -19,7 +17,6 @@ const {
 } = require("../services/notifications");
 const { trackTelemetryEvent } = require("../services/telemetry");
 const { ticketsService } = require("../services/tickets");
-const { taskSyncService } = require("../services/task-sync");
 
 const router = express.Router();
 
@@ -94,43 +91,6 @@ const createTicketSchema = z
         message: "For feature/improvement, description must be at least 100 characters"
       });
     }
-  });
-
-const developerPatchSchema = z
-  .object({
-    status: z.enum(TICKET_STATUSES).optional(),
-    priority: z.enum(TICKET_PRIORITIES).optional(),
-    planned_date: z.string().date().nullable().optional(),
-    estimated_hours: z.coerce.number().min(0).max(10000).nullable().optional(),
-    internal_note: z.string().max(10000).nullable().optional(),
-    assignee_id: z.string().uuid().nullable().optional(),
-    order_index: z.coerce.number().int().min(0).optional(),
-    category: z.enum(TICKET_CATEGORIES).optional(),
-    project_id: z.string().uuid().nullable().optional(),
-    title: z.string().min(10).max(300).optional(),
-    description: z.string().min(50).max(20000).optional(),
-    steps_to_reproduce: z.string().min(30).max(8000).nullable().optional(),
-    expected_result: z.string().min(20).max(8000).nullable().optional(),
-    actual_result: z.string().min(20).max(8000).nullable().optional(),
-    environment: z.string().min(10).max(2000).nullable().optional()
-  })
-  .strict()
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "No changes provided"
-  });
-
-const userPatchSchema = z
-  .object({
-    title: z.string().min(10).max(300).optional(),
-    description: z.string().min(50).max(20000).optional(),
-    steps_to_reproduce: z.string().min(30).max(8000).optional(),
-    expected_result: z.string().min(20).max(8000).optional(),
-    actual_result: z.string().min(20).max(8000).optional(),
-    environment: z.string().min(10).max(2000).optional()
-  })
-  .strict()
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "No changes provided"
   });
 
 const createCommentSchema = z
@@ -245,68 +205,8 @@ function zodToValidationError(error) {
   return err;
 }
 
-function ensureTicketAccess(ticket, user) {
-  if (!ticket) {
-    const err = new Error("Ticket not found");
-    err.status = 404;
-    err.code = "ticket_not_found";
-    throw err;
-  }
-
-  if (user.role !== "developer" && ticket.reporter_id !== user.id) {
-    const err = new Error("Forbidden");
-    err.status = 403;
-    err.code = "forbidden";
-    throw err;
-  }
-}
-
-function historyValue(value) {
-  if (value == null) return null;
-  return String(value);
-}
-
-function hasClosureSummaryComment(ticketId) {
-  const row = db
-    .prepare(
-      `SELECT 1
-       FROM comments
-       WHERE ticket_id = ?
-         AND is_closure_summary = 1
-         AND is_internal = 0
-       LIMIT 1`
-    )
-    .get(ticketId);
-
-  return Boolean(row);
-}
-
 function getTicket(ticketId) {
   return ticketsService.getTicketById({ ticketId });
-}
-
-function validateForeignRefs(payload) {
-  if (Object.prototype.hasOwnProperty.call(payload, "project_id") && payload.project_id) {
-    const project = db.prepare("SELECT 1 FROM projects WHERE id = ?").get(payload.project_id);
-    if (!project) {
-      const err = new Error("Project not found");
-      err.status = 400;
-      err.code = "project_not_found";
-      throw err;
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(payload, "assignee_id") && payload.assignee_id) {
-    const assignee = db
-      .prepare("SELECT 1 FROM users WHERE id = ?")
-      .get(payload.assignee_id);
-    if (!assignee) {
-      const err = new Error("Assignee not found");
-      err.status = 400;
-      err.code = "assignee_not_found";
-      throw err;
-    }
-  }
 }
 
 router.get("/", authRequired, validate({ query: listQuerySchema }), (req, res) => {
@@ -588,199 +488,75 @@ router.post(
 
 router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSchema }), async (req, res, next) => {
   try {
-    const current = getTicket(req.params.id);
-    ensureTicketAccess(current, req.user);
-
-    const isDeveloper = req.user.role === "developer";
-    if (!isDeveloper && current.status !== "submitted") {
-      return res.status(403).json({ error: "ticket_locked" });
-    }
-
-    let payload;
-    try {
-      payload = (isDeveloper ? developerPatchSchema : userPatchSchema).parse(req.body || {});
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw zodToValidationError(error);
-      }
-      throw error;
-    }
-
-    const acceptanceStatuses = new Set(["verified", "waiting", "in_progress"]);
-    const hasStatusInPayload = Object.prototype.hasOwnProperty.call(payload, "status");
-    const shouldAutoVerifyFromPlanning =
-      isDeveloper &&
-      current.status === "submitted" &&
-      (!hasStatusInPayload || payload.status === "submitted") &&
-      (
-        (Object.prototype.hasOwnProperty.call(payload, "assignee_id") && payload.assignee_id != null) ||
-        (Object.prototype.hasOwnProperty.call(payload, "planned_date") && payload.planned_date != null) ||
-        (Object.prototype.hasOwnProperty.call(payload, "estimated_hours") && payload.estimated_hours != null)
-      );
-
-    if (shouldAutoVerifyFromPlanning) {
-      payload.status = "verified";
-    }
-
-    const isAcceptanceTransition =
-      isDeveloper &&
-      current.status === "submitted" &&
-      Object.prototype.hasOwnProperty.call(payload, "status") &&
-      acceptanceStatuses.has(payload.status);
-
-    if (isAcceptanceTransition && payload.assignee_id == null) {
-      payload.assignee_id = req.user.id;
-    }
-
-    validateForeignRefs(payload);
-
-    const changedEntries = [];
-    for (const [field, newValue] of Object.entries(payload)) {
-      const oldValue = current[field];
-      const oldComparable = oldValue == null ? null : String(oldValue);
-      const newComparable = newValue == null ? null : String(newValue);
-      if (oldComparable !== newComparable) {
-        changedEntries.push({ field, oldValue, newValue });
-      }
-    }
-
-    if (changedEntries.length === 0) {
-      return res.status(400).json({ error: "no_changes" });
-    }
-
-    const oldStatus = current.status;
-    const newStatus = Object.prototype.hasOwnProperty.call(payload, "status")
-      ? payload.status
-      : oldStatus;
-
-    const isClosingTransition = isDeveloper && oldStatus !== "closed" && newStatus === "closed";
-    if (isClosingTransition && !hasClosureSummaryComment(req.params.id)) {
-      return res.status(400).json({ error: "closure_summary_required" });
-    }
-
-    const nextAssigneeId = Object.prototype.hasOwnProperty.call(payload, "assignee_id")
-      ? payload.assignee_id
-      : current.assignee_id;
-    const hasStatusChange = newStatus !== oldStatus;
-    const hasAssigneeChange = nextAssigneeId !== current.assignee_id;
-    const isAssignmentToCurrentDeveloper =
-      isDeveloper &&
-      nextAssigneeId === req.user.id &&
-      current.assignee_id !== req.user.id &&
-      acceptanceStatuses.has(newStatus);
-    const shouldEnsureDevTask =
-      isDeveloper &&
-      Boolean(nextAssigneeId) &&
-      (
-      isAcceptanceTransition ||
-      isAssignmentToCurrentDeveloper ||
-      hasStatusChange ||
-      hasAssigneeChange
-      );
-    const shouldNormalizeLinkedTasks =
-      isDeveloper &&
-      (
-        hasStatusChange ||
-        hasAssigneeChange
-      );
-    const nextTicketState = { ...current, ...payload };
-
-    const updateTx = db.transaction(() => {
-      const setters = [];
-      const values = [];
-
-      for (const item of changedEntries) {
-        setters.push(`${item.field} = ?`);
-        values.push(item.newValue ?? null);
-      }
-
-      if (newStatus !== oldStatus) {
-        if (newStatus === "closed") {
-          setters.push("closed_at = datetime('now')");
-        } else if (oldStatus === "closed") {
-          setters.push("closed_at = NULL");
-        }
-      }
-
-      setters.push("updated_at = datetime('now')");
-      values.push(req.params.id);
-
-      db.prepare(`UPDATE tickets SET ${setters.join(", ")} WHERE id = ?`).run(...values);
-
-      const insertHistory = db.prepare(
-        `INSERT INTO ticket_history (
-          id, ticket_id, user_id, field, old_value, new_value, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-      );
-
-      for (const item of changedEntries) {
-        insertHistory.run(
-          uuidv4(),
-          req.params.id,
-          req.user.id,
-          item.field,
-          historyValue(item.oldValue),
-          historyValue(item.newValue)
-        );
-      }
-
-      if (shouldNormalizeLinkedTasks) {
-        taskSyncService.normalizeLinkedDevTasksForTicket({
-          ticketId: req.params.id,
-          assigneeId: nextAssigneeId
-        });
-      }
-
-      if (shouldEnsureDevTask) {
-        taskSyncService.ensureDevTaskForAcceptedTicket({
-          ticketId: req.params.id,
-          userId: nextAssigneeId,
-          ticket: nextTicketState
-        });
-      }
+    const result = ticketsService.updateTicket({
+      ticketId: req.params.id,
+      user: req.user,
+      rawPayload: req.body
     });
 
-    updateTx();
-
-    if (newStatus !== oldStatus && newStatus === "closed") {
+    if (result.shouldTrackTicketClosed) {
       trackTelemetryEvent({
         eventName: "ticket.closed",
         userId: req.user.id,
         ticketId: req.params.id,
         properties: {
-          old_status: oldStatus,
-          new_status: newStatus
+          old_status: result.oldStatus,
+          new_status: result.newStatus
         }
       });
     }
 
-    if (newStatus !== oldStatus && oldStatus !== "submitted") {
+    if (result.shouldTrackBoardDrag) {
       trackTelemetryEvent({
         eventName: "board.drag",
         userId: req.user.id,
         ticketId: req.params.id,
         properties: {
-          old_status: oldStatus,
-          new_status: newStatus
+          old_status: result.oldStatus,
+          new_status: result.newStatus
         }
       });
     }
 
-    if (newStatus !== oldStatus) {
+    if (result.shouldNotifyStatusChange) {
       try {
         await notifyReporterStatusChange({
           ticketId: req.params.id,
           actorUserId: req.user.id,
-          oldStatus,
-          newStatus
+          oldStatus: result.oldStatus,
+          newStatus: result.newStatus
         });
       } catch (error) {
         console.error("status_notification_failed", error);
       }
     }
 
-    return res.json(getTicket(req.params.id));
+    return res.json(result.ticket);
   } catch (error) {
+    if (error?.code === "validation_error") {
+      return res.status(400).json({ error: "validation_error", details: error.details || [] });
+    }
+    if (error?.code === "ticket_not_found") {
+      return res.status(404).json({ error: "ticket_not_found" });
+    }
+    if (error?.code === "forbidden") {
+      return res.status(403).json({ error: "forbidden" });
+    }
+    if (error?.code === "ticket_locked") {
+      return res.status(403).json({ error: "ticket_locked" });
+    }
+    if (error?.code === "project_not_found") {
+      return res.status(400).json({ error: "project_not_found" });
+    }
+    if (error?.code === "assignee_not_found") {
+      return res.status(400).json({ error: "assignee_not_found" });
+    }
+    if (error?.code === "closure_summary_required") {
+      return res.status(400).json({ error: "closure_summary_required" });
+    }
+    if (error?.code === "no_changes") {
+      return res.status(400).json({ error: "no_changes" });
+    }
     return next(error);
   }
 });

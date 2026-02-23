@@ -151,6 +151,15 @@ return res.status(201).json(result.comment);
 ```
 
 ```js
+const result = ticketsService.updateTicket({
+  ticketId: req.params.id,
+  user: req.user,
+  rawPayload: req.body
+});
+return res.json(result.ticket);
+```
+
+```js
 const payload = ticketsService.getTicketDetail({
   ticketId: req.params.id,
   user: req.user
@@ -182,6 +191,7 @@ return res.json(payload);
 - Brak walidacji `attachments_required`/`attachments_too_large` po migracji upload route.
 - Brak walidacji `invalid_parent_comment` i `invalid_closure_summary_visibility` po migracji comments route.
 - Brak mapowania `project_not_found` po migracji create ticket route.
+- Brak mapowania `ticket_locked`/`no_changes`/`closure_summary_required` po migracji patch route.
 - Rozjechanie widoczności komentarzy w detailu (developer wszystkie, user bez internal).
 - Brak walidacji kontekstu użytkownika w service.
 

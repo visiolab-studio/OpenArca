@@ -1269,7 +1269,7 @@
 
 ## Step P6A-25
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `d66b13f`
 - Description: Wydzielenie logiki synchronizacji ticket <-> dev tasks do `taskSyncService`.
 
 ### Implementation Plan
@@ -1325,6 +1325,82 @@
 ### Skills created/updated
 - `docs/skills/task-sync-service-split.md` (created)
 - `docs/AGENTS.md` (updated links list)
+
+## Step P6A-26
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja logiki `PATCH /api/tickets/:id` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.updateTicket({ ticketId, user, rawPayload })`.
+- Przenieść do service:
+  - access guard (`ticket_not_found`, `forbidden`, `ticket_locked`),
+  - walidacje patch payload (developer/user),
+  - reguły status transition + `closure_summary_required`,
+  - update transakcyjny ticket + historia zmian.
+- Wpiąć `taskSyncService` do service, tak aby sync zadań nie żył w route.
+- Zwracać z service metadane side effects:
+  - zmiana statusu,
+  - payload telemetry,
+  - dane do notyfikacji.
+- Przepiąć route `PATCH /api/tickets/:id` na schemat route->service->response.
+- Zachować kontrakt API i obecne eventy (`ticket.closed`, `board.drag`) + mail status update.
+- Dodać/uzupełnić testy unit service dla kluczowych ścieżek błędów i success.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (126/126)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Manual scripted browser baseline (repo nie zawiera Playwright/Cypress):
+  - `GET /health` -> 200
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.updateTicket({ ticketId, user, rawPayload })`.
+- Przeniesiono do service:
+  - access guard (`ticket_not_found`, `forbidden`, `ticket_locked`),
+  - walidację payload (`validation_error` + details),
+  - reguły lifecycle (`no_changes`, `closure_summary_required`),
+  - update transakcyjny ticket + historia zmian,
+  - synchronizację tasków przez `taskSyncService`.
+- Route `PATCH /api/tickets/:id` działa jako cienki adapter route->service.
+- Zachowano side effects w route:
+  - telemetry `ticket.closed`,
+  - telemetry `board.drag`,
+  - notyfikacja `notifyReporterStatusChange`.
+- Dodano mapowanie błędów service -> HTTP:
+  - `ticket_not_found` -> 404,
+  - `forbidden` -> 403,
+  - `ticket_locked` -> 403,
+  - `project_not_found` -> 400,
+  - `assignee_not_found` -> 400,
+  - `closure_summary_required` -> 400,
+  - `no_changes` -> 400,
+  - `validation_error` -> 400.
+- Dodano testy unit service dla najważniejszych ścieżek update.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
 
 ## Step P6A-08
 - Status: Done (approved by user)

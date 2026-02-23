@@ -228,6 +228,206 @@ test("tickets service create ticket validates project reference", () => {
   }, (error) => error.code === "project_not_found" && error.status === 400);
 });
 
+test("tickets service update ticket blocks non-developer when ticket is locked", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1", status: "verified" };
+        }
+        return undefined;
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.updateTicket({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      rawPayload: { title: "Updated title with enough length" }
+    });
+  }, (error) => error.code === "ticket_locked" && error.status === 403);
+});
+
+test("tickets service update ticket validates patch payload and exposes details", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "dev-1", status: "submitted" };
+        }
+        return undefined;
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.updateTicket({
+      ticketId: "ticket-1",
+      user: { id: "dev-1", role: "developer" },
+      rawPayload: {}
+    });
+  }, (error) => {
+    return (
+      error.code === "validation_error" &&
+      error.status === 400 &&
+      Array.isArray(error.details) &&
+      error.details.length > 0
+    );
+  });
+});
+
+test("tickets service update ticket requires closure summary before closing", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1", status: "verified" };
+        }
+        if (sql.includes("FROM comments")) {
+          return undefined;
+        }
+        return undefined;
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.updateTicket({
+      ticketId: "ticket-1",
+      user: { id: "dev-1", role: "developer" },
+      rawPayload: { status: "closed" }
+    });
+  }, (error) => error.code === "closure_summary_required" && error.status === 400);
+});
+
+test("tickets service update ticket auto-verifies planning and returns side-effects metadata", () => {
+  const capture = { sql: "", params: [] };
+  const runCalls = [];
+  const syncCalls = [];
+  let ticketReadCount = 0;
+
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          ticketReadCount += 1;
+          if (ticketReadCount === 1) {
+            return {
+              id: "ticket-1",
+              reporter_id: "user-1",
+              status: "submitted",
+              assignee_id: null,
+              title: "Ticket title",
+              description: "D".repeat(120),
+              priority: "normal",
+              planned_date: null,
+              estimated_hours: null
+            };
+          }
+
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "verified",
+            assignee_id: "dev-1",
+            title: "Ticket title",
+            description: "D".repeat(120)
+          };
+        }
+        return undefined;
+      },
+      runFactory: (sql, params) => {
+        runCalls.push({ sql, params });
+        return { changes: 1 };
+      }
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket(payload) {
+        syncCalls.push({ type: "normalize", payload });
+      },
+      ensureDevTaskForAcceptedTicket(payload) {
+        syncCalls.push({ type: "ensure", payload });
+      }
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { planned_date: "2026-03-01" }
+  });
+
+  assert.equal(result.oldStatus, "submitted");
+  assert.equal(result.newStatus, "verified");
+  assert.equal(result.shouldTrackTicketClosed, false);
+  assert.equal(result.shouldTrackBoardDrag, false);
+  assert.equal(result.shouldNotifyStatusChange, true);
+  assert.equal(result.ticket.status, "verified");
+  assert.equal(result.ticket.assignee_id, "dev-1");
+
+  const updateCall = runCalls.find((entry) => entry.sql.includes("UPDATE tickets SET"));
+  assert.ok(updateCall);
+  assert.ok(updateCall.params.includes("verified"));
+  assert.ok(updateCall.params.includes("dev-1"));
+
+  const historyCalls = runCalls.filter((entry) => entry.sql.includes("INSERT INTO ticket_history"));
+  assert.ok(historyCalls.length >= 1);
+
+  assert.equal(syncCalls.length, 2);
+  assert.deepEqual(syncCalls[0], {
+    type: "normalize",
+    payload: {
+      ticketId: "ticket-1",
+      assigneeId: "dev-1"
+    }
+  });
+  assert.equal(syncCalls[1].type, "ensure");
+  assert.equal(syncCalls[1].payload.ticketId, "ticket-1");
+  assert.equal(syncCalls[1].payload.userId, "dev-1");
+  assert.equal(syncCalls[1].payload.ticket.status, "verified");
+});
+
+test("tickets service update ticket marks board drag metadata for non-submitted status move", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "verified",
+            assignee_id: null,
+            title: "Ticket title",
+            description: "D".repeat(120),
+            priority: "normal"
+          };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket() {},
+      ensureDevTaskForAcceptedTicket() {}
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { status: "in_progress" }
+  });
+
+  assert.equal(result.shouldTrackBoardDrag, true);
+  assert.equal(result.oldStatus, "verified");
+  assert.equal(result.newStatus, "in_progress");
+});
+
 test("tickets service returns related tickets for developer without reporter filter", () => {
   const capture = { sql: "", params: [] };
   const rows = [{ id: "related-1", reporter_id: "user-2" }];

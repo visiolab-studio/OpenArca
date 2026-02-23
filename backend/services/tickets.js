@@ -688,6 +688,22 @@ function createTicketsService(options = {}) {
             source: "core"
           });
         }
+
+        if (isClosingTransition) {
+          appendDomainEvent({
+            database,
+            eventName: "ticket.closed",
+            aggregateType: "ticket",
+            aggregateId: ticketId,
+            actorUserId: user.id,
+            payload: {
+              old_status: oldStatus,
+              new_status: newStatus,
+              assignee_id: nextAssigneeId || null
+            },
+            source: "core"
+          });
+        }
       });
 
       updateTx();

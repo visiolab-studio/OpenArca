@@ -1521,7 +1521,7 @@
 
 ## Step P6B-03
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `b2a77a6`
 - Description: Publikacja eventu domenowego `ticket.status_changed` dla zmian statusu zgłoszeń.
 
 ### Implementation Plan
@@ -1565,6 +1565,56 @@
   - unit: event nie jest emitowany bez zmiany statusu,
   - integration: po `PATCH /api/tickets/:id` outbox zawiera `ticket.status_changed`.
 - Nie zmieniono kontraktów API ani istniejącego RBAC.
+
+### Skills created/updated
+- `docs/skills/domain-events-outbox.md` (updated)
+
+## Step P6B-04
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Publikacja eventu domenowego `ticket.closed` dla zamykania zgłoszeń.
+
+### Implementation Plan
+- Dodać publikację `ticket.closed` w `ticketsService.updateTicket(...)`.
+- Zapisać event w tej samej transakcji co update ticketu i `ticket_history`.
+- Emitować event tylko przy przejściu statusu do `closed`.
+- Dodać payload eventu: `old_status`, `new_status`, `assignee_id`.
+- Dodać test unit dla emitowania `ticket.closed` przy zamykaniu.
+- Dodać test unit potwierdzający brak `ticket.closed` przy reopen.
+- Dodać test integracyjny API potwierdzający wpis `ticket.closed` w outbox.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/domain-events-outbox.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (143/143)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /login` -> 200
+  - `GET /health` -> 200
+
+### Result
+- `ticketsService.updateTicket(...)` publikuje event `ticket.closed` atomowo w transakcji zmiany statusu.
+- Event emitowany jest tylko przy przejściu statusu do `closed`.
+- Payload eventu zawiera: `old_status`, `new_status`, `assignee_id`.
+- Dodano testy:
+  - unit: emitowanie `ticket.closed` przy zamknięciu,
+  - unit: brak `ticket.closed` przy reopen,
+  - integration: po closure summary i zamknięciu ticketu outbox zawiera `ticket.closed`.
+- Usunięto flakiness testu outbox (`limit=5` -> `limit=50`) dla stabilnego asserta event names.
 
 ### Skills created/updated
 - `docs/skills/domain-events-outbox.md` (updated)

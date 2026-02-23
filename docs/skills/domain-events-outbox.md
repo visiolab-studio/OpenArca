@@ -52,6 +52,22 @@ appendDomainEventToOutbox({
 ```
 
 ```js
+appendDomainEventToOutbox({
+  database: db,
+  eventName: "ticket.closed",
+  aggregateType: "ticket",
+  aggregateId: ticketId,
+  actorUserId: user.id,
+  payload: {
+    old_status: "verified",
+    new_status: "closed",
+    assignee_id: "dev-1"
+  },
+  source: "core"
+});
+```
+
+```js
 // Pattern: append w tej samej transakcji co zapis encji domenowej.
 const created = db.transaction(() => {
   const ticketId = createTicketRow();

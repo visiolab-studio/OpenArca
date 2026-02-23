@@ -142,6 +142,66 @@ test("updating ticket status writes ticket.status_changed event into durable out
   assert.equal(payload.new_status, "verified");
 });
 
+test("closing ticket writes ticket.closed event into durable outbox", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Outbox ticket.closed event should exist after closing ticket"
+      })
+    );
+
+  assert.equal(created.statusCode, 201);
+
+  const summary = await request
+    .post(`/api/tickets/${created.body.id}/comments`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      content: "Podsumowanie zamknięcia dla eventu domenowego ticket.closed.",
+      is_internal: false,
+      is_closure_summary: true,
+      type: "comment"
+    });
+  assert.equal(summary.statusCode, 201);
+
+  const closed = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "closed" });
+
+  assert.equal(closed.statusCode, 200);
+  assert.equal(closed.body.status, "closed");
+
+  const row = db
+    .prepare(
+      `SELECT
+        eo.event_name AS event_name,
+        eo.status AS outbox_status,
+        de.aggregate_id AS aggregate_id,
+        de.actor_user_id AS actor_user_id,
+        de.payload_json AS payload_json
+      FROM event_outbox eo
+      JOIN domain_events de ON de.id = eo.event_id
+      WHERE de.aggregate_type = 'ticket'
+        AND de.aggregate_id = ?
+        AND eo.event_name = 'ticket.closed'
+      ORDER BY datetime(eo.created_at) DESC
+      LIMIT 1`
+    )
+    .get(created.body.id);
+
+  assert.ok(row);
+  assert.equal(row.event_name, "ticket.closed");
+  assert.equal(row.outbox_status, "pending");
+  assert.equal(row.aggregate_id, created.body.id);
+  assert.equal(row.actor_user_id, devAuth.user.id);
+
+  const payload = JSON.parse(row.payload_json || "{}");
+  assert.equal(payload.old_status, "submitted");
+  assert.equal(payload.new_status, "closed");
+});
+
 test("events outbox endpoint returns persisted outbox items for developer", async () => {
   domainEventsService.publishDomainEvent({
     eventName: "ticket.created",
@@ -160,7 +220,7 @@ test("events outbox endpoint returns persisted outbox items for developer", asyn
   });
 
   const response = await request
-    .get("/api/settings/events/outbox?limit=5")
+    .get("/api/settings/events/outbox?limit=50")
     .set("Authorization", `Bearer ${devAuth.token}`);
 
   assert.equal(response.statusCode, 200);

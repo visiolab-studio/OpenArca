@@ -601,6 +601,127 @@ test("tickets service update ticket skips status_changed event without status tr
   assert.equal(appendedEvents.length, 0);
 });
 
+test("tickets service update ticket appends ticket.closed event on closing transition", () => {
+  const capture = { sql: "", params: [] };
+  const appendedEvents = [];
+  let ticketReadCount = 0;
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          ticketReadCount += 1;
+          if (ticketReadCount === 1) {
+            return {
+              id: "ticket-1",
+              reporter_id: "user-1",
+              status: "verified",
+              assignee_id: "dev-1",
+              title: "Ticket title",
+              description: "D".repeat(120),
+              priority: "normal"
+            };
+          }
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "closed",
+            assignee_id: "dev-1",
+            title: "Ticket title",
+            description: "D".repeat(120),
+            priority: "normal"
+          };
+        }
+        if (sql.includes("FROM comments")) {
+          return { id: "comment-1" };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket() {},
+      ensureDevTaskForAcceptedTicket() {}
+    },
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-1", outbox_id: "outbox-1", status: "pending" };
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { status: "closed" }
+  });
+
+  assert.equal(result.oldStatus, "verified");
+  assert.equal(result.newStatus, "closed");
+  assert.equal(appendedEvents.length, 2);
+  assert.equal(appendedEvents[0].eventName, "ticket.status_changed");
+  assert.equal(appendedEvents[1].eventName, "ticket.closed");
+  assert.deepEqual(appendedEvents[1].payload, {
+    old_status: "verified",
+    new_status: "closed",
+    assignee_id: "dev-1"
+  });
+});
+
+test("tickets service update ticket does not append ticket.closed event when reopening", () => {
+  const capture = { sql: "", params: [] };
+  const appendedEvents = [];
+  let ticketReadCount = 0;
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          ticketReadCount += 1;
+          if (ticketReadCount === 1) {
+            return {
+              id: "ticket-1",
+              reporter_id: "user-1",
+              status: "closed",
+              assignee_id: "dev-1",
+              title: "Ticket title",
+              description: "D".repeat(120),
+              priority: "normal"
+            };
+          }
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "verified",
+            assignee_id: "dev-1",
+            title: "Ticket title",
+            description: "D".repeat(120),
+            priority: "normal"
+          };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket() {},
+      ensureDevTaskForAcceptedTicket() {}
+    },
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-1", outbox_id: "outbox-1", status: "pending" };
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { status: "verified" }
+  });
+
+  assert.equal(result.oldStatus, "closed");
+  assert.equal(result.newStatus, "verified");
+  assert.equal(appendedEvents.length, 1);
+  assert.equal(appendedEvents[0].eventName, "ticket.status_changed");
+});
+
 test("tickets service returns related tickets for developer without reporter filter", () => {
   const capture = { sql: "", params: [] };
   const rows = [{ id: "related-1", reporter_id: "user-2" }];

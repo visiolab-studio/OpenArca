@@ -18,6 +18,7 @@ const {
   notifyReporterDeveloperComment
 } = require("../services/notifications");
 const { TELEMETRY_EVENT_NAMES, trackTelemetryEvent } = require("../services/telemetry");
+const { ticketsService } = require("../services/tickets");
 
 const router = express.Router();
 
@@ -854,59 +855,10 @@ function normalizeLinkedDevTasksForTicket({ ticketId, assigneeId }) {
 }
 
 router.get("/", authRequired, validate({ query: listQuerySchema }), (req, res) => {
-  const filters = [];
-  const params = [];
-
-  if (req.user.role !== "developer" || req.query.my === "1") {
-    filters.push("t.reporter_id = ?");
-    params.push(req.user.id);
-  }
-
-  if (req.query.status) {
-    filters.push("t.status = ?");
-    params.push(req.query.status);
-  }
-
-  if (req.query.priority) {
-    filters.push("t.priority = ?");
-    params.push(req.query.priority);
-  }
-
-  if (req.query.category) {
-    filters.push("t.category = ?");
-    params.push(req.query.category);
-  }
-
-  if (req.query.project_id) {
-    filters.push("t.project_id = ?");
-    params.push(req.query.project_id);
-  }
-
-  const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
-  const rows = db
-    .prepare(
-      `SELECT
-        t.id,
-        t.number,
-        t.title,
-        t.category,
-        t.priority,
-        t.status,
-        t.project_id,
-        t.reporter_id,
-        t.assignee_id,
-        t.planned_date,
-        t.created_at,
-        t.updated_at,
-        p.name AS project_name,
-        p.color AS project_color
-      FROM tickets t
-      LEFT JOIN projects p ON p.id = t.project_id
-      ${where}
-      ORDER BY t.updated_at DESC
-      LIMIT 500`
-    )
-    .all(...params);
+  const rows = ticketsService.listTickets({
+    user: req.user,
+    query: req.query
+  });
 
   return res.json(rows);
 });

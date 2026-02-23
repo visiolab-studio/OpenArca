@@ -1108,7 +1108,7 @@
 
 ## Step P6A-05
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `110a5e6`
 - Description: Konfigurowalne podpięcie prywatnego repo Enterprise przez zewnętrzny plik override.
 
 ### Implementation Plan
@@ -1160,3 +1160,54 @@
 
 ### Skills created/updated
 - `docs/skills/enterprise-repo-wiring.md` (created)
+
+## Step P6A-06
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Pierwsza migracja realnego flow ticketowego do service layer (route -> service -> response).
+
+### Implementation Plan
+- Wyodrębnić logikę listowania ticketów (`GET /api/tickets`) do dedykowanego service.
+- Zostawić w route tylko: walidacja query + auth + wywołanie service + response mapping.
+- Zapewnić kompatybilność payloadu i brak regresji RBAC/ownership.
+- Dodać testy unit nowego service (scenariusze user/developer, filtry bazowe).
+- Uzupełnić skill o pattern migracji endpointu ticketowego.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (59/59)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets` działa przez nowy service layer (`ticketsService.listTickets`) bez zmiany kontraktu odpowiedzi.
+- RBAC/ownership zostały zachowane:
+  - rola `user` widzi tylko własne zgłoszenia,
+  - rola `developer` widzi globalną listę, a `my=1` zawęża do przypisanych.
+- Zachowano wszystkie filtry query (`status`, `priority`, `category`, `project_id`) i kolejność parametrów SQL.
+- Dodano testy unit service, aby kolejne migracje route -> service miały wzorzec regresyjny.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (created)

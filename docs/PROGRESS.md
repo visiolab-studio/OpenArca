@@ -1163,7 +1163,7 @@
 
 ## Step P6A-06
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `c34d8ed`
 - Description: Pierwsza migracja realnego flow ticketowego do service layer (route -> service -> response).
 
 ### Implementation Plan
@@ -1211,3 +1211,58 @@
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (created)
+
+## Step P6A-07
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/workload` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.getWorkload({ user })` z obecną logiką SQL + mapowaniem kolejek.
+- Zachować kontrakt payloadu (`in_progress`, `queue`, `blocked`, `submitted`, `_stats`).
+- Zachować RBAC widoczności `can_open` (developer: globalnie, user: tylko własne).
+- Przepiąć route `/api/tickets/workload` na wywołanie service.
+- Dodać testy unit dla `getWorkload` (podział statusów, statystyki, `can_open`).
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (61/61)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets/workload` został przeniesiony do `ticketsService.getWorkload({ user })`.
+- Route `tickets` jest cieńszy i zachowuje kontrakt odpowiedzi.
+- Zachowano podział kolejek:
+  - `in_progress`,
+  - `queue` (`verified` + `waiting`),
+  - `blocked`,
+  - `submitted`.
+- Zachowano `_stats` oraz regułę widoczności `can_open`:
+  - developer otwiera wszystkie rekordy,
+  - user tylko własne.
+- Dodano testy unit service dla mapowania workload i reguł `can_open`.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)

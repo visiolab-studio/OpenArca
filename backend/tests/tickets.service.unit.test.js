@@ -2,13 +2,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTicketsService } = require("../services/tickets");
 
-function createDbStub(capture) {
+function createDbStub(capture, options = {}) {
   return {
     prepare(sql) {
       capture.sql = sql;
       return {
         all(...params) {
           capture.params = params;
+          if (typeof options.rowsFactory === "function") {
+            return options.rowsFactory(sql, params);
+          }
           return [{ id: "ticket-1" }];
         }
       };
@@ -79,4 +82,58 @@ test("tickets service validates user context", () => {
       query: {}
     });
   }, /invalid_user_context/);
+});
+
+test("tickets service returns grouped workload with stats and queue mapping", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [
+    { id: "t-1", status: "in_progress", reporter_id: "user-1" },
+    { id: "t-2", status: "verified", reporter_id: "user-2" },
+    { id: "t-3", status: "waiting", reporter_id: "user-2" },
+    { id: "t-4", status: "blocked", reporter_id: "user-3" },
+    { id: "t-5", status: "submitted", reporter_id: "user-1" }
+  ];
+  const service = createTicketsService({
+    db: createDbStub(capture, { rowsFactory: () => rows })
+  });
+
+  const payload = service.getWorkload({
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.match(capture.sql, /FROM tickets t/);
+  assert.equal(payload.in_progress.length, 1);
+  assert.equal(payload.queue.length, 2);
+  assert.equal(payload.blocked.length, 1);
+  assert.equal(payload.submitted.length, 1);
+  assert.deepEqual(payload._stats, {
+    in_progress: 1,
+    queue: 2,
+    blocked: 1,
+    submitted: 1,
+    open: 5
+  });
+});
+
+test("tickets service sets can_open by role and ownership in workload payload", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [
+    { id: "t-1", status: "verified", reporter_id: "user-1" },
+    { id: "t-2", status: "verified", reporter_id: "user-2" }
+  ];
+  const service = createTicketsService({
+    db: createDbStub(capture, { rowsFactory: () => rows })
+  });
+
+  const payloadForUser = service.getWorkload({
+    user: { id: "user-1", role: "user" }
+  });
+  assert.equal(payloadForUser.queue[0].can_open, true);
+  assert.equal(payloadForUser.queue[1].can_open, false);
+
+  const payloadForDeveloper = service.getWorkload({
+    user: { id: "dev-1", role: "developer" }
+  });
+  assert.equal(payloadForDeveloper.queue[0].can_open, true);
+  assert.equal(payloadForDeveloper.queue[1].can_open, true);
 });

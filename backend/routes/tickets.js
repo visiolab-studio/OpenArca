@@ -978,54 +978,13 @@ router.post(
   validate({ params: idParamsSchema, body: createCommentSchema }),
   async (req, res, next) => {
     try {
-      const ticket = getTicket(req.params.id);
-      ensureTicketAccess(ticket, req.user);
+      const result = ticketsService.createTicketComment({
+        ticketId: req.params.id,
+        user: req.user,
+        payload: req.body
+      });
 
-      if (req.body.is_internal && req.user.role !== "developer") {
-        return res.status(403).json({ error: "forbidden" });
-      }
-
-      if (req.body.is_closure_summary && req.user.role !== "developer") {
-        return res.status(403).json({ error: "forbidden" });
-      }
-
-      if (req.body.is_closure_summary && req.body.is_internal) {
-        return res.status(400).json({ error: "invalid_closure_summary_visibility" });
-      }
-
-      if (req.body.parent_id) {
-        const parent = db
-          .prepare("SELECT id FROM comments WHERE id = ? AND ticket_id = ?")
-          .get(req.body.parent_id, req.params.id);
-        if (!parent) {
-          return res.status(400).json({ error: "invalid_parent_comment" });
-        }
-      }
-
-      const commentId = uuidv4();
-      db.prepare(
-        `INSERT INTO comments (
-          id, ticket_id, user_id, content,
-          is_developer, is_internal, is_closure_summary, type,
-          parent_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      ).run(
-        commentId,
-        req.params.id,
-        req.user.id,
-        req.body.content,
-        req.user.role === "developer" ? 1 : 0,
-        req.body.is_internal ? 1 : 0,
-        req.body.is_closure_summary ? 1 : 0,
-        req.body.type || "comment",
-        req.body.parent_id || null
-      );
-
-      const comment = db
-        .prepare("SELECT * FROM comments WHERE id = ?")
-        .get(commentId);
-
-      if (req.user.role === "developer" && !req.body.is_internal) {
+      if (result.shouldNotifyReporterDeveloperComment) {
         try {
           await notifyReporterDeveloperComment({
             ticketId: req.params.id,
@@ -1037,19 +996,31 @@ router.post(
         }
       }
 
-      if (req.user.role === "developer" && req.body.is_closure_summary) {
+      if (result.shouldTrackClosureSummary) {
         trackTelemetryEvent({
           eventName: "closure_summary_added",
           userId: req.user.id,
           ticketId: req.params.id,
           properties: {
-            comment_id: commentId
+            comment_id: result.comment.id
           }
         });
       }
 
-      return res.status(201).json(comment);
+      return res.status(201).json(result.comment);
     } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      if (error?.code === "invalid_closure_summary_visibility") {
+        return res.status(400).json({ error: "invalid_closure_summary_visibility" });
+      }
+      if (error?.code === "invalid_parent_comment") {
+        return res.status(400).json({ error: "invalid_parent_comment" });
+      }
       return next(error);
     }
   }

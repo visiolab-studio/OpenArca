@@ -728,6 +728,167 @@ test("tickets service create attachments throws forbidden for non-owner user", (
   }, (error) => error.code === "forbidden" && error.status === 403);
 });
 
+test("tickets service creates comment and returns side-effects metadata", () => {
+  const capture = { sql: "", params: [] };
+  const runCalls = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        if (sql.includes("SELECT * FROM comments WHERE id = ?")) {
+          return { id: params[0], ticket_id: "ticket-1", content: "Done" };
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql, params) => {
+        if (sql.includes("INSERT INTO comments")) {
+          runCalls.push(params);
+        }
+        return { changes: 1 };
+      }
+    })
+  });
+
+  const result = service.createTicketComment({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    payload: {
+      content: "Done",
+      is_internal: false,
+      is_closure_summary: true,
+      type: "comment"
+    }
+  });
+
+  assert.equal(runCalls.length, 1);
+  assert.equal(runCalls[0][1], "ticket-1");
+  assert.equal(runCalls[0][2], "dev-1");
+  assert.equal(result.comment.ticket_id, "ticket-1");
+  assert.equal(result.shouldNotifyReporterDeveloperComment, true);
+  assert.equal(result.shouldTrackClosureSummary, true);
+});
+
+test("tickets service create comment blocks internal for non-developer", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketComment({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      payload: { content: "x", is_internal: true, is_closure_summary: false, type: "comment" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
+test("tickets service create comment blocks closure summary for non-developer", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketComment({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      payload: { content: "x", is_internal: false, is_closure_summary: true, type: "comment" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
+test("tickets service create comment validates closure summary visibility", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketComment({
+      ticketId: "ticket-1",
+      user: { id: "dev-1", role: "developer" },
+      payload: { content: "x", is_internal: true, is_closure_summary: true, type: "comment" }
+    });
+  }, (error) => error.code === "invalid_closure_summary_visibility" && error.status === 400);
+});
+
+test("tickets service create comment validates parent comment id", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        if (sql.includes("SELECT id FROM comments WHERE id = ? AND ticket_id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketComment({
+      ticketId: "ticket-1",
+      user: { id: "dev-1", role: "developer" },
+      payload: {
+        content: "x",
+        is_internal: false,
+        is_closure_summary: false,
+        type: "comment",
+        parent_id: "comment-parent-id"
+      }
+    });
+  }, (error) => error.code === "invalid_parent_comment" && error.status === 400);
+});
+
+test("tickets service create comment throws ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketComment({
+      ticketId: "missing-ticket",
+      user: { id: "dev-1", role: "developer" },
+      payload: { content: "x", is_internal: false, is_closure_summary: false, type: "comment" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
 test("tickets service returns external references ordered by created_at desc", () => {
   const capture = { sql: "", params: [] };
   const rows = [

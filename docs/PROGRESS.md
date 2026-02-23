@@ -2015,7 +2015,7 @@
 
 ## Step P6A-22
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `26f804d`
 - Description: Migracja endpointu `POST /api/tickets/:id/attachments` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -2067,6 +2067,70 @@
 - Endpoint `POST /api/tickets/:id/attachments` działa jako cienki adapter route->service.
 - Zachowano kontrakt endpointu: `201` + lista attachmentów.
 - Dodano testy unit service dla success i wszystkich ścieżek błędów.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-23
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `POST /api/tickets/:id/comments` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.createTicketComment({ ticketId, user, payload })`.
+- Przenieść do service:
+  - ownership guard (`ticket_not_found`, `forbidden`),
+  - walidacje domenowe komentarza (`invalid_closure_summary_visibility`, `invalid_parent_comment`),
+  - insert komentarza i odczyt utworzonego wpisu.
+- Zwracać z service metadane do side effects (powiadomienia i telemetry) bez zmiany kontraktu API.
+- Przepiąć route `POST /api/tickets/:id/comments` do schematu route->service->response.
+- Zachować obecne RBAC dla `is_internal` i `is_closure_summary`.
+- Dodać testy unit service (success + ścieżki błędów).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (115/115)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Manual scripted browser baseline (repo nie zawiera Playwright/Cypress):
+  - `GET /health` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.createTicketComment({ ticketId, user, payload })`.
+- Przeniesiono do service:
+  - ownership guard (`ticket_not_found`, `forbidden`),
+  - walidacje komentarza (`invalid_closure_summary_visibility`, `invalid_parent_comment`),
+  - insert komentarza + odczyt utworzonego wpisu.
+- Endpoint `POST /api/tickets/:id/comments` działa jako cienki adapter route->service.
+- Zachowano side effects w route:
+  - powiadomienie reportera o komentarzu deva (tylko publiczny komentarz),
+  - telemetry `closure_summary_added`.
+- Dodano mapowanie błędów service -> HTTP:
+  - `ticket_not_found` -> 404,
+  - `forbidden` -> 403,
+  - `invalid_closure_summary_visibility` -> 400,
+  - `invalid_parent_comment` -> 400.
+- Dodano testy unit service dla success i ścieżek błędów.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

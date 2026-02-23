@@ -569,6 +569,62 @@ function createTicketsService(options = {}) {
       return created;
     },
 
+    createTicketComment({ ticketId, user, payload }) {
+      getReadableTicketOrThrow({ database, ticketId, user });
+
+      if (payload?.is_internal && user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      if (payload?.is_closure_summary && user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      if (payload?.is_closure_summary && payload?.is_internal) {
+        throw createServiceError("invalid_closure_summary_visibility", 400);
+      }
+
+      if (payload?.parent_id) {
+        const parent = database
+          .prepare("SELECT id FROM comments WHERE id = ? AND ticket_id = ?")
+          .get(payload.parent_id, ticketId);
+        if (!parent) {
+          throw createServiceError("invalid_parent_comment", 400);
+        }
+      }
+
+      const commentId = uuidv4();
+      database
+        .prepare(
+          `INSERT INTO comments (
+            id, ticket_id, user_id, content,
+            is_developer, is_internal, is_closure_summary, type,
+            parent_id, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        )
+        .run(
+          commentId,
+          ticketId,
+          user.id,
+          payload.content,
+          user.role === "developer" ? 1 : 0,
+          payload.is_internal ? 1 : 0,
+          payload.is_closure_summary ? 1 : 0,
+          payload.type || "comment",
+          payload.parent_id || null
+        );
+
+      const comment = database
+        .prepare("SELECT * FROM comments WHERE id = ?")
+        .get(commentId);
+
+      return {
+        comment,
+        shouldNotifyReporterDeveloperComment: user.role === "developer" && !payload.is_internal,
+        shouldTrackClosureSummary: user.role === "developer" && Boolean(payload.is_closure_summary)
+      };
+    },
+
     getTicketDetail({ ticketId, user }) {
       const ticket = getReadableTicketOrThrow({ database, ticketId, user });
 

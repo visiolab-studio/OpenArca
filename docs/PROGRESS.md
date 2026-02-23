@@ -1055,7 +1055,7 @@
 
 ## Step P6A-04
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `631957c`
 - Description: Przeniesienie logiki endpointu enterprise-check do dedykowanej warstwy service + response mapping.
 
 ### Implementation Plan
@@ -1105,3 +1105,58 @@
 
 ### Skills created/updated
 - `docs/skills/route-service-response-mapping.md` (created)
+
+## Step P6A-05
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Konfigurowalne podpięcie prywatnego repo Enterprise przez zewnętrzny plik override.
+
+### Implementation Plan
+- Dodać ustawienia środowiskowe dla ścieżki override (`EXTENSIONS_DIR`, `EXTENSIONS_OVERRIDES_FILE`).
+- Przepiąć registry, aby domyślnie ładował override z konfiguracji (a nie hardcoded path).
+- Zachować bezpieczny fallback, gdy plik override nie istnieje.
+- Dodać testy unit dla ładowania override z zewnętrznej ścieżki pliku.
+- Uzupełnić `.env.example` i dokumentację pod rozdział Open vs Enterprise repo.
+- Dodać skill operacyjny „jak podłączyć OpenArca-Enterprise do OpenArca lokalnie”.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/config.js`
+- `backend/core/extension-registry.js`
+- `backend/extensions/README.md`
+- `backend/tests/extension.registry.external-path.unit.test.js`
+- `.env.example`
+- `docs/skills/enterprise-repo-wiring.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (55/55)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano konfigurację ENV dla external override:
+  - `EXTENSIONS_DIR`
+  - `EXTENSIONS_OVERRIDES_FILE`
+- Registry ładuje override z konfiguracji backendu zamiast hardcoded ścieżki.
+- Zachowano bezpieczny fallback do core, gdy plik override nie istnieje.
+- Dodano testy unit dla zewnętrznej ścieżki override (plik istnieje / brak pliku).
+- Uzupełniono `.env.example` i dokumentację pod rozdział Open repo + Enterprise repo.
+
+### Skills created/updated
+- `docs/skills/enterprise-repo-wiring.md` (created)

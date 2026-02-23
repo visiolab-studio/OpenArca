@@ -1,11 +1,11 @@
 const fs = require("fs");
-const path = require("path");
+const { extensionsOverridesFile } = require("../config");
 const { createTicketService } = require("./services/ticketService");
 const { createWorkflowService } = require("./services/workflowService");
 const { createTaskSyncService } = require("./services/taskSyncService");
 
 const SERVICE_NAMES = ["ticketService", "workflowService", "taskSyncService"];
-const DEFAULT_OVERRIDES_FILE = path.join(__dirname, "..", "extensions", "service-overrides.js");
+const DEFAULT_OVERRIDES_FILE = extensionsOverridesFile;
 
 function createCoreServices() {
   return {
@@ -27,6 +27,8 @@ function loadOverridesFromDisk(overridesFilePath = DEFAULT_OVERRIDES_FILE) {
     return {};
   }
 
+  const resolvedPath = require.resolve(overridesFilePath);
+  delete require.cache[resolvedPath];
   const loaded = require(overridesFilePath);
   return parseOverridesModule(loaded);
 }
@@ -81,7 +83,9 @@ function createServiceRegistry(options = {}) {
   };
 }
 
-const defaultRegistry = createServiceRegistry();
+const defaultRegistry = createServiceRegistry({
+  overridesFilePath: DEFAULT_OVERRIDES_FILE
+});
 
 function getService(serviceName) {
   return defaultRegistry.getService(serviceName);

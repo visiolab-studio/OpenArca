@@ -71,9 +71,11 @@ return res.json(payload);
 ```
 
 ```js
-const ticket = ticketsService.getTicketById({ ticketId: req.params.id });
-ensureTicketAccess(ticket, req.user);
-return res.json(ticketsService.getExternalReferences({ ticketId: req.params.id }));
+const payload = ticketsService.getTicketExternalReferences({
+  ticketId: req.params.id,
+  user: req.user
+});
+return res.json(payload);
 ```
 
 ```js

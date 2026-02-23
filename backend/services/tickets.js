@@ -15,6 +15,24 @@ function createServiceError(code, status) {
   return error;
 }
 
+function getReadableTicketOrThrow({ database, ticketId, user }) {
+  assertUserContext(user);
+
+  const ticket = database
+    .prepare("SELECT * FROM tickets WHERE id = ?")
+    .get(ticketId);
+
+  if (!ticket) {
+    throw createServiceError("ticket_not_found", 404);
+  }
+
+  if (user.role !== "developer" && ticket.reporter_id !== user.id) {
+    throw createServiceError("forbidden", 403);
+  }
+
+  return ticket;
+}
+
 function parseSqliteDateToEpochMs(value) {
   if (value == null) return null;
 
@@ -362,20 +380,13 @@ function createTicketsService(options = {}) {
         .all(ticketId);
     },
 
+    getTicketExternalReferences({ ticketId, user }) {
+      getReadableTicketOrThrow({ database, ticketId, user });
+      return this.getExternalReferences({ ticketId });
+    },
+
     getTicketDetail({ ticketId, user }) {
-      assertUserContext(user);
-
-      const ticket = database
-        .prepare("SELECT * FROM tickets WHERE id = ?")
-        .get(ticketId);
-
-      if (!ticket) {
-        throw createServiceError("ticket_not_found", 404);
-      }
-
-      if (user.role !== "developer" && ticket.reporter_id !== user.id) {
-        throw createServiceError("forbidden", 403);
-      }
+      const ticket = getReadableTicketOrThrow({ database, ticketId, user });
 
       const commentsQuery =
         user.role === "developer"

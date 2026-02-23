@@ -600,10 +600,22 @@ router.get(
   "/:id/external-references",
   authRequired,
   validate({ params: idParamsSchema }),
-  (req, res) => {
-    const ticket = getTicket(req.params.id);
-    ensureTicketAccess(ticket, req.user);
-    return res.json(getExternalReferences(req.params.id));
+  (req, res, next) => {
+    try {
+      const payload = ticketsService.getTicketExternalReferences({
+        ticketId: req.params.id,
+        user: req.user
+      });
+      return res.json(payload);
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      return next(error);
+    }
   }
 );
 

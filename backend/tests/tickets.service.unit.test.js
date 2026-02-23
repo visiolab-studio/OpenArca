@@ -173,6 +173,106 @@ test("tickets service returns external references ordered by created_at desc", (
   assert.deepEqual(result, rows);
 });
 
+test("tickets service returns ticket external references for developer", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "ref-1" }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql, params) => {
+        if (sql.includes("FROM ticket_external_references r")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return rows;
+        }
+        return [];
+      }
+    })
+  });
+
+  const result = service.getTicketExternalReferences({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.deepEqual(result, rows);
+});
+
+test("tickets service returns ticket external references for ticket owner", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "ref-1" }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM ticket_external_references r")) {
+          return rows;
+        }
+        return [];
+      }
+    })
+  });
+
+  const result = service.getTicketExternalReferences({
+    ticketId: "ticket-1",
+    user: { id: "user-1", role: "user" }
+  });
+
+  assert.deepEqual(result, rows);
+});
+
+test("tickets service ticket external references throws ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.getTicketExternalReferences({
+      ticketId: "missing-ticket",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service ticket external references throws forbidden for non-owner user", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "owner-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.getTicketExternalReferences({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
 test("tickets service returns ticket detail for developer with full comments", () => {
   const capture = { sql: "", params: [] };
   const service = createTicketsService({

@@ -1619,7 +1619,7 @@
 
 ## Step P6A-15
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `f42cf2c`
 - Description: Migracja endpointu `GET /api/tickets/:id` (ticket detail) do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1666,6 +1666,62 @@
   - user widzi tylko komentarze publiczne (`is_internal = 0`).
 - Endpoint `GET /api/tickets/:id` został odchudzony do adaptera HTTP (`auth + validate + service + response mapping`).
 - Dodano testy unit dla scenariuszy success/failure i reguł widoczności.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-16
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/:id/external-references` do warstwy `ticketsService` z pełnym ownership guard w service.
+
+### Implementation Plan
+- Dodać `ticketsService.getTicketExternalReferences({ ticketId, user })`.
+- Przenieść do service walidację odczytu ticketu (`ticket_not_found`, `forbidden`) dla external references.
+- Przepiąć route `GET /api/tickets/:id/external-references` do schematu `auth + validate + service + response mapping`.
+- Zachować kontrakt payloadu endpointu (lista referencji bez zmian).
+- Dodać testy unit service (developer success, owner success, 404, 403).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (82/82)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.getTicketExternalReferences({ ticketId, user })` z centralnym ownership guard.
+- `GET /api/tickets/:id/external-references` działa jako cienki adapter HTTP z mapowaniem błędów:
+  - `ticket_not_found` -> 404,
+  - `forbidden` -> 403.
+- Zachowano kontrakt odpowiedzi endpointu (lista referencji z tym samym payloadem).
+- Dodano testy unit service dla scenariuszy:
+  - developer success,
+  - owner-user success,
+  - 404 dla brakującego ticketu,
+  - 403 dla nieuprawnionego usera.
+- Zrefaktorowano powtarzalny guard odczytu ticketu do helpera service (`getReadableTicketOrThrow`).
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

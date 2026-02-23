@@ -2073,7 +2073,7 @@
 
 ## Step P6A-23
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `d9904e9`
 - Description: Migracja endpointu `POST /api/tickets/:id/comments` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -2131,6 +2131,69 @@
   - `invalid_closure_summary_visibility` -> 400,
   - `invalid_parent_comment` -> 400.
 - Dodano testy unit service dla success i ścieżek błędów.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-24
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `POST /api/tickets` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.createTicket({ user, payload, files })`.
+- Przenieść do service:
+  - walidację referencji (`project_not_found`),
+  - inkrementację licznika ticketów,
+  - insert ticketu i attachmentów w jednej transakcji.
+- Zwracać z service metadane side effects:
+  - `ticketId`,
+  - `shouldTrackTicketCreated`,
+  - `telemetry` payload.
+- Przepiąć route `POST /api/tickets` do schematu route->service->response.
+- Zachować kontrakt API (`201` + pełny ticket payload).
+- Dodać testy unit service (success + `project_not_found`).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (117/117)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Manual scripted browser baseline (repo nie zawiera Playwright/Cypress):
+  - `GET /health` -> 200
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.createTicket({ user, payload, files })`.
+- Przeniesiono do service:
+  - walidację referencji `project_id` (`project_not_found`),
+  - inkrementację `ticket_counter`,
+  - insert ticketu i attachmentów w jednej transakcji.
+- Endpoint `POST /api/tickets` działa jako cienki adapter route->service.
+- Zachowano kontrakt API (`201` + payload nowo utworzonego ticketu).
+- Zachowano telemetry `ticket.created` (event dispatch z route na podstawie metadanych z service).
+- Dodano mapowanie błędu service `project_not_found` -> HTTP 400.
+- Dodano testy unit service dla success i `project_not_found`.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

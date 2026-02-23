@@ -133,6 +133,15 @@ return res.status(201).json(payload);
 ```
 
 ```js
+const result = ticketsService.createTicket({
+  user: req.user,
+  payload,
+  files: req.files
+});
+return res.status(201).json(getTicket(result.ticketId));
+```
+
+```js
 const result = ticketsService.createTicketComment({
   ticketId: req.params.id,
   user: req.user,
@@ -172,6 +181,7 @@ return res.json(payload);
 - Brak ownership guard (`ticket_not_found`/`forbidden`) przy GET endpointu related.
 - Brak walidacji `attachments_required`/`attachments_too_large` po migracji upload route.
 - Brak walidacji `invalid_parent_comment` i `invalid_closure_summary_visibility` po migracji comments route.
+- Brak mapowania `project_not_found` po migracji create ticket route.
 - Rozjechanie widoczności komentarzy w detailu (developer wszystkie, user bez internal).
 - Brak walidacji kontekstu użytkownika w service.
 

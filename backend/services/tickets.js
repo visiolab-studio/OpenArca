@@ -330,6 +330,92 @@ function createTicketsService(options = {}) {
         .get(ticketId);
     },
 
+    createTicket({ user, payload, files }) {
+      assertUserContext(user);
+
+      if (Object.prototype.hasOwnProperty.call(payload, "project_id") && payload.project_id) {
+        const project = database
+          .prepare("SELECT 1 FROM projects WHERE id = ?")
+          .get(payload.project_id);
+        if (!project) {
+          throw createServiceError("project_not_found", 400);
+        }
+      }
+
+      const created = database.transaction(() => {
+        const counterRaw = database
+          .prepare("SELECT value FROM settings WHERE key = 'ticket_counter'")
+          .get()?.value;
+        const nextNumber = Number.parseInt(counterRaw || "0", 10) + 1;
+
+        database
+          .prepare("UPDATE settings SET value = ? WHERE key = 'ticket_counter'")
+          .run(String(nextNumber));
+
+        const ticketId = uuidv4();
+        database
+          .prepare(
+            `INSERT INTO tickets (
+              id, number, title, description, steps_to_reproduce,
+              expected_result, actual_result, environment,
+              urgency_reporter, priority, status, category,
+              project_id, reporter_id, assignee_id,
+              estimated_hours, planned_date, order_index,
+              internal_note, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'normal', 'submitted', ?, ?, ?, NULL, NULL, NULL, 0, NULL, datetime('now'), datetime('now'))`
+          )
+          .run(
+            ticketId,
+            nextNumber,
+            payload.title,
+            payload.description,
+            payload.steps_to_reproduce || null,
+            payload.expected_result || null,
+            payload.actual_result || null,
+            payload.environment || null,
+            payload.urgency_reporter,
+            payload.category,
+            payload.project_id || null,
+            user.id
+          );
+
+        if (Array.isArray(files) && files.length) {
+          const insertAttachment = database.prepare(
+            `INSERT INTO attachments (
+              id, ticket_id, filename, original_name,
+              mime_type, size, uploaded_by, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+          );
+
+          for (const file of files) {
+            insertAttachment.run(
+              uuidv4(),
+              ticketId,
+              file.filename,
+              file.originalname,
+              file.mimetype,
+              file.size,
+              user.id
+            );
+          }
+        }
+
+        return {
+          ticketId,
+          category: payload.category || "other"
+        };
+      })();
+
+      return {
+        ticketId: created.ticketId,
+        shouldTrackTicketCreated: true,
+        telemetry: {
+          status: "submitted",
+          category: created.category
+        }
+      };
+    },
+
     getRelatedTickets({ ticketId, user }) {
       assertUserContext(user);
 

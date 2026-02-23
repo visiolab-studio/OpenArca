@@ -695,78 +695,26 @@ router.post(
         throw error;
       }
 
-      validateForeignRefs(payload);
-
-      const createTx = db.transaction(() => {
-        const counterRaw = db
-          .prepare("SELECT value FROM settings WHERE key = 'ticket_counter'")
-          .get()?.value;
-        const nextNumber = Number.parseInt(counterRaw || "0", 10) + 1;
-
-        db.prepare("UPDATE settings SET value = ? WHERE key = 'ticket_counter'").run(String(nextNumber));
-
-        const id = uuidv4();
-        db.prepare(
-          `INSERT INTO tickets (
-            id, number, title, description, steps_to_reproduce,
-            expected_result, actual_result, environment,
-            urgency_reporter, priority, status, category,
-            project_id, reporter_id, assignee_id,
-            estimated_hours, planned_date, order_index,
-            internal_note, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'normal', 'submitted', ?, ?, ?, NULL, NULL, NULL, 0, NULL, datetime('now'), datetime('now'))`
-        ).run(
-          id,
-          nextNumber,
-          payload.title,
-          payload.description,
-          payload.steps_to_reproduce || null,
-          payload.expected_result || null,
-          payload.actual_result || null,
-          payload.environment || null,
-          payload.urgency_reporter,
-          payload.category,
-          payload.project_id || null,
-          req.user.id
-        );
-
-        if (Array.isArray(req.files) && req.files.length) {
-          const insertAttachment = db.prepare(
-            `INSERT INTO attachments (
-              id, ticket_id, filename, original_name,
-              mime_type, size, uploaded_by, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-          );
-
-          for (const file of req.files) {
-            insertAttachment.run(
-              uuidv4(),
-              id,
-              file.filename,
-              file.originalname,
-              file.mimetype,
-              file.size,
-              req.user.id
-            );
-          }
-        }
-
-        return id;
+      const result = ticketsService.createTicket({
+        user: req.user,
+        payload,
+        files: req.files
       });
 
-      const ticketId = createTx();
-      trackTelemetryEvent({
-        eventName: "ticket.created",
-        userId: req.user.id,
-        ticketId,
-        properties: {
-          status: "submitted",
-          category: payload.category || "other"
-        }
-      });
-      return res.status(201).json(getTicket(ticketId));
+      if (result.shouldTrackTicketCreated) {
+        trackTelemetryEvent({
+          eventName: "ticket.created",
+          userId: req.user.id,
+          ticketId: result.ticketId,
+          properties: result.telemetry
+        });
+      }
+      return res.status(201).json(getTicket(result.ticketId));
     } catch (error) {
       removeUploadedFiles(req.files);
+      if (error?.code === "project_not_found") {
+        return res.status(400).json({ error: "project_not_found" });
+      }
       return next(error);
     }
   }

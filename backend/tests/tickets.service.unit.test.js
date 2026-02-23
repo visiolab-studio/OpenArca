@@ -121,6 +121,113 @@ test("tickets service returns ticket by id", () => {
   assert.deepEqual(ticket, { id: "ticket-1", title: "Sample ticket" });
 });
 
+test("tickets service creates ticket with attachments and returns telemetry metadata", () => {
+  const capture = { sql: "", params: [] };
+  const runCalls = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT 1 FROM projects WHERE id = ?")) {
+          assert.deepEqual(params, ["project-1"]);
+          return { 1: 1 };
+        }
+        if (sql.includes("SELECT value FROM settings WHERE key = 'ticket_counter'")) {
+          return { value: "7" };
+        }
+        return { count: 0 };
+      },
+      runFactory: (sql, params) => {
+        runCalls.push({ sql, params });
+        return { changes: 1 };
+      }
+    })
+  });
+
+  const result = service.createTicket({
+    user: { id: "user-1", role: "user" },
+    payload: {
+      title: "Ticket title long enough",
+      description: "A".repeat(120),
+      steps_to_reproduce: "Step list",
+      expected_result: "Expected",
+      actual_result: "Actual",
+      environment: "Prod",
+      urgency_reporter: "high",
+      category: "bug",
+      project_id: "project-1"
+    },
+    files: [
+      {
+        filename: "att-1",
+        originalname: "a.txt",
+        mimetype: "text/plain",
+        size: 10
+      },
+      {
+        filename: "att-2",
+        originalname: "b.txt",
+        mimetype: "text/plain",
+        size: 20
+      }
+    ]
+  });
+
+  assert.equal(result.shouldTrackTicketCreated, true);
+  assert.equal(result.telemetry.status, "submitted");
+  assert.equal(result.telemetry.category, "bug");
+  assert.equal(typeof result.ticketId, "string");
+  assert.ok(result.ticketId.length > 10);
+
+  const updateCounterCall = runCalls.find((entry) =>
+    entry.sql.includes("UPDATE settings SET value = ? WHERE key = 'ticket_counter'")
+  );
+  assert.ok(updateCounterCall);
+  assert.deepEqual(updateCounterCall.params, ["8"]);
+
+  const ticketInsertCall = runCalls.find((entry) =>
+    entry.sql.includes("INSERT INTO tickets")
+  );
+  assert.ok(ticketInsertCall);
+  assert.equal(ticketInsertCall.params[1], 8);
+  assert.equal(ticketInsertCall.params[10], "project-1");
+  assert.equal(ticketInsertCall.params[11], "user-1");
+
+  const attachmentInsertCalls = runCalls.filter((entry) =>
+    entry.sql.includes("INSERT INTO attachments")
+  );
+  assert.equal(attachmentInsertCalls.length, 2);
+  assert.equal(attachmentInsertCalls[0].params[6], "user-1");
+  assert.equal(attachmentInsertCalls[1].params[6], "user-1");
+});
+
+test("tickets service create ticket validates project reference", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT 1 FROM projects WHERE id = ?")) {
+          return undefined;
+        }
+        return { value: "0" };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicket({
+      user: { id: "user-1", role: "user" },
+      payload: {
+        title: "Ticket title long enough",
+        description: "A".repeat(120),
+        urgency_reporter: "normal",
+        category: "other",
+        project_id: "missing-project-id"
+      },
+      files: []
+    });
+  }, (error) => error.code === "project_not_found" && error.status === 400);
+});
+
 test("tickets service returns related tickets for developer without reporter filter", () => {
   const capture = { sql: "", params: [] };
   const rows = [{ id: "related-1", reporter_id: "user-2" }];

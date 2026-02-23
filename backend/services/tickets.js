@@ -1,4 +1,5 @@
 const db = require("../db");
+const { v4: uuidv4 } = require("uuid");
 const { TELEMETRY_EVENT_NAMES } = require("./telemetry");
 const { TICKET_STATUSES } = require("../constants");
 
@@ -382,6 +383,39 @@ function createTicketsService(options = {}) {
 
     getTicketExternalReferences({ ticketId, user }) {
       getReadableTicketOrThrow({ database, ticketId, user });
+      return this.getExternalReferences({ ticketId });
+    },
+
+    createTicketExternalReference({ ticketId, user, payload }) {
+      assertUserContext(user);
+
+      if (user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      const ticket = this.getTicketById({ ticketId });
+      if (!ticket) {
+        throw createServiceError("ticket_not_found", 404);
+      }
+
+      const id = uuidv4();
+      const title = payload?.title ? String(payload.title).trim() : null;
+
+      database
+        .prepare(
+          `INSERT INTO ticket_external_references (
+            id, ticket_id, ref_type, url, title, created_by, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+        )
+        .run(
+          id,
+          ticketId,
+          payload.ref_type,
+          String(payload.url).trim(),
+          title || null,
+          user.id
+        );
+
       return this.getExternalReferences({ ticketId });
     },
 

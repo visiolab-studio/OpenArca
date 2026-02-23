@@ -21,6 +21,13 @@ function createDbStub(capture, options = {}) {
             return options.getFactory(sql, params);
           }
           return { count: 0 };
+        },
+        run(...params) {
+          capture.params = params;
+          if (typeof options.runFactory === "function") {
+            return options.runFactory(sql, params);
+          }
+          return { changes: 1 };
         }
       };
     }
@@ -203,6 +210,54 @@ test("tickets service returns ticket external references for developer", () => {
   assert.deepEqual(result, rows);
 });
 
+test("tickets service creates external reference for developer and returns refreshed list", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "ref-created", url: "https://example.com/task/123" }];
+  const runCalls = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM ticket_external_references r")) {
+          return rows;
+        }
+        return [];
+      },
+      runFactory: (sql, params) => {
+        if (sql.includes("INSERT INTO ticket_external_references")) {
+          runCalls.push(params);
+          return { changes: 1 };
+        }
+        return { changes: 0 };
+      }
+    })
+  });
+
+  const result = service.createTicketExternalReference({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    payload: {
+      ref_type: "task",
+      url: " https://example.com/task/123 ",
+      title: "  Sprint board item  "
+    }
+  });
+
+  assert.equal(runCalls.length, 1);
+  assert.equal(runCalls[0][1], "ticket-1");
+  assert.equal(runCalls[0][2], "task");
+  assert.equal(runCalls[0][3], "https://example.com/task/123");
+  assert.equal(runCalls[0][4], "Sprint board item");
+  assert.equal(runCalls[0][5], "dev-1");
+  assert.deepEqual(result, rows);
+});
+
 test("tickets service returns ticket external references for ticket owner", () => {
   const capture = { sql: "", params: [] };
   const rows = [{ id: "ref-1" }];
@@ -229,6 +284,49 @@ test("tickets service returns ticket external references for ticket owner", () =
   });
 
   assert.deepEqual(result, rows);
+});
+
+test("tickets service create external reference throws ticket_not_found", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.createTicketExternalReference({
+      ticketId: "missing-ticket",
+      user: { id: "dev-1", role: "developer" },
+      payload: {
+        ref_type: "task",
+        url: "https://example.com/task/123"
+      }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service create external reference throws forbidden for non-developer", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture)
+  });
+
+  assert.throws(() => {
+    service.createTicketExternalReference({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" },
+      payload: {
+        ref_type: "task",
+        url: "https://example.com/task/123"
+      }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
 });
 
 test("tickets service ticket external references throws ticket_not_found", () => {

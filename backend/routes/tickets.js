@@ -298,10 +298,6 @@ function resolveRelatedTicket({ relatedTicketId, relatedTicketNumber }) {
     .get(Number(relatedTicketNumber));
 }
 
-function getExternalReferences(ticketId) {
-  return ticketsService.getExternalReferences({ ticketId });
-}
-
 function getTicket(ticketId) {
   return ticketsService.getTicketById({ ticketId });
 }
@@ -625,27 +621,23 @@ router.post(
   requireRole("developer"),
   writeLimiter,
   validate({ params: idParamsSchema, body: createExternalReferenceSchema }),
-  (req, res) => {
-    const ticket = getTicket(req.params.id);
-    ensureTicketAccess(ticket, req.user);
-
-    const id = uuidv4();
-    const title = req.body.title ? String(req.body.title).trim() : null;
-
-    db.prepare(
-      `INSERT INTO ticket_external_references (
-        id, ticket_id, ref_type, url, title, created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).run(
-      id,
-      req.params.id,
-      req.body.ref_type,
-      String(req.body.url).trim(),
-      title || null,
-      req.user.id
-    );
-
-    return res.status(201).json(getExternalReferences(req.params.id));
+  (req, res, next) => {
+    try {
+      const payload = ticketsService.createTicketExternalReference({
+        ticketId: req.params.id,
+        user: req.user,
+        payload: req.body
+      });
+      return res.status(201).json(payload);
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      return next(error);
+    }
   }
 );
 

@@ -1269,7 +1269,7 @@
 
 ## Step P6A-08
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `4a18980`
 - Description: Migracja endpointu `GET /api/tickets/stats/overview` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1314,6 +1314,56 @@
   - poprawnego wyliczenia `closed_today`,
   - fallbacku zer dla brakujących danych.
 - Endpoint nadal wymaga `authRequired` i nie zmienia reguł dostępu.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-09
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/stats/activation` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Przenieść `buildActivationStats` i zależne helpery dat/czasu do `backend/services/tickets.js`.
+- Dodać `ticketsService.getActivationStats()` i zachować kontrakt odpowiedzi 1:1.
+- Przepiąć route `/api/tickets/stats/activation` na service.
+- Dodać testy unit dla `getActivationStats` (deterministyczny scenariusz + brak danych).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (65/65)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets/stats/activation` został przeniesiony do `ticketsService.getActivationStats()`.
+- Usunięto duplikację logiki wyliczeń activation stats z route.
+- Zachowano kontrakt odpowiedzi i RBAC (`developer-only` przez middleware route).
+- Dodano testy unit dla metody service:
+  - scenariusz deterministyczny,
+  - brak próbek i fallback `null/0`.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

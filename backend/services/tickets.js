@@ -6,6 +6,60 @@ function assertUserContext(user) {
   }
 }
 
+function parseSqliteDateToEpochMs(value) {
+  if (value == null) return null;
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withZone = /([zZ]|[+-]\d{2}:\d{2})$/.test(normalized)
+    ? normalized
+    : `${normalized}Z`;
+
+  const epochMs = Date.parse(withZone);
+  return Number.isFinite(epochMs) ? epochMs : null;
+}
+
+function minutesBetween(startValue, endValue) {
+  const startEpoch = parseSqliteDateToEpochMs(startValue);
+  const endEpoch = parseSqliteDateToEpochMs(endValue);
+
+  if (startEpoch == null || endEpoch == null || endEpoch < startEpoch) {
+    return null;
+  }
+
+  return (endEpoch - startEpoch) / 60000;
+}
+
+function roundToTwo(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function summarizeMinuteSamples(samples) {
+  if (!samples.length) {
+    return {
+      avg_minutes: null,
+      median_minutes: null,
+      sample_size: 0
+    };
+  }
+
+  const sorted = [...samples].sort((left, right) => left - right);
+  const average = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+  const middle = Math.floor(sorted.length / 2);
+  const median =
+    sorted.length % 2 === 0
+      ? (sorted[middle - 1] + sorted[middle]) / 2
+      : sorted[middle];
+
+  return {
+    avg_minutes: roundToTwo(average),
+    median_minutes: roundToTwo(median),
+    sample_size: samples.length
+  };
+}
+
 function createTicketsService(options = {}) {
   const database = options.db || db;
 
@@ -188,6 +242,99 @@ function createTicketsService(options = {}) {
         verified: counts.verified || 0,
         blocked: counts.blocked || 0,
         closed_today: closedToday || 0
+      };
+    },
+
+    getActivationStats() {
+      const users = database
+        .prepare(
+          `SELECT id, created_at
+           FROM users
+           WHERE role = 'user'`
+        )
+        .all();
+
+      const tickets = database
+        .prepare(
+          `SELECT id, reporter_id, created_at
+           FROM tickets
+           ORDER BY datetime(created_at) ASC, id ASC`
+        )
+        .all();
+
+      const assignmentHistory = database
+        .prepare(
+          `SELECT ticket_id, created_at, new_value
+           FROM ticket_history
+           WHERE field = 'assignee_id'
+           ORDER BY datetime(created_at) ASC, id ASC`
+        )
+        .all();
+
+      const firstTicketByReporter = new Map();
+      for (const ticket of tickets) {
+        if (!firstTicketByReporter.has(ticket.reporter_id)) {
+          firstTicketByReporter.set(ticket.reporter_id, ticket);
+        }
+      }
+
+      const firstAssignmentByTicket = new Map();
+      for (const entry of assignmentHistory) {
+        const assigneeValue = entry.new_value == null ? "" : String(entry.new_value).trim();
+        if (!assigneeValue) {
+          continue;
+        }
+
+        if (!firstAssignmentByTicket.has(entry.ticket_id)) {
+          firstAssignmentByTicket.set(entry.ticket_id, entry.created_at);
+        }
+      }
+
+      const firstTicketSamples = [];
+      const firstAssignmentSamples = [];
+      let firstAssignmentUnderThirtyCount = 0;
+
+      for (const user of users) {
+        const firstTicket = firstTicketByReporter.get(user.id);
+        if (!firstTicket) {
+          continue;
+        }
+
+        const timeToFirstTicketMinutes = minutesBetween(user.created_at, firstTicket.created_at);
+        if (timeToFirstTicketMinutes != null) {
+          firstTicketSamples.push(timeToFirstTicketMinutes);
+        }
+
+        const firstAssignmentAt = firstAssignmentByTicket.get(firstTicket.id);
+        if (!firstAssignmentAt) {
+          continue;
+        }
+
+        const timeToFirstAssignmentMinutes = minutesBetween(firstTicket.created_at, firstAssignmentAt);
+        if (timeToFirstAssignmentMinutes == null) {
+          continue;
+        }
+
+        firstAssignmentSamples.push(timeToFirstAssignmentMinutes);
+        if (timeToFirstAssignmentMinutes <= 30) {
+          firstAssignmentUnderThirtyCount += 1;
+        }
+      }
+
+      return {
+        generated_at: new Date().toISOString(),
+        users_total: users.length,
+        users_with_first_ticket: firstTicketSamples.length,
+        users_with_first_dev_assignment: firstAssignmentSamples.length,
+        time_to_first_ticket_minutes: summarizeMinuteSamples(firstTicketSamples),
+        time_to_first_dev_assignment_minutes: summarizeMinuteSamples(firstAssignmentSamples),
+        first_dev_assignment_under_30m: {
+          within_target_count: firstAssignmentUnderThirtyCount,
+          within_target_percent: firstAssignmentSamples.length
+            ? roundToTwo((firstAssignmentUnderThirtyCount / firstAssignmentSamples.length) * 100)
+            : null,
+          sample_size: firstAssignmentSamples.length
+        }
       };
     }
   };

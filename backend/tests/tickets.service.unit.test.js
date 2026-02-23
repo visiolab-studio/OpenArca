@@ -203,3 +203,80 @@ test("tickets service overview stats fallback to zeros when rows are missing", (
     closed_today: 0
   });
 });
+
+test("tickets service computes activation stats deterministically", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM users") && sql.includes("role = 'user'")) {
+          return [{ id: "user-1", created_at: "2026-01-01 10:00:00" }];
+        }
+        if (sql.includes("FROM tickets")) {
+          return [{ id: "ticket-1", reporter_id: "user-1", created_at: "2026-01-01 10:15:00" }];
+        }
+        if (sql.includes("FROM ticket_history") && sql.includes("field = 'assignee_id'")) {
+          return [{ ticket_id: "ticket-1", created_at: "2026-01-01 10:40:00", new_value: "dev-1" }];
+        }
+        return [];
+      }
+    })
+  });
+
+  const payload = service.getActivationStats();
+
+  assert.equal(typeof payload.generated_at, "string");
+  assert.equal(payload.users_total, 1);
+  assert.equal(payload.users_with_first_ticket, 1);
+  assert.equal(payload.users_with_first_dev_assignment, 1);
+  assert.deepEqual(payload.time_to_first_ticket_minutes, {
+    avg_minutes: 15,
+    median_minutes: 15,
+    sample_size: 1
+  });
+  assert.deepEqual(payload.time_to_first_dev_assignment_minutes, {
+    avg_minutes: 25,
+    median_minutes: 25,
+    sample_size: 1
+  });
+  assert.deepEqual(payload.first_dev_assignment_under_30m, {
+    within_target_count: 1,
+    within_target_percent: 100,
+    sample_size: 1
+  });
+});
+
+test("tickets service activation stats returns null metrics when samples are missing", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql) => {
+        if (sql.includes("FROM users") && sql.includes("role = 'user'")) {
+          return [{ id: "user-1", created_at: "2026-01-01 10:00:00" }];
+        }
+        return [];
+      }
+    })
+  });
+
+  const payload = service.getActivationStats();
+
+  assert.equal(payload.users_total, 1);
+  assert.equal(payload.users_with_first_ticket, 0);
+  assert.equal(payload.users_with_first_dev_assignment, 0);
+  assert.deepEqual(payload.time_to_first_ticket_minutes, {
+    avg_minutes: null,
+    median_minutes: null,
+    sample_size: 0
+  });
+  assert.deepEqual(payload.time_to_first_dev_assignment_minutes, {
+    avg_minutes: null,
+    median_minutes: null,
+    sample_size: 0
+  });
+  assert.deepEqual(payload.first_dev_assignment_under_30m, {
+    within_target_count: 0,
+    within_target_percent: null,
+    sample_size: 0
+  });
+});

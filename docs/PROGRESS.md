@@ -929,7 +929,7 @@
 
 ## Step P6A-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `3a422c9`
 - Description: Middleware `requireFeature` + pierwszy endpoint enterprise-gated.
 
 ### Implementation Plan
@@ -991,3 +991,64 @@
 
 ### Skills created/updated
 - `docs/skills/require-feature-middleware.md` (created)
+
+## Step P6A-03
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Modularny szkielet splitu Open/Enterprise (extension registry + service contracts).
+
+### Implementation Plan
+- Dodać registry usług domenowych z mechanizmem override (core -> extensions).
+- Dodać bazowe kontrakty serwisów: `ticketService`, `workflowService`, `taskSyncService`.
+- Dodać bezpieczny loader opcjonalnych override z `backend/extensions/`.
+- Przepiąć pierwszy endpoint (`/api/settings/enterprise-check`) na warstwę service przez registry.
+- Dodać testy jednostkowe registry (fallback core + override).
+- Dodać dokumentację operacyjną dla integracji prywatnego repo Enterprise.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/core/extension-registry.js`
+- `backend/core/services/ticketService.js`
+- `backend/core/services/workflowService.js`
+- `backend/core/services/taskSyncService.js`
+- `backend/extensions/README.md`
+- `backend/routes/settings.js`
+- `backend/tests/extension.registry.unit.test.js`
+- `docs/skills/open-enterprise-engine-split.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (50/50)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano warstwę `backend/core/services/*` jako bazę kontraktów usług domenowych.
+- Dodano registry `backend/core/extension-registry.js` z kolejnością:
+  - core fallback,
+  - opcjonalny override z `backend/extensions/service-overrides.js`.
+- Dodano dokumentację override w `backend/extensions/README.md`.
+- Przepięto endpoint `GET /api/settings/enterprise-check` na warstwę `workflowService` przez registry.
+- Dodano testy unit registry:
+  - lista usług,
+  - fallback core,
+  - override function/object,
+  - walidacja błędnego override.
+
+### Skills created/updated
+- `docs/skills/open-enterprise-engine-split.md` (created)

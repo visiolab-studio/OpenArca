@@ -7,6 +7,7 @@ const { requireFeature } = require("../middleware/features");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
+const { getService } = require("../core/extension-registry");
 const { uploadsDir } = require("../config");
 const {
   getSetting,
@@ -155,11 +156,9 @@ router.get("/capabilities", authRequired, (req, res) => {
 router.use(authRequired, requireRole("developer"));
 
 router.get("/enterprise-check", requireFeature("enterprise_automation"), (req, res) => {
-  return res.json({
-    ok: true,
-    checked_feature: "enterprise_automation",
-    generated_at: new Date().toISOString()
-  });
+  const workflowService = getService("workflowService");
+  const payload = workflowService.buildEnterpriseCheckPayload("enterprise_automation");
+  return res.json(payload);
 });
 
 router.get("/", (req, res) => {

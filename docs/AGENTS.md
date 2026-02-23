@@ -64,3 +64,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/closure-summary-index-feed.md`
 - `docs/skills/capabilities-foundation.md`
 - `docs/skills/require-feature-middleware.md`
+- `docs/skills/open-enterprise-engine-split.md`

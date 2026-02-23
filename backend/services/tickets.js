@@ -300,6 +300,41 @@ function createTicketsService(options = {}) {
         .get(ticketId);
     },
 
+    getRelatedTickets({ ticketId, user }) {
+      assertUserContext(user);
+
+      const params = [ticketId, ticketId, ticketId];
+      let reporterFilterSql = "";
+
+      if (user.role !== "developer") {
+        reporterFilterSql = "AND t.reporter_id = ?";
+        params.push(user.id);
+      }
+
+      return database
+        .prepare(
+          `SELECT
+            t.id,
+            t.number,
+            t.title,
+            t.status,
+            t.priority,
+            t.category,
+            t.assignee_id,
+            t.reporter_id,
+            t.updated_at
+          FROM ticket_relations tr
+          JOIN tickets t ON t.id = CASE
+            WHEN tr.ticket_id_a = ? THEN tr.ticket_id_b
+            ELSE tr.ticket_id_a
+          END
+          WHERE (tr.ticket_id_a = ? OR tr.ticket_id_b = ?)
+            ${reporterFilterSql}
+          ORDER BY datetime(t.updated_at) DESC`
+        )
+        .all(...params);
+    },
+
     getExternalReferences({ ticketId }) {
       return database
         .prepare(

@@ -1520,7 +1520,7 @@
 
 ## Step P6A-13
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `53cedb7`
 - Description: Migracja endpointu `GET /api/tickets/:id/external-references` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1564,6 +1564,55 @@
 - Endpoint `GET /api/tickets/:id/external-references` działa przez service layer.
 - Zredukowano SQL w route (helpery route delegują do service).
 - Dodano testy unit dla metod service: ticket by id + external references.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-14
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/:id/related` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Dodać `ticketsService.getRelatedTickets({ ticketId, user })` z zachowaniem RBAC visibility filter.
+- Przepiąć route `GET /api/tickets/:id/related` na service layer.
+- Dodać testy unit metody `getRelatedTickets` (developer vs user, filtr reporter_id).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (74/74)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.getRelatedTickets({ ticketId, user })` z regułą widoczności:
+  - developer bez filtra reporter,
+  - user z filtrem `reporter_id = user.id`.
+- Endpoint `GET /api/tickets/:id/related` działa przez service layer.
+- Dodano testy unit dla scenariusza developer i user (SQL filter + params).
+- Zmiana nie narusza kontraktu odpowiedzi endpointu.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

@@ -12,6 +12,7 @@ Przenieść logikę endpointów ticketowych do service layer bez zmiany kontrakt
 - Przy refaktorze route `GET /api/tickets/stats/usage`.
 - Przy refaktorze route `GET /api/tickets/closure-summaries/index-feed`.
 - Przy refaktorze route `GET /api/tickets/:id/external-references`.
+- Przy refaktorze route `GET /api/tickets/:id/related`.
 - Przy przygotowaniu override logic przez Open/Enterprise engine split.
 
 ## Kroki
@@ -74,6 +75,12 @@ ensureTicketAccess(ticket, req.user);
 return res.json(ticketsService.getExternalReferences({ ticketId: req.params.id }));
 ```
 
+```js
+const ticket = ticketsService.getTicketById({ ticketId: req.params.id });
+ensureTicketAccess(ticket, req.user);
+return res.json(ticketsService.getRelatedTickets({ ticketId: req.params.id, user: req.user }));
+```
+
 ## Definition of Done
 - [ ] Route jest cienki i nie trzyma logiki SQL.
 - [ ] Payload endpointu nie zmienia się.
@@ -89,6 +96,7 @@ return res.json(ticketsService.getExternalReferences({ ticketId: req.params.id }
 - Rozjechanie metryk usage (coverage 30d + timeline 14d).
 - Rozjechanie mapowania feedu closure summary (publiczne podsumowania + updated_since).
 - Rozjechanie listy external references lub utrata ownership check przed odczytem.
+- Rozjechanie widoczności related tickets (developer globalnie, user tylko własne).
 - Brak walidacji kontekstu użytkownika w service.
 
 ## Powiązane pliki w repo

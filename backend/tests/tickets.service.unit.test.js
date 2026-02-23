@@ -108,6 +108,50 @@ test("tickets service returns ticket by id", () => {
   assert.deepEqual(ticket, { id: "ticket-1", title: "Sample ticket" });
 });
 
+test("tickets service returns related tickets for developer without reporter filter", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "related-1", reporter_id: "user-2" }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql, params) => {
+        assert.match(sql, /FROM ticket_relations tr/);
+        assert.doesNotMatch(sql, /AND t\.reporter_id = \?/);
+        assert.deepEqual(params, ["ticket-1", "ticket-1", "ticket-1"]);
+        return rows;
+      }
+    })
+  });
+
+  const result = service.getRelatedTickets({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.deepEqual(result, rows);
+});
+
+test("tickets service returns related tickets for user with reporter filter", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "related-1", reporter_id: "user-1" }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: (sql, params) => {
+        assert.match(sql, /FROM ticket_relations tr/);
+        assert.match(sql, /AND t\.reporter_id = \?/);
+        assert.deepEqual(params, ["ticket-1", "ticket-1", "ticket-1", "user-1"]);
+        return rows;
+      }
+    })
+  });
+
+  const result = service.getRelatedTickets({
+    ticketId: "ticket-1",
+    user: { id: "user-1", role: "user" }
+  });
+
+  assert.deepEqual(result, rows);
+});
+
 test("tickets service returns external references ordered by created_at desc", () => {
   const capture = { sql: "", params: [] };
   const rows = [

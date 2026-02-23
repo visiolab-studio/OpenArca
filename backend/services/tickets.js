@@ -1,5 +1,6 @@
 const db = require("../db");
 const { TELEMETRY_EVENT_NAMES } = require("./telemetry");
+const { TICKET_STATUSES } = require("../constants");
 
 function assertUserContext(user) {
   if (!user || !user.id || !user.role) {
@@ -258,6 +259,37 @@ function buildClosureSummaryIndexFeed(database, { limit = 200, updatedSince = nu
   };
 }
 
+function buildBoardPayload(database) {
+  const payload = Object.fromEntries(TICKET_STATUSES.map((status) => [status, []]));
+  const rows = database
+    .prepare(
+      `SELECT
+        t.id, t.number, t.title, t.description, t.status, t.priority, t.category, t.project_id,
+        t.reporter_id, t.assignee_id, t.planned_date,
+        p.name AS project_name, p.color AS project_color,
+        ru.name AS reporter_name, au.name AS assignee_name
+      FROM tickets t
+      LEFT JOIN projects p ON p.id = t.project_id
+      LEFT JOIN users ru ON ru.id = t.reporter_id
+      LEFT JOIN users au ON au.id = t.assignee_id
+      ORDER BY t.updated_at DESC`
+    )
+    .all();
+
+  for (const row of rows) {
+    if (payload[row.status]) {
+      payload[row.status].push(row);
+    }
+  }
+
+  payload._stats = TICKET_STATUSES.reduce((acc, key) => {
+    acc[key] = payload[key].length;
+    return acc;
+  }, {});
+
+  return payload;
+}
+
 function createTicketsService(options = {}) {
   const database = options.db || db;
 
@@ -319,6 +351,10 @@ function createTicketsService(options = {}) {
           LIMIT 500`
         )
         .all(...params);
+    },
+
+    getBoard() {
+      return buildBoardPayload(database);
     },
 
     getWorkload({ user }) {

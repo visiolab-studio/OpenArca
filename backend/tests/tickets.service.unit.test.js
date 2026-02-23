@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTicketsService } = require("../services/tickets");
+const { TICKET_STATUSES } = require("../constants");
 
 function createDbStub(capture, options = {}) {
   return {
@@ -89,6 +90,42 @@ test("tickets service validates user context", () => {
       query: {}
     });
   }, /invalid_user_context/);
+});
+
+test("tickets service returns board grouped by known statuses with _stats", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [
+    { id: "t-1", status: "submitted" },
+    { id: "t-2", status: "submitted" },
+    { id: "t-3", status: "verified" },
+    { id: "t-4", status: "in_progress" },
+    { id: "t-5", status: "closed" },
+    { id: "t-x", status: "unknown_status" }
+  ];
+  const service = createTicketsService({
+    db: createDbStub(capture, { rowsFactory: () => rows })
+  });
+
+  const payload = service.getBoard();
+
+  assert.match(capture.sql, /FROM tickets t/);
+  for (const status of TICKET_STATUSES) {
+    assert.equal(Array.isArray(payload[status]), true);
+  }
+  assert.equal(payload.submitted.length, 2);
+  assert.equal(payload.verified.length, 1);
+  assert.equal(payload.in_progress.length, 1);
+  assert.equal(payload.closed.length, 1);
+  assert.equal(payload.blocked.length, 0);
+  assert.equal(payload.waiting.length, 0);
+  assert.deepEqual(payload._stats, {
+    submitted: 2,
+    verified: 1,
+    in_progress: 1,
+    waiting: 0,
+    blocked: 0,
+    closed: 1
+  });
 });
 
 test("tickets service returns grouped workload with stats and queue mapping", () => {

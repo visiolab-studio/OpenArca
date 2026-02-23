@@ -5,6 +5,7 @@ Przenieść logikę endpointów ticketowych do service layer bez zmiany kontrakt
 
 ## Kiedy stosować
 - Przy refaktorze route `GET /api/tickets`.
+- Przy refaktorze route `GET /api/tickets/board`.
 - Przy refaktorze route `GET /api/tickets/workload`.
 - Przy refaktorze route `GET /api/tickets/stats/overview`.
 - Przy refaktorze route `GET /api/tickets/stats/activation`.
@@ -29,6 +30,11 @@ const rows = ticketsService.listTickets({
   query: req.query
 });
 return res.json(rows);
+```
+
+```js
+const payload = ticketsService.getBoard();
+return res.json(payload);
 ```
 
 ```js
@@ -68,6 +74,7 @@ return res.json(payload);
 
 ## Najczęstsze błędy / pułapki
 - Utrata filtra `my=1` dla roli developer.
+- Utrata bucketów Kanban lub błędne `_stats` dla board.
 - Zmiana kolejności/warunków filtrów i rozjechanie wyników.
 - Utrata mapowania kolejek workload (`in_progress`, `queue`, `blocked`, `submitted`).
 - Rozjechanie licznika `closed_today` lub brak fallbacku zer dla statystyk overview.

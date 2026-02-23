@@ -1420,7 +1420,7 @@
 
 ## Step P6A-11
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `f2446fa`
 - Description: Migracja endpointu `GET /api/tickets/closure-summaries/index-feed` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1464,6 +1464,56 @@
 - Dodano testy unit dla:
   - mapowania pojedynczego rekordu feedu,
   - poprawnego użycia filtra `updatedSince`.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-12
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/board` do warstwy `ticketsService`.
+
+### Implementation Plan
+- Przenieść logikę pobierania i grupowania Kanban board do `ticketsService.getBoard()`.
+- Zachować kontrakt payloadu: status buckets + `_stats`.
+- Przepiąć route `/api/tickets/board` na wywołanie service.
+- Dodać testy unit dla metody board (grupowanie po statusie + `_stats`).
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (70/70)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Endpoint `GET /api/tickets/board` został przeniesiony do `ticketsService.getBoard()`.
+- Zachowano strukturę odpowiedzi Kanban:
+  - buckety statusów,
+  - `_stats` liczone per status.
+- Route Kanban została odchudzona do adaptera HTTP.
+- Dodano test unit dla grupowania board i poprawności `_stats`.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

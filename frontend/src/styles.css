@@ -2623,9 +2623,12 @@ table th {
   gap: 6px;
 }
 
-.otp-input {
+.otp-slot input.otp-input {
   width: 36px;
+  min-width: 36px;
+  max-width: 36px;
   height: 44px;
+  min-height: 44px;
   padding: 10px 3px;
   text-align: center;
   font-size: 20px;
@@ -2637,12 +2640,12 @@ table th {
   color: var(--text-primary);
 }
 
-.otp-input:focus {
+.otp-slot input.otp-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-.otp-input.filled {
+.otp-slot input.otp-input.filled {
   border-color: var(--accent);
   background: var(--accent-subtle);
 }
@@ -2663,6 +2666,36 @@ table th {
 
 .otp-timer.expiring {
   color: var(--priority-critical);
+}
+
+.capabilities-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.capabilities-list {
+  display: grid;
+  gap: 8px;
+}
+
+.capabilities-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+}
+
+.capabilities-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .page-center {

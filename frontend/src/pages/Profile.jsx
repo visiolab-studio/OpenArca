@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { useCapabilities } from "../contexts/CapabilitiesContext";
 
 function normalizeError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
@@ -20,12 +21,15 @@ function toInitials(nameOrEmail) {
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { user, updateProfile, uploadAvatar } = useAuth();
+  const { ready: capabilitiesReady, edition, capabilities, refreshCapabilities } = useCapabilities();
   const [name, setName] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showCapabilitiesModal, setShowCapabilitiesModal] = useState(false);
+  const [capabilitiesError, setCapabilitiesError] = useState("");
 
   useEffect(() => {
     setName(user?.name || "");
@@ -76,6 +80,22 @@ export default function ProfilePage() {
       setUploading(false);
     }
   }
+
+  async function handleOpenCapabilitiesModal() {
+    setCapabilitiesError("");
+    setShowCapabilitiesModal(true);
+    try {
+      await refreshCapabilities();
+    } catch (loadError) {
+      setCapabilitiesError(normalizeError(loadError));
+    }
+  }
+
+  const sortedCapabilities = useMemo(() => {
+    const entries = Object.entries(capabilities || {});
+    entries.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    return entries;
+  }, [capabilities]);
 
   return (
     <section className="page-content profile-page">
@@ -133,11 +153,56 @@ export default function ProfilePage() {
             <input type="email" value={user?.email || ""} disabled />
           </label>
 
-          <button type="submit" className="btn" disabled={saving}>
-            {saving ? t("app.loading") : t("profile.save")}
-          </button>
+          <div className="row-actions">
+            <button type="submit" className="btn" disabled={saving}>
+              {saving ? t("app.loading") : t("profile.save")}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleOpenCapabilitiesModal}>
+              {t("profile.showCapabilities")}
+            </button>
+          </div>
         </form>
       </article>
+
+      {showCapabilitiesModal ? (
+        <div className="todo-modal-backdrop" onClick={() => setShowCapabilitiesModal(false)}>
+          <article className="card todo-create-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="todo-create-modal-header">
+              <h2 className="card-title">{t("profile.capabilitiesTitle")}</h2>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowCapabilitiesModal(false)}>
+                {t("app.cancel")}
+              </button>
+            </div>
+
+            <p className="muted">{t("profile.capabilitiesHint")}</p>
+            <div className="capabilities-meta">
+              <span className="badge badge-no-dot">
+                {t("profile.editionLabel")}: {edition}
+              </span>
+              <span className="badge badge-no-dot">
+                {t("profile.flagsCount", { count: sortedCapabilities.length })}
+              </span>
+            </div>
+
+            {capabilitiesError ? (
+              <p className="feedback err">{t(`errors.${capabilitiesError}`, { defaultValue: capabilitiesError })}</p>
+            ) : null}
+
+            {!capabilitiesReady ? <p className="muted">{t("app.loading")}</p> : null}
+
+            <ul className="list-plain capabilities-list">
+              {sortedCapabilities.map(([key, enabled]) => (
+                <li key={key} className="capabilities-row">
+                  <span className="capabilities-key">{key}</span>
+                  <span className={enabled ? "badge badge-closed" : "badge badge-blocked"}>
+                    {enabled ? t("profile.enabled") : t("profile.disabled")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
+      ) : null}
     </section>
   );
 }

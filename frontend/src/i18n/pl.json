@@ -41,7 +41,14 @@
     "email": "Adres email",
     "avatar": "Avatar",
     "uploadAvatar": "Wgraj avatar",
-    "save": "Zapisz profil"
+    "save": "Zapisz profil",
+    "showCapabilities": "Pokaż capabilities",
+    "capabilitiesTitle": "Capabilities systemu",
+    "capabilitiesHint": "Podgląd aktywnych funkcji silnika (Open Core / Enterprise).",
+    "editionLabel": "Edycja",
+    "flagsCount": "Flagi: {{count}}",
+    "enabled": "Włączone",
+    "disabled": "Wyłączone"
   },
   "dashboard": {
     "title": "Dashboard",

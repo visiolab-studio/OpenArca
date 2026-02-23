@@ -12,6 +12,7 @@ const {
   getSettingsMap,
   updateSettings
 } = require("../services/settings");
+const { getCapabilities } = require("../services/capabilities");
 const { sendEmail } = require("../services/email");
 
 const router = express.Router();
@@ -140,6 +141,14 @@ router.get("/logo", (req, res) => {
 
   res.setHeader("Cache-Control", "public, max-age=300");
   return res.sendFile(filePath);
+});
+
+router.get("/capabilities", authRequired, (req, res) => {
+  const payload = getCapabilities();
+  return res.json({
+    generated_at: new Date().toISOString(),
+    ...payload
+  });
 });
 
 router.use(authRequired, requireRole("developer"));

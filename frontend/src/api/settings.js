@@ -10,6 +10,11 @@ export async function getPublicSettings() {
   return response.data;
 }
 
+export async function getCapabilities() {
+  const response = await client.get("/api/settings/capabilities");
+  return response.data;
+}
+
 export async function patchSettings(payload) {
   const response = await client.patch("/api/settings", payload);
   return response.data;

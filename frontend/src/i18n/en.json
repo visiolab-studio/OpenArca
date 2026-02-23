@@ -41,7 +41,14 @@
     "email": "Email address",
     "avatar": "Avatar",
     "uploadAvatar": "Upload avatar",
-    "save": "Save profile"
+    "save": "Save profile",
+    "showCapabilities": "Show capabilities",
+    "capabilitiesTitle": "System capabilities",
+    "capabilitiesHint": "Preview of active engine features (Open Core / Enterprise).",
+    "editionLabel": "Edition",
+    "flagsCount": "Flags: {{count}}",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "dashboard": {
     "title": "Dashboard",

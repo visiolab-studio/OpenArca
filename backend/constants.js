@@ -21,6 +21,28 @@ const COMMENT_TYPES = ["comment", "question", "answer"];
 
 const STATUS_NOTIFICATION_KEYS = new Set(["verified", "in_progress", "blocked", "closed"]);
 
+const EDITIONS = {
+  OPEN_CORE: "open_core",
+  ENTERPRISE: "enterprise"
+};
+
+const KNOWN_FEATURE_FLAGS = [
+  "core_tickets",
+  "core_board",
+  "core_devtodo",
+  "core_admin",
+  "enterprise_automation",
+  "enterprise_sso_google",
+  "enterprise_sso_microsoft",
+  "enterprise_sso_saml",
+  "enterprise_audit_immutable",
+  "enterprise_audit_export",
+  "enterprise_data_retention",
+  "enterprise_custom_workflows",
+  "enterprise_multi_team",
+  "enterprise_ai_recall"
+];
+
 const SETTING_KEYS = [
   "allowed_domains",
   "developer_emails",
@@ -40,16 +62,20 @@ const SETTING_KEYS = [
   "ses_session_token",
   "ses_from",
   "ses_endpoint",
-  "app_url"
+  "app_url",
+  "edition",
+  "feature_flags"
 ];
 
 module.exports = {
   ROLES,
+  EDITIONS,
   TICKET_STATUSES,
   TICKET_PRIORITIES,
   TICKET_CATEGORIES,
   DEV_TASK_STATUSES,
   COMMENT_TYPES,
   STATUS_NOTIFICATION_KEYS,
+  KNOWN_FEATURE_FLAGS,
   SETTING_KEYS
 };

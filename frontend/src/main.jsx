@@ -5,15 +5,18 @@ import "./i18n";
 import "./styles.css";
 import App from "./App";
 import { AuthProvider } from "./contexts/AuthContext";
+import { CapabilitiesProvider } from "./contexts/CapabilitiesContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <LanguageProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <CapabilitiesProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </CapabilitiesProvider>
       </AuthProvider>
     </LanguageProvider>
   </React.StrictMode>

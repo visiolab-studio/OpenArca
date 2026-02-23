@@ -62,3 +62,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/related-tickets-linking.md`
 - `docs/skills/external-references.md`
 - `docs/skills/closure-summary-index-feed.md`
+- `docs/skills/capabilities-foundation.md`

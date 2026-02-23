@@ -814,7 +814,7 @@
 
 ## Step P5.5-03
 - Status: Done
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `c2b675e`
 - Description: Closure summaries gotowe pod indexing AI (export/feed endpoint).
 
 ### Implementation Plan
@@ -861,3 +861,68 @@
 
 ### Skills created/updated
 - `docs/skills/closure-summary-index-feed.md` (created)
+
+## Step P6A-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Capabilities foundation (`edition`, `feature_flags`, endpoint `/api/settings/capabilities`, frontend `useCapabilities`).
+
+### Implementation Plan
+- Dodać model ustawień `edition` + `feature_flags` w backend settings/defaults.
+- Dodać serwis capabilities z bezpiecznymi domyślnymi flagami Open Core.
+- Dodać endpoint `GET /api/settings/capabilities` (authRequired) dla user/developer.
+- Dodać testy integracyjne backendu dla auth i poprawności payloadu capabilities.
+- Dodać frontend API `getCapabilities`.
+- Dodać `CapabilitiesProvider` oraz hook `useCapabilities` z helperem `hasFeature`.
+- Dodać testy frontend dla providera/hooka (sukces, fallback, brak auth).
+- Dodać skill dokumentujący obsługę capabilities i zaktualizować listę w `docs/AGENTS.md`.
+
+### Files changed
+- `backend/constants.js`
+- `backend/db.js`
+- `backend/routes/settings.js`
+- `backend/services/capabilities.js`
+- `backend/tests/capabilities.integration.test.js`
+- `frontend/src/api/settings.js`
+- `frontend/src/contexts/CapabilitiesContext.jsx`
+- `frontend/src/contexts/__tests__/CapabilitiesContext.test.jsx`
+- `frontend/src/pages/Profile.jsx`
+- `frontend/src/pages/__tests__/Profile.capabilities.test.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/i18n/en.json`
+- `frontend/src/main.jsx`
+- `docs/skills/capabilities-foundation.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (40/40)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (14/14)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano fundament edition model: nowe settings `edition` i `feature_flags`.
+- Dodano serwis capabilities z normalizacją i bezpiecznymi domyślnymi flagami Open Core.
+- Dodano endpoint `GET /api/settings/capabilities` wymagający autoryzacji.
+- Dodano frontendowy `CapabilitiesProvider` i hook `useCapabilities()` z helperem `hasFeature`.
+- Dodano testy backend + frontend dla nowego flow capabilities.
+- Naprawiono regresję layoutu OTP na loginie (pola wróciły do układu poziomego, stała szerokość slotów).
+- Dodano popup capabilities w profilu, aby sprawdzić edition/feature flags bez używania konsoli przeglądarki.
+
+### Skills created/updated
+- `docs/skills/capabilities-foundation.md` (created)

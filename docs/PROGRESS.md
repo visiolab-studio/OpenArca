@@ -1471,7 +1471,7 @@
 
 ## Step P6B-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `906f693`
 - Description: Publikacja pierwszego eventu domenowego `ticket.created` do `domain_events` + `event_outbox`.
 
 ### Implementation Plan
@@ -1515,6 +1515,56 @@
   - unit: propagacja błędu publikacji eventu w flow create ticket,
   - integration: po `POST /api/tickets` istnieje wpis `ticket.created` w `domain_events/event_outbox`.
 - Uzupełniono skill o wzorzec publikacji eventu wewnątrz transakcji domenowej.
+
+### Skills created/updated
+- `docs/skills/domain-events-outbox.md` (updated)
+
+## Step P6B-03
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Publikacja eventu domenowego `ticket.status_changed` dla zmian statusu zgłoszeń.
+
+### Implementation Plan
+- Dodać publikację `ticket.status_changed` w `ticketsService.updateTicket(...)`.
+- Zapisać event w tej samej transakcji co update ticketu i `ticket_history`.
+- Emitować event tylko przy faktycznej zmianie statusu.
+- Dodać payload eventu: `old_status`, `new_status`, `assignee_id`.
+- Dodać test unit dla emitowania eventu przy zmianie statusu.
+- Dodać test unit dla braku emitowania eventu bez zmiany statusu.
+- Dodać test integracyjny API potwierdzający wpis `ticket.status_changed` w outbox.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/domain-events-outbox.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (140/140)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /login` -> 200
+  - `GET /health` -> 200
+
+### Result
+- `ticketsService.updateTicket(...)` publikuje event `ticket.status_changed` atomowo w transakcji update ticketu.
+- Event emitowany jest tylko przy realnej zmianie statusu.
+- Payload eventu zawiera: `old_status`, `new_status`, `assignee_id`.
+- Dodano testy:
+  - unit: event jest emitowany przy zmianie statusu,
+  - unit: event nie jest emitowany bez zmiany statusu,
+  - integration: po `PATCH /api/tickets/:id` outbox zawiera `ticket.status_changed`.
+- Nie zmieniono kontraktów API ani istniejącego RBAC.
 
 ### Skills created/updated
 - `docs/skills/domain-events-outbox.md` (updated)

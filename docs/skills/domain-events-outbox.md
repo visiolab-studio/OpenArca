@@ -36,6 +36,22 @@ const result = domainEventsService.publishDomainEvent({
 ```
 
 ```js
+appendDomainEventToOutbox({
+  database: db,
+  eventName: "ticket.status_changed",
+  aggregateType: "ticket",
+  aggregateId: ticketId,
+  actorUserId: user.id,
+  payload: {
+    old_status: "submitted",
+    new_status: "verified",
+    assignee_id: "dev-1"
+  },
+  source: "core"
+});
+```
+
+```js
 // Pattern: append w tej samej transakcji co zapis encji domenowej.
 const created = db.transaction(() => {
   const ticketId = createTicketRow();

@@ -93,6 +93,55 @@ test("creating ticket writes ticket.created event into durable outbox", async ()
   assert.equal(payload.category, "bug");
 });
 
+test("updating ticket status writes ticket.status_changed event into durable outbox", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Outbox status_changed event should exist after update"
+      })
+    );
+
+  assert.equal(created.statusCode, 201);
+
+  const updated = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ status: "verified" });
+
+  assert.equal(updated.statusCode, 200);
+  assert.equal(updated.body.status, "verified");
+
+  const row = db
+    .prepare(
+      `SELECT
+        eo.event_name AS event_name,
+        eo.status AS outbox_status,
+        de.aggregate_id AS aggregate_id,
+        de.actor_user_id AS actor_user_id,
+        de.payload_json AS payload_json
+      FROM event_outbox eo
+      JOIN domain_events de ON de.id = eo.event_id
+      WHERE de.aggregate_type = 'ticket'
+        AND de.aggregate_id = ?
+        AND eo.event_name = 'ticket.status_changed'
+      ORDER BY datetime(eo.created_at) DESC
+      LIMIT 1`
+    )
+    .get(created.body.id);
+
+  assert.ok(row);
+  assert.equal(row.event_name, "ticket.status_changed");
+  assert.equal(row.outbox_status, "pending");
+  assert.equal(row.aggregate_id, created.body.id);
+  assert.equal(row.actor_user_id, devAuth.user.id);
+
+  const payload = JSON.parse(row.payload_json || "{}");
+  assert.equal(payload.old_status, "submitted");
+  assert.equal(payload.new_status, "verified");
+});
+
 test("events outbox endpoint returns persisted outbox items for developer", async () => {
   domainEventsService.publishDomainEvent({
     eventName: "ticket.created",

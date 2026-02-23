@@ -672,6 +672,22 @@ function createTicketsService(options = {}) {
             ticket: nextTicketState
           });
         }
+
+        if (hasStatusChange) {
+          appendDomainEvent({
+            database,
+            eventName: "ticket.status_changed",
+            aggregateType: "ticket",
+            aggregateId: ticketId,
+            actorUserId: user.id,
+            payload: {
+              old_status: oldStatus,
+              new_status: newStatus,
+              assignee_id: nextAssigneeId || null
+            },
+            source: "core"
+          });
+        }
       });
 
       updateTx();

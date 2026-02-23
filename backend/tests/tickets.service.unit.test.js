@@ -508,6 +508,99 @@ test("tickets service update ticket marks board drag metadata for non-submitted 
   assert.equal(result.newStatus, "in_progress");
 });
 
+test("tickets service update ticket appends ticket.status_changed domain event", () => {
+  const capture = { sql: "", params: [] };
+  const appendedEvents = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "verified",
+            assignee_id: "dev-2",
+            title: "Ticket title",
+            description: "D".repeat(120),
+            priority: "normal"
+          };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket() {},
+      ensureDevTaskForAcceptedTicket() {}
+    },
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-1", outbox_id: "outbox-1", status: "pending" };
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { status: "in_progress" }
+  });
+
+  assert.equal(result.oldStatus, "verified");
+  assert.equal(result.newStatus, "in_progress");
+  assert.equal(appendedEvents.length, 1);
+  assert.equal(appendedEvents[0].eventName, "ticket.status_changed");
+  assert.equal(appendedEvents[0].aggregateType, "ticket");
+  assert.equal(appendedEvents[0].aggregateId, "ticket-1");
+  assert.equal(appendedEvents[0].actorUserId, "dev-1");
+  assert.deepEqual(appendedEvents[0].payload, {
+    old_status: "verified",
+    new_status: "in_progress",
+    assignee_id: "dev-2"
+  });
+});
+
+test("tickets service update ticket skips status_changed event without status transition", () => {
+  const capture = { sql: "", params: [] };
+  const appendedEvents = [];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "verified",
+            assignee_id: "dev-2",
+            title: "Ticket title",
+            description: "D".repeat(120),
+            priority: "normal"
+          };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket() {},
+      ensureDevTaskForAcceptedTicket() {}
+    },
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-1", outbox_id: "outbox-1", status: "pending" };
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { priority: "high" }
+  });
+
+  assert.equal(result.oldStatus, "verified");
+  assert.equal(result.newStatus, "verified");
+  assert.equal(appendedEvents.length, 0);
+});
+
 test("tickets service returns related tickets for developer without reporter filter", () => {
   const capture = { sql: "", params: [] };
   const rows = [{ id: "related-1", reporter_id: "user-2" }];

@@ -757,7 +757,7 @@
 
 ## Step P5.5-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `ab284e6`
 - Description: External references (Git PR, deployment, monitoring) dla ticketów.
 
 ### Implementation Plan
@@ -811,3 +811,53 @@
 
 ### Skills created/updated
 - `docs/skills/external-references.md` (created)
+
+## Step P5.5-03
+- Status: Done
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Closure summaries gotowe pod indexing AI (export/feed endpoint).
+
+### Implementation Plan
+- Dodać endpoint feedu: `GET /api/tickets/closure-summaries/index-feed` (developer-only).
+- Zwracać najnowsze publiczne closure summary per ticket (bez internal).
+- Dodać query parametry feedu: `limit`, `updated_since`.
+- Dodać metadane potrzebne pod indexowanie (`index_key`, status, priority, category, timestamps).
+- Dodać testy integracyjne RBAC + poprawność payloadu + filtr `updated_since`.
+- Dodać skill operacyjny dla integracji indeksowania closure summary.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/routes/tickets.js`
+- `backend/tests/closure.summary.feed.integration.test.js`
+- `docs/skills/closure-summary-index-feed.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (37/37)
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T frontend yarn test` -> PASS (10/10)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano endpoint `GET /api/tickets/closure-summaries/index-feed` (developer-only).
+- Feed zwraca najnowsze publiczne closure summary per ticket (bez komentarzy `internal`).
+- Dodano query params: `limit` (1..500), `updated_since` (datetime).
+- Dodano metadane indeksacyjne (`index_key`, status, priorytet, kategoria, timestampy, autor).
+- Dodano testy RBAC, latest-per-ticket oraz filtrowania `updated_since`.
+
+### Skills created/updated
+- `docs/skills/closure-summary-index-feed.md` (created)

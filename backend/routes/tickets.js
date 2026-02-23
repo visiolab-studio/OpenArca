@@ -179,6 +179,13 @@ const createExternalReferenceSchema = z
     }
   });
 
+const closureSummaryFeedQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+    updated_since: z.string().trim().min(10).max(40).optional()
+  })
+  .strict();
+
 function normalizeText(input) {
   if (typeof input !== "string") return undefined;
   const value = input.trim();
@@ -337,6 +344,73 @@ function getExternalReferences(ticketId) {
       ORDER BY datetime(r.created_at) DESC`
     )
     .all(ticketId);
+}
+
+function buildClosureSummaryIndexFeed({ limit = 200, updatedSince = null }) {
+  const params = [];
+  let where = "";
+
+  if (updatedSince) {
+    where = "WHERE datetime(ls.summary_created_at) >= datetime(?)";
+    params.push(updatedSince);
+  }
+
+  params.push(limit);
+
+  const rows = db
+    .prepare(
+      `WITH latest_summaries AS (
+        SELECT c.ticket_id, c.id AS summary_id, c.content AS summary_content, c.created_at AS summary_created_at, c.user_id AS summary_user_id
+        FROM comments c
+        JOIN (
+          SELECT ticket_id, MAX(rowid) AS max_rowid
+          FROM comments
+          WHERE is_closure_summary = 1
+            AND is_internal = 0
+          GROUP BY ticket_id
+        ) m ON m.max_rowid = c.rowid
+      )
+      SELECT
+        ls.summary_id,
+        ls.summary_content,
+        ls.summary_created_at,
+        t.id AS ticket_id,
+        t.number AS ticket_number,
+        t.title AS ticket_title,
+        t.status AS ticket_status,
+        t.priority AS ticket_priority,
+        t.category AS ticket_category,
+        t.updated_at AS ticket_updated_at,
+        u.name AS summary_author_name,
+        u.email AS summary_author_email
+      FROM latest_summaries ls
+      JOIN tickets t ON t.id = ls.ticket_id
+      LEFT JOIN users u ON u.id = ls.summary_user_id
+      ${where}
+      ORDER BY datetime(ls.summary_created_at) DESC
+      LIMIT ?`
+    )
+    .all(...params);
+
+  return {
+    generated_at: new Date().toISOString(),
+    count: rows.length,
+    items: rows.map((row) => ({
+      index_key: `ticket:${row.ticket_id}:summary:${row.summary_id}`,
+      summary_comment_id: row.summary_id,
+      summary_content: row.summary_content,
+      summary_created_at: row.summary_created_at,
+      summary_author_name: row.summary_author_name || null,
+      summary_author_email: row.summary_author_email || null,
+      ticket_id: row.ticket_id,
+      ticket_number: row.ticket_number,
+      ticket_title: row.ticket_title,
+      ticket_status: row.ticket_status,
+      ticket_priority: row.ticket_priority,
+      ticket_category: row.ticket_category,
+      ticket_updated_at: row.ticket_updated_at
+    }))
+  };
 }
 
 function parseSqliteDateToEpochMs(value) {
@@ -929,6 +1003,20 @@ router.get("/stats/usage", authRequired, requireRole("developer"), (req, res) =>
   };
   return res.json(payload);
 });
+
+router.get(
+  "/closure-summaries/index-feed",
+  authRequired,
+  requireRole("developer"),
+  validate({ query: closureSummaryFeedQuerySchema }),
+  (req, res) => {
+    const feed = buildClosureSummaryIndexFeed({
+      limit: req.query.limit ?? 200,
+      updatedSince: req.query.updated_since || null
+    });
+    return res.json(feed);
+  }
+);
 
 router.get("/workload", authRequired, (req, res) => {
   const rows = db

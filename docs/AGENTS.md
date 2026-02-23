@@ -61,3 +61,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/devtodo-ticket-sync.md`
 - `docs/skills/related-tickets-linking.md`
 - `docs/skills/external-references.md`
+- `docs/skills/closure-summary-index-feed.md`

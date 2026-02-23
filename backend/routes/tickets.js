@@ -280,10 +280,6 @@ function hasClosureSummaryComment(ticketId) {
   return Boolean(row);
 }
 
-function getRelatedTickets(ticketId, user) {
-  return ticketsService.getRelatedTickets({ ticketId, user });
-}
-
 function getTicket(ticketId) {
   return ticketsService.getTicketById({ ticketId });
 }
@@ -501,10 +497,22 @@ router.get(
   "/:id/related",
   authRequired,
   validate({ params: idParamsSchema }),
-  (req, res) => {
-    const ticket = getTicket(req.params.id);
-    ensureTicketAccess(ticket, req.user);
-    return res.json(getRelatedTickets(req.params.id, req.user));
+  (req, res, next) => {
+    try {
+      const payload = ticketsService.getTicketRelatedList({
+        ticketId: req.params.id,
+        user: req.user
+      });
+      return res.json(payload);
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      return next(error);
+    }
   }
 );
 

@@ -97,9 +97,11 @@ return res.status(204).send();
 ```
 
 ```js
-const ticket = ticketsService.getTicketById({ ticketId: req.params.id });
-ensureTicketAccess(ticket, req.user);
-return res.json(ticketsService.getRelatedTickets({ ticketId: req.params.id, user: req.user }));
+const payload = ticketsService.getTicketRelatedList({
+  ticketId: req.params.id,
+  user: req.user
+});
+return res.json(payload);
 ```
 
 ```js
@@ -148,6 +150,7 @@ return res.json(payload);
 - Rozjechanie widoczności related tickets (developer globalnie, user tylko własne).
 - Brak mapowania `related_ticket_not_found` i `ticket_relation_self_ref` przy POST endpointu related.
 - Brak mapowania `ticket_relation_not_found` przy DELETE endpointu related.
+- Brak ownership guard (`ticket_not_found`/`forbidden`) przy GET endpointu related.
 - Rozjechanie widoczności komentarzy w detailu (developer wszystkie, user bez internal).
 - Brak walidacji kontekstu użytkownika w service.
 

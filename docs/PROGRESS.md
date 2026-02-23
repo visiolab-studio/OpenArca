@@ -1897,7 +1897,7 @@
 
 ## Step P6A-20
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `527ec1f`
 - Description: Migracja endpointu `DELETE /api/tickets/:id/related/:relatedId` do warstwy `ticketsService`.
 
 ### Implementation Plan
@@ -1951,6 +1951,64 @@
 - Endpoint `DELETE /api/tickets/:id/related/:relatedId` działa jako cienki adapter route->service.
 - Kontrakt endpointu zachowany: `204` przy sukcesie.
 - Dodano testy unit service dla scenariuszy success + wszystkie ścieżki błędów.
+
+### Skills created/updated
+- `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step P6A-21
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Migracja endpointu `GET /api/tickets/:id/related` do warstwy `ticketsService` z ownership guard w service.
+
+### Implementation Plan
+- Dodać `ticketsService.getTicketRelatedList({ ticketId, user })`.
+- Przenieść do service ownership guard (`ticket_not_found`, `forbidden`) dla odczytu related list.
+- Przepiąć route `GET /api/tickets/:id/related` do schematu route->service->response.
+- Zachować kontrakt odpowiedzi endpointu (lista related tickets bez zmian).
+- Dodać testy unit service dla scenariuszy:
+  - success (developer / owner user),
+  - `ticket_not_found`,
+  - `forbidden`.
+- Zaktualizować skill migracji route->service.
+- Uruchomić pełne quality gates + smoke E2E baseline.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/routes/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/skills/tickets-route-to-service.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (104/104)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano `ticketsService.getTicketRelatedList({ ticketId, user })`.
+- Przeniesiono do service ownership guard dla endpointu related read:
+  - `ticket_not_found` -> 404,
+  - `forbidden` -> 403.
+- Endpoint `GET /api/tickets/:id/related` działa jako cienki adapter route->service.
+- Zachowano kontrakt odpowiedzi endpointu (lista related tickets bez zmian).
+- Dodano testy unit service dla:
+  - success developer/user owner,
+  - `ticket_not_found`,
+  - `forbidden`.
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)

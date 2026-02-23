@@ -159,6 +159,108 @@ test("tickets service returns related tickets for user with reporter filter", ()
   assert.deepEqual(result, rows);
 });
 
+test("tickets service returns related list for developer with access check", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "related-1", reporter_id: "user-2" }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql, params) => {
+        if (sql.includes("FROM ticket_relations tr")) {
+          assert.deepEqual(params, ["ticket-1", "ticket-1", "ticket-1"]);
+          return rows;
+        }
+        return [];
+      }
+    })
+  });
+
+  const result = service.getTicketRelatedList({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" }
+  });
+
+  assert.deepEqual(result, rows);
+});
+
+test("tickets service returns related list for owner user", () => {
+  const capture = { sql: "", params: [] };
+  const rows = [{ id: "related-1", reporter_id: "user-1" }];
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql, params) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          assert.deepEqual(params, ["ticket-1"]);
+          return { id: "ticket-1", reporter_id: "user-1" };
+        }
+        return { count: 0 };
+      },
+      rowsFactory: (sql, params) => {
+        if (sql.includes("FROM ticket_relations tr")) {
+          assert.deepEqual(params, ["ticket-1", "ticket-1", "ticket-1", "user-1"]);
+          return rows;
+        }
+        return [];
+      }
+    })
+  });
+
+  const result = service.getTicketRelatedList({
+    ticketId: "ticket-1",
+    user: { id: "user-1", role: "user" }
+  });
+
+  assert.deepEqual(result, rows);
+});
+
+test("tickets service related list throws ticket_not_found when source is missing", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return undefined;
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.getTicketRelatedList({
+      ticketId: "missing-ticket",
+      user: { id: "dev-1", role: "developer" }
+    });
+  }, (error) => error.code === "ticket_not_found" && error.status === 404);
+});
+
+test("tickets service related list throws forbidden for non-owner user", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return { id: "ticket-1", reporter_id: "owner-1" };
+        }
+        return { count: 0 };
+      }
+    })
+  });
+
+  assert.throws(() => {
+    service.getTicketRelatedList({
+      ticketId: "ticket-1",
+      user: { id: "user-1", role: "user" }
+    });
+  }, (error) => error.code === "forbidden" && error.status === 403);
+});
+
 test("tickets service creates ticket relation and returns refreshed related list", () => {
   const capture = { sql: "", params: [] };
   const insertedPairs = [];

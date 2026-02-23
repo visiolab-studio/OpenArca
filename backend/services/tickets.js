@@ -365,6 +365,11 @@ function createTicketsService(options = {}) {
         .all(...params);
     },
 
+    getTicketRelatedList({ ticketId, user }) {
+      getReadableTicketOrThrow({ database, ticketId, user });
+      return this.getRelatedTickets({ ticketId, user });
+    },
+
     createTicketRelation({ ticketId, user, payload }) {
       assertUserContext(user);
 

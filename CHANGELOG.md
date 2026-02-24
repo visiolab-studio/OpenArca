@@ -13,6 +13,24 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.2.3-rc2] - 2026-02-24
+
+### Added
+- Official public links in `README.md`:
+  - Project website: `https://openarca.com`
+  - Documentation (EN): `https://docs.openarca.com/docs/overview`
+  - Documentation (PL): `https://docs.openarca.com/pl/docs/overview`
+
+### Changed
+- Finalized Open RC2 documentation status tracking in `docs/PROGRESS.md`:
+  - resolved pending commit hashes,
+  - promoted `Needs review` checkpoints to `Done (approved by user)`,
+  - added RC2 closeout checkpoint.
+
+### Notes
+- Open Core release stream is closed for RC2 scope (P5, P5.5, P6 delivered).
+- Enterprise work continues separately after Open RC2 closure.
+
 ## [0.2.1-rc.2] - 2026-02-24
 
 ### Added

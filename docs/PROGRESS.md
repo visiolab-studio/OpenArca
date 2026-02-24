@@ -2,7 +2,7 @@
 
 ## Step RC2-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po commicie)
+- Commit: `e6a9c57`
 - Description: Rebranding OpenArca + odświeżenie UI (faza A) + branding footer/sidebar/login.
 
 ### Implementation Plan
@@ -1526,7 +1526,7 @@
 
 ## Step P6C-04
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `08bdcf8`
 - Description: Health flags i progi alertów dla statystyk workera outbox (`/stats`) bez zmiany RBAC i bez regresji flow.
 
 ### Implementation Plan
@@ -2937,7 +2937,8 @@
 - `docs/skills/tickets-route-to-service.md` (updated)
 
 ## Step RC2-README-02
-- Status: Needs review
+- Status: Done (approved by user)
+- Commit: `20c5822`
 - Description: Szybkie poprawki pozycjonowania OSS w `README.md` (badge, hook, core idea, target persona, HTTPS clone).
 
 ### Implementation Plan
@@ -2975,6 +2976,70 @@
 - Dodano sekcję `Who OpenArca is for` (EN) i `Dla kogo jest OpenArca` (PL).
 - Zmieniono Quickstart clone na HTTPS w sekcji EN i PL.
 - Zaktualizowano numerację sekcji po obu wersjach językowych.
+
+### Skills created/updated
+- Brak zmian w skills.
+
+## Step RC2-CONTRIBUTING-01
+- Status: Done (approved by user)
+- Commit: `f635b9c`
+- Description: Przebudowa `CONTRIBUTING.md` do wersji publicznej OpenArca (EN + PL), z realnym workflow, quality gates i baseline bezpieczeństwa.
+
+### Implementation Plan
+- Przepisać `CONTRIBUTING.md` do formatu dwujęzycznego (EN/PL) w jednym pliku.
+- Zaktualizować nazwę projektu do OpenArca i scope Open Core.
+- Dodać jasne zasady bezpieczeństwa (RBAC/ownership/walidacja/limity).
+- Dodać szybki start kontrybutora oparty o Docker Compose.
+- Dodać wymagane quality gates zgodne z istniejącymi skryptami repo.
+- Dodać baseline E2E browser flow (manual smoke fallback).
+- Ujednolicić standard commitów i checklistę PR.
+- Zweryfikować pełnym zestawem testów i smoke.
+
+### Files changed
+- `CONTRIBUTING.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (157/157)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress, więc utrzymany fallback smoke/manual baseline.
+
+### Result
+- `CONTRIBUTING.md` ma teraz sekcje EN + PL z language switch.
+- Usunięto starą nazwę projektu i zaktualizowano dokument pod OpenArca.
+- Dodano jasny onboarding kontrybutora (Docker quickstart + URL-e usług).
+- Dodano wymagane quality gates dokładnie na komendach obecnych w repo.
+- Dodano bazowy flow E2E (manual smoke fallback) oraz zasady architektoniczne Open Core.
+- Uporządkowano standard commitów i checklistę PR.
+
+### Skills created/updated
+- Brak zmian w skills.
+
+## Step RC2-CLOSEOUT-01
+- Status: Done (approved by user)
+- Commit: `e0ac513`
+- Description: Formalne zamknięcie Open RC2 po publikacji OpenArca Docs i finalnych linkach README.
+
+### Scope
+- Potwierdzić domknięcie etapów P5/P5.5/P6 w praktyce release RC2.
+- Uzupełnić README o publiczne linki produktu i dokumentacji.
+- Potwierdzić gotowość Open Core do publikacji z oddzielonym torem Enterprise.
+
+### Result
+- P5 (stabilizacja + telemetry), P5.5 (product gravity) i P6 (A/B/C) zostały zamknięte i zaakceptowane.
+- README zawiera oficjalne linki:
+  - `https://openarca.com`
+  - `https://docs.openarca.com/docs/overview`
+  - `https://docs.openarca.com/pl/docs/overview`
+- Open Core został domknięty jako RC2 z gotową dokumentacją i publicznym repo docs.
 
 ### Skills created/updated
 - Brak zmian w skills.

@@ -5,7 +5,11 @@ const {
   outboxWorkerMaxAttempts,
   outboxWorkerProcessingTimeoutMs,
   outboxWorkerRetryBaseMs,
-  outboxWorkerRetryMaxMs
+  outboxWorkerRetryMaxMs,
+  outboxWorkerAlertPendingThreshold,
+  outboxWorkerAlertOldestPendingAgeSeconds,
+  outboxWorkerAlertStuckProcessingThreshold,
+  outboxWorkerAlertFailedThreshold
 } = require("../config");
 
 function normalizeStringError(error) {
@@ -31,6 +35,15 @@ function addMillisecondsToIso(isoValue, milliseconds) {
   return new Date(baseMs + milliseconds).toISOString();
 }
 
+function isThresholdExceeded(metric, threshold) {
+  const safeMetric = Number(metric) || 0;
+  const safeThreshold = Number(threshold) || 0;
+  if (safeThreshold <= 0) {
+    return false;
+  }
+  return safeMetric >= safeThreshold;
+}
+
 function createOutboxWorkerService(options = {}) {
   const database = options.db || db;
   const logger = options.logger || console;
@@ -48,6 +61,22 @@ function createOutboxWorkerService(options = {}) {
   );
   const retryBaseMs = Math.max(500, Number(options.retryBaseMs) || outboxWorkerRetryBaseMs);
   const retryMaxMs = Math.max(retryBaseMs, Number(options.retryMaxMs) || outboxWorkerRetryMaxMs);
+  const alertPendingThreshold = Math.max(
+    0,
+    Number(options.alertPendingThreshold ?? outboxWorkerAlertPendingThreshold) || 0
+  );
+  const alertOldestPendingAgeSeconds = Math.max(
+    0,
+    Number(options.alertOldestPendingAgeSeconds ?? outboxWorkerAlertOldestPendingAgeSeconds) || 0
+  );
+  const alertStuckProcessingThreshold = Math.max(
+    0,
+    Number(options.alertStuckProcessingThreshold ?? outboxWorkerAlertStuckProcessingThreshold) || 0
+  );
+  const alertFailedThreshold = Math.max(
+    0,
+    Number(options.alertFailedThreshold ?? outboxWorkerAlertFailedThreshold) || 0
+  );
 
   const runtime = {
     timer: null,
@@ -221,6 +250,38 @@ function createOutboxWorkerService(options = {}) {
     };
   }
 
+  function getHealthSnapshot(queue) {
+    const flags = {
+      pending_backlog_high: isThresholdExceeded(queue.pending, alertPendingThreshold),
+      pending_age_high: isThresholdExceeded(
+        queue.oldest_pending_age_seconds,
+        alertOldestPendingAgeSeconds
+      ),
+      stuck_processing_high: isThresholdExceeded(
+        queue.stuck_processing,
+        alertStuckProcessingThreshold
+      ),
+      failed_items_high: isThresholdExceeded(queue.failed, alertFailedThreshold)
+    };
+
+    const warnings = Object.entries(flags)
+      .filter(([, value]) => value)
+      .map(([key]) => key);
+
+    return {
+      status: warnings.length > 0 ? "warning" : "ok",
+      warning_count: warnings.length,
+      warnings,
+      flags,
+      thresholds: {
+        pending: alertPendingThreshold,
+        oldest_pending_age_seconds: alertOldestPendingAgeSeconds,
+        stuck_processing: alertStuckProcessingThreshold,
+        failed: alertFailedThreshold
+      }
+    };
+  }
+
   function runOnce() {
     if (runtime.inProgress) {
       return {
@@ -340,15 +401,21 @@ function createOutboxWorkerService(options = {}) {
     start,
     stop,
     getStats() {
+      const queue = getQueueStats();
       return {
         generated_at: nowProvider(),
-        queue: getQueueStats(),
+        queue,
+        health: getHealthSnapshot(queue),
         runtime: getRuntimeMetrics(),
         config: {
           poll_ms: pollMs,
           batch_size: batchSize,
           max_attempts: maxAttempts,
           processing_timeout_ms: processingTimeoutMs,
+          alert_pending_threshold: alertPendingThreshold,
+          alert_oldest_pending_age_seconds: alertOldestPendingAgeSeconds,
+          alert_stuck_processing_threshold: alertStuckProcessingThreshold,
+          alert_failed_threshold: alertFailedThreshold,
           retry_base_ms: retryBaseMs,
           retry_max_ms: retryMaxMs
         }

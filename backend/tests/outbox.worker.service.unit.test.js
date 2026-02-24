@@ -247,6 +247,14 @@ test("outbox worker stats expose queue and runtime observability", () => {
   assert.equal(stats.queue.failed, 1);
   assert.equal(stats.queue.due_now, 1);
   assert.equal(stats.queue.oldest_pending_age_seconds, 90);
+  assert.equal(typeof stats.health, "object");
+  assert.equal(stats.health.status, "warning");
+  assert.equal(stats.health.flags.pending_backlog_high, false);
+  assert.equal(stats.health.flags.pending_age_high, false);
+  assert.equal(stats.health.flags.stuck_processing_high, true);
+  assert.equal(stats.health.flags.failed_items_high, true);
+  assert.equal(Array.isArray(stats.health.warnings), true);
+  assert.equal(stats.health.warning_count, 2);
   assert.equal(stats.runtime.is_running, false);
   assert.equal(stats.runtime.ticks_total, 0);
   assert.equal(stats.runtime.recovered_stuck_total, 0);
@@ -254,6 +262,10 @@ test("outbox worker stats expose queue and runtime observability", () => {
   assert.equal(stats.config.batch_size, 15);
   assert.equal(stats.config.max_attempts, 4);
   assert.equal(stats.config.processing_timeout_ms, 300000);
+  assert.equal(stats.config.alert_pending_threshold, 100);
+  assert.equal(stats.config.alert_oldest_pending_age_seconds, 900);
+  assert.equal(stats.config.alert_stuck_processing_threshold, 1);
+  assert.equal(stats.config.alert_failed_threshold, 1);
   assert.equal(stats.config.retry_base_ms, 1200);
   assert.equal(stats.config.retry_max_ms, 15000);
 
@@ -288,6 +300,53 @@ test("outbox worker recovers stale processing entries before claim", () => {
 
   const stats = worker.getStats();
   assert.equal(stats.runtime.recovered_stuck_total, 1);
+
+  database.close();
+});
+
+test("outbox worker health flags respect custom thresholds and can be disabled with zero", () => {
+  const database = createInMemoryDb();
+  const nowIso = "2026-02-24T10:00:00.000Z";
+
+  insertOutboxEntry(database, {
+    outboxId: "outbox-pending",
+    status: "pending",
+    nextAttemptAt: "2026-02-24T09:59:00.000Z",
+    createdAt: "2026-02-24T09:40:00.000Z"
+  });
+
+  const warningWorker = createOutboxWorkerService({
+    db: database,
+    nowProvider: () => nowIso,
+    alertPendingThreshold: 1,
+    alertOldestPendingAgeSeconds: 300,
+    alertStuckProcessingThreshold: 1,
+    alertFailedThreshold: 1
+  });
+
+  const warningStats = warningWorker.getStats();
+  assert.equal(warningStats.health.status, "warning");
+  assert.equal(warningStats.health.flags.pending_backlog_high, true);
+  assert.equal(warningStats.health.flags.pending_age_high, true);
+  assert.equal(warningStats.health.flags.stuck_processing_high, false);
+  assert.equal(warningStats.health.flags.failed_items_high, false);
+
+  const disabledWorker = createOutboxWorkerService({
+    db: database,
+    nowProvider: () => nowIso,
+    alertPendingThreshold: 0,
+    alertOldestPendingAgeSeconds: 0,
+    alertStuckProcessingThreshold: 0,
+    alertFailedThreshold: 0
+  });
+
+  const disabledStats = disabledWorker.getStats();
+  assert.equal(disabledStats.health.status, "ok");
+  assert.equal(disabledStats.health.warning_count, 0);
+  assert.equal(disabledStats.health.flags.pending_backlog_high, false);
+  assert.equal(disabledStats.health.flags.pending_age_high, false);
+  assert.equal(disabledStats.health.flags.stuck_processing_high, false);
+  assert.equal(disabledStats.health.flags.failed_items_high, false);
 
   database.close();
 });

@@ -74,13 +74,18 @@ test("events outbox worker stats endpoint returns queue and runtime payload for 
   assert.equal(response.statusCode, 200);
   assert.equal(typeof response.body.generated_at, "string");
   assert.equal(typeof response.body.queue, "object");
+  assert.equal(typeof response.body.health, "object");
   assert.equal(typeof response.body.runtime, "object");
   assert.equal(typeof response.body.config, "object");
   assert.equal(typeof response.body.queue.total, "number");
   assert.equal(typeof response.body.queue.due_now, "number");
   assert.equal(typeof response.body.queue.oldest_pending_age_seconds, "number");
+  assert.equal(typeof response.body.health.status, "string");
+  assert.equal(Array.isArray(response.body.health.warnings), true);
+  assert.equal(typeof response.body.health.flags.pending_backlog_high, "boolean");
   assert.equal(typeof response.body.runtime.is_running, "boolean");
   assert.equal(typeof response.body.runtime.ticks_total, "number");
+  assert.equal(typeof response.body.config.alert_pending_threshold, "number");
 });
 
 test("events outbox run-once endpoint requires authentication", async () => {
@@ -118,8 +123,10 @@ test("events outbox run-once endpoint returns summary and stats for developer", 
   assert.equal(typeof response.body.summary.claimed, "number");
   assert.equal(typeof response.body.summary.recovered_stuck, "number");
   assert.equal(typeof response.body.stats.queue, "object");
+  assert.equal(typeof response.body.stats.health, "object");
   assert.equal(typeof response.body.stats.runtime, "object");
   assert.equal(typeof response.body.stats.config.processing_timeout_ms, "number");
+  assert.equal(typeof response.body.stats.config.alert_failed_threshold, "number");
 });
 
 test("creating ticket writes ticket.created event into durable outbox", async () => {

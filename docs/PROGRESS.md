@@ -1403,7 +1403,7 @@
 
 ## Step P6C-03
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `732d126`
 - Description: Observability kolejki outbox: metryka wieku najstarszego pending + testy kontraktu endpointu stats.
 
 ### Implementation Plan
@@ -1448,6 +1448,78 @@
   - unit worker: deterministyczna asercja wartości metryki (`90s` w scenariuszu testowym),
   - integration endpoint stats: asercja obecności typu `number`.
 - Zachowano RBAC i kontrakt endpointów write bez zmian.
+
+### Skills created/updated
+- `docs/skills/outbox-worker-lifecycle.md` (updated)
+
+## Step P6C-04
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Health flags i progi alertów dla statystyk workera outbox (`/stats`) bez zmiany RBAC i bez regresji flow.
+
+### Implementation Plan
+- Dodać konfigurowalne progi alertów `OUTBOX_WORKER_ALERT_*` dla backlogu/pending age/stuck/failed.
+- Rozszerzyć `outboxWorkerService.getStats()` o sekcję `health` z flagami i listą ostrzeżeń.
+- Rozszerzyć `config` w odpowiedzi stats o aktywne wartości progów alertów.
+- Zachować kompatybilność endpointów (`stats` i `run-once`) oraz brak zmian w uprawnieniach.
+- Dodać testy unit dla logiki progów (w tym wyłączenie alertu progiem `0`).
+- Rozszerzyć testy integracyjne kontraktu endpointów outbox o nowe pola.
+- Zaktualizować skill operacyjny workera.
+- Uruchomić pełne quality gates + smoke E2E fallback.
+
+### Files changed
+- `.env.example`
+- `backend/.env.example`
+- `backend/config.js`
+- `backend/services/outbox-worker.js`
+- `backend/tests/outbox.worker.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/outbox-worker-lifecycle.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `curl -s http://localhost:4000/health` -> PASS (`status=ok`)
+- `curl -sI http://localhost:3000/login` -> PASS (`HTTP/1.1 200 OK`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (157/157)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Repo nie zawiera Playwright/Cypress, więc użyto fallbacku smoke:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - flow: OTP login (user/developer), create ticket, ticket detail, developer update/comment.
+- Route checks:
+  - `GET /` -> 200
+  - `GET /login` -> 200
+  - `GET /my-tickets` -> 200
+  - `GET /overview` -> 200
+  - `GET /board` -> 200
+  - `GET /dev-todo` -> 200
+
+### Result
+- Dodano progi alertów workera outbox:
+  - `OUTBOX_WORKER_ALERT_PENDING_THRESHOLD` (default `100`)
+  - `OUTBOX_WORKER_ALERT_OLDEST_PENDING_AGE_SECONDS` (default `900`)
+  - `OUTBOX_WORKER_ALERT_STUCK_PROCESSING_THRESHOLD` (default `1`)
+  - `OUTBOX_WORKER_ALERT_FAILED_THRESHOLD` (default `1`)
+- `GET /api/settings/events/outbox/stats` zwraca nową sekcję:
+  - `health.status`
+  - `health.warning_count`
+  - `health.warnings[]`
+  - `health.flags.{pending_backlog_high,pending_age_high,stuck_processing_high,failed_items_high}`
+  - `health.thresholds.{pending,oldest_pending_age_seconds,stuck_processing,failed}`
+- `config` endpointu stats zawiera aktywne wartości progów `alert_*`.
+- Dodano test unit potwierdzający:
+  - aktywację flag przy niskich progach,
+  - wyłączenie alarmów po ustawieniu progów na `0`.
+- Rozszerzono testy integracyjne kontraktu endpointów `stats` i `run-once` o nowe pola `health` i `config.alert_*`.
+- Zachowano bezpieczeństwo:
+  - brak zmian RBAC/ownership,
+  - endpointy pozostają pod `authRequired + requireRole("developer")`.
 
 ### Skills created/updated
 - `docs/skills/outbox-worker-lifecycle.md` (updated)

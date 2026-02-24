@@ -17,6 +17,10 @@ Uruchamiać i weryfikować worker `event_outbox` w sposób bezpieczny: polling, 
   - `OUTBOX_WORKER_PROCESSING_TIMEOUT_MS`
   - `OUTBOX_WORKER_RETRY_BASE_MS`
   - `OUTBOX_WORKER_RETRY_MAX_MS`
+  - `OUTBOX_WORKER_ALERT_PENDING_THRESHOLD`
+  - `OUTBOX_WORKER_ALERT_OLDEST_PENDING_AGE_SECONDS`
+  - `OUTBOX_WORKER_ALERT_STUCK_PROCESSING_THRESHOLD`
+  - `OUTBOX_WORKER_ALERT_FAILED_THRESHOLD`
 - [ ] Zaimplementuj logikę workera jako osobny serwis (`createOutboxWorkerService`), bez logiki HTTP w środku.
 - [ ] Obsłuż przebieg:
   - claim due entries (`status='pending'` i `next_attempt_at <= now`)
@@ -49,8 +53,9 @@ curl -s -X POST -H "Authorization: Bearer <TOKEN_DEV>" \
 Oczekiwane pola:
 - `generated_at`
 - `queue.{total,due_now,oldest_pending_age_seconds,stuck_processing,pending,processing,sent,failed}`
+- `health.{status,warning_count,warnings,flags,thresholds}`
 - `runtime.{is_running,ticks_total,processed_total,retried_total,dead_letter_total,recovered_stuck_total,last_error}`
-- `config.{poll_ms,batch_size,max_attempts,processing_timeout_ms,retry_base_ms,retry_max_ms}`
+- `config.{poll_ms,batch_size,max_attempts,processing_timeout_ms,alert_*,retry_base_ms,retry_max_ms}`
 
 ## Definition of Done
 - [ ] Worker jest domyślnie wyłączony (brak regresji istniejących flow).
@@ -67,6 +72,7 @@ Oczekiwane pola:
 - Worker uruchomiony domyślnie i “czyści” outbox, przez co testy oczekujące `pending` stają się flaky.
 - Brak atomowego locka przy claimowaniu (duplikacja przetwarzania).
 - Brak recovery dla stale `processing` po restarcie procesu.
+- Brak progów alertów dla narastającego backlogu.
 - Niekontrolowany wzrost retry delay lub brak limitu prób.
 - Brak normalizacji `last_error` (zbyt długie payloady błędu).
 - Brak RBAC na endpointach obserwowalności.

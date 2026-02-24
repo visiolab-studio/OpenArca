@@ -25,6 +25,14 @@ function toPositiveInt(inputValue, fallback) {
   return normalized;
 }
 
+function toNonNegativeInt(inputValue, fallback) {
+  const numeric = Number(inputValue);
+  if (!Number.isFinite(numeric)) return fallback;
+  const normalized = Math.floor(numeric);
+  if (normalized < 0) return fallback;
+  return normalized;
+}
+
 function toAbsolutePath(baseDir, inputPath) {
   if (!inputPath) return "";
   if (path.isAbsolute(inputPath)) {
@@ -58,5 +66,21 @@ module.exports = {
     300000
   ),
   outboxWorkerRetryBaseMs: toPositiveInt(process.env.OUTBOX_WORKER_RETRY_BASE_MS, 10000),
-  outboxWorkerRetryMaxMs: toPositiveInt(process.env.OUTBOX_WORKER_RETRY_MAX_MS, 300000)
+  outboxWorkerRetryMaxMs: toPositiveInt(process.env.OUTBOX_WORKER_RETRY_MAX_MS, 300000),
+  outboxWorkerAlertPendingThreshold: toNonNegativeInt(
+    process.env.OUTBOX_WORKER_ALERT_PENDING_THRESHOLD,
+    100
+  ),
+  outboxWorkerAlertOldestPendingAgeSeconds: toNonNegativeInt(
+    process.env.OUTBOX_WORKER_ALERT_OLDEST_PENDING_AGE_SECONDS,
+    900
+  ),
+  outboxWorkerAlertStuckProcessingThreshold: toNonNegativeInt(
+    process.env.OUTBOX_WORKER_ALERT_STUCK_PROCESSING_THRESHOLD,
+    1
+  ),
+  outboxWorkerAlertFailedThreshold: toNonNegativeInt(
+    process.env.OUTBOX_WORKER_ALERT_FAILED_THRESHOLD,
+    1
+  )
 };

@@ -82,6 +82,45 @@ test("events outbox worker stats endpoint returns queue and runtime payload for 
   assert.equal(typeof response.body.runtime.ticks_total, "number");
 });
 
+test("events outbox run-once endpoint requires authentication", async () => {
+  const response = await request.post("/api/settings/events/outbox/run-once");
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, "unauthorized");
+});
+
+test("events outbox run-once endpoint keeps RBAC for standard user", async () => {
+  const response = await request
+    .post("/api/settings/events/outbox/run-once")
+    .set("Authorization", `Bearer ${userAuth.token}`);
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.body.error, "forbidden");
+});
+
+test("events outbox run-once endpoint returns summary and stats for developer", async () => {
+  domainEventsService.publishDomainEvent({
+    eventName: "ticket.created",
+    aggregateType: "ticket",
+    aggregateId: "ticket-run-once",
+    actorUserId: devAuth.user.id,
+    payload: { status: "submitted" }
+  });
+
+  const response = await request
+    .post("/api/settings/events/outbox/run-once")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(typeof response.body.generated_at, "string");
+  assert.equal(typeof response.body.summary, "object");
+  assert.equal(typeof response.body.stats, "object");
+  assert.equal(typeof response.body.summary.claimed, "number");
+  assert.equal(typeof response.body.summary.recovered_stuck, "number");
+  assert.equal(typeof response.body.stats.queue, "object");
+  assert.equal(typeof response.body.stats.runtime, "object");
+  assert.equal(typeof response.body.stats.config.processing_timeout_ms, "number");
+});
+
 test("creating ticket writes ticket.created event into durable outbox", async () => {
   const created = await request
     .post("/api/tickets")

@@ -172,6 +172,20 @@ router.get("/events/outbox/stats", (req, res) => {
   return res.json(payload);
 });
 
+router.post("/events/outbox/run-once", writeLimiter, (req, res, next) => {
+  try {
+    const summary = outboxWorkerService.runOnce();
+    const stats = outboxWorkerService.getStats();
+    return res.json({
+      generated_at: new Date().toISOString(),
+      summary,
+      stats
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get("/events/outbox", validate({ query: outboxQuerySchema }), (req, res, next) => {
   try {
     const payload = domainEventsService.getOutboxEntries({

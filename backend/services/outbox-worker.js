@@ -3,6 +3,7 @@ const {
   outboxWorkerPollMs,
   outboxWorkerBatchSize,
   outboxWorkerMaxAttempts,
+  outboxWorkerProcessingTimeoutMs,
   outboxWorkerRetryBaseMs,
   outboxWorkerRetryMaxMs
 } = require("../config");
@@ -41,6 +42,10 @@ function createOutboxWorkerService(options = {}) {
   const pollMs = Math.max(1000, Number(options.pollMs) || outboxWorkerPollMs);
   const batchSize = Math.max(1, Math.min(100, Number(options.batchSize) || outboxWorkerBatchSize));
   const maxAttempts = Math.max(1, Number(options.maxAttempts) || outboxWorkerMaxAttempts);
+  const processingTimeoutMs = Math.max(
+    1000,
+    Number(options.processingTimeoutMs) || outboxWorkerProcessingTimeoutMs
+  );
   const retryBaseMs = Math.max(500, Number(options.retryBaseMs) || outboxWorkerRetryBaseMs);
   const retryMaxMs = Math.max(retryBaseMs, Number(options.retryMaxMs) || outboxWorkerRetryMaxMs);
 
@@ -53,6 +58,7 @@ function createOutboxWorkerService(options = {}) {
       succeeded_total: 0,
       retried_total: 0,
       dead_letter_total: 0,
+      recovered_stuck_total: 0,
       last_tick_at: null,
       last_error: null
     }
@@ -84,6 +90,15 @@ function createOutboxWorkerService(options = {}) {
          updated_at = datetime('now')
      WHERE id = ?
        AND status = 'pending'`
+  );
+
+  const recoverStuckProcessing = database.prepare(
+    `UPDATE event_outbox
+     SET status = 'pending',
+         next_attempt_at = ?,
+         updated_at = datetime('now')
+     WHERE status = 'processing'
+       AND datetime(updated_at) <= datetime(?)`
   );
 
   const markAsSent = database.prepare(
@@ -129,6 +144,12 @@ function createOutboxWorkerService(options = {}) {
     return claimed;
   });
 
+  const recoverStuckEntries = database.transaction((nowIso) => {
+    const staleThresholdIso = addMillisecondsToIso(nowIso, -processingTimeoutMs);
+    const result = recoverStuckProcessing.run(nowIso, staleThresholdIso);
+    return Number(result?.changes) || 0;
+  });
+
   function getQueueStats() {
     const rows = database
       .prepare(
@@ -153,11 +174,22 @@ function createOutboxWorkerService(options = {}) {
       )
       .get(nowIso);
 
+    const staleThresholdIso = addMillisecondsToIso(nowIso, -processingTimeoutMs);
+    const stuckProcessingRow = database
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM event_outbox
+         WHERE status = 'processing'
+           AND datetime(updated_at) <= datetime(?)`
+      )
+      .get(staleThresholdIso);
+
     const totalRow = database.prepare("SELECT COUNT(*) AS count FROM event_outbox").get();
 
     return {
       total: Number(totalRow?.count) || 0,
       due_now: Number(dueNowRow?.count) || 0,
+      stuck_processing: Number(stuckProcessingRow?.count) || 0,
       pending: Number(byStatus.pending) || 0,
       processing: Number(byStatus.processing) || 0,
       sent: Number(byStatus.sent) || 0,
@@ -185,6 +217,7 @@ function createOutboxWorkerService(options = {}) {
     runtime.metrics.last_tick_at = nowProvider();
 
     const summary = {
+      recovered_stuck: 0,
       claimed: 0,
       succeeded: 0,
       retried: 0,
@@ -193,6 +226,9 @@ function createOutboxWorkerService(options = {}) {
 
     try {
       const nowIso = nowProvider();
+      const recoveredStuck = recoverStuckEntries(nowIso);
+      summary.recovered_stuck = recoveredStuck;
+      runtime.metrics.recovered_stuck_total += recoveredStuck;
       const claimed = claimDueEntries(nowIso);
       summary.claimed = claimed.length;
 
@@ -295,6 +331,7 @@ function createOutboxWorkerService(options = {}) {
           poll_ms: pollMs,
           batch_size: batchSize,
           max_attempts: maxAttempts,
+          processing_timeout_ms: processingTimeoutMs,
           retry_base_ms: retryBaseMs,
           retry_max_ms: retryMaxMs
         }

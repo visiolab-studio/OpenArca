@@ -1333,6 +1333,74 @@
 ### Skills created/updated
 - `docs/skills/outbox-worker-lifecycle.md` (created)
 
+## Step P6C-02
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Recovery stale `processing` + manualny trigger workera (`runOnce`) dla operacyjnej kontroli.
+
+### Implementation Plan
+- Dodać timeout dla `processing` (`OUTBOX_WORKER_PROCESSING_TIMEOUT_MS`) w konfiguracji.
+- Dodać recovery stale rekordów `processing` -> `pending` przed claimem ticka.
+- Rozszerzyć metryki o `recovered_stuck_total` i statystyki kolejki o `stuck_processing`.
+- Dodać endpoint developer-only `POST /api/settings/events/outbox/run-once`.
+- Rozszerzyć testy unit workera o scenariusz recovery stale rekordów.
+- Dodać testy integration endpointu `run-once` (401/403/200).
+- Zaktualizować skill workera.
+- Uruchomić pełne quality gates + smoke E2E fallback.
+
+### Files changed
+- `.env.example`
+- `backend/.env.example`
+- `backend/config.js`
+- `backend/routes/settings.js`
+- `backend/services/outbox-worker.js`
+- `backend/tests/outbox.worker.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/outbox-worker-lifecycle.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `curl -s http://localhost:4000/health` -> PASS (`status=ok`)
+- `curl -sI http://localhost:3000/login` -> PASS (`HTTP/1.1 200 OK`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (156/156)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Repo nie zawiera Playwright/Cypress, więc użyto fallbacku smoke:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - flow: OTP login (user/developer), create ticket, ticket detail, developer update/comment.
+- Route checks:
+  - `GET /login` -> 200
+  - `GET /health` -> 200
+
+### Result
+- Dodano konfigurację timeoutu `processing`:
+  - `OUTBOX_WORKER_PROCESSING_TIMEOUT_MS` (domyślnie `300000` ms).
+- Worker przed claimem odzyskuje stale rekordy:
+  - `processing` starsze niż timeout wracają do `pending`,
+  - są obsługiwane w tym samym ticku workera.
+- Rozszerzono observability:
+  - `queue.stuck_processing`,
+  - `runtime.recovered_stuck_total`,
+  - `config.processing_timeout_ms`.
+- Dodano endpoint operacyjny:
+  - `POST /api/settings/events/outbox/run-once` (developer-only),
+  - zwraca `summary` i aktualne `stats`.
+- Dodano testy:
+  - unit: recovery stale `processing`,
+  - integration: `run-once` (`401`, `403`, `200` + payload contract).
+- Zachowano bezpieczeństwo:
+  - brak zmian osłabiających RBAC/ownership,
+  - endpoint `run-once` za `authRequired + requireRole("developer")`.
+
+### Skills created/updated
+- `docs/skills/outbox-worker-lifecycle.md` (updated)
+
 ## Step P6A-25
 - Status: Done (approved by user)
 - Commit: `d66b13f`

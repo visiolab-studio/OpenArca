@@ -75,6 +75,16 @@ function insertOutboxEntry(database, input = {}) {
       input.lastError || null
     );
 
+  if (input.updatedAt) {
+    database
+      .prepare(
+        `UPDATE event_outbox
+         SET updated_at = ?
+         WHERE id = ?`
+      )
+      .run(input.updatedAt, outboxId);
+  }
+
   return { eventId, outboxId };
 }
 
@@ -94,6 +104,7 @@ test("outbox worker marks due pending event as sent on successful handler", () =
   });
 
   const summary = worker.runOnce();
+  assert.equal(summary.recovered_stuck, 0);
   assert.equal(summary.claimed, 1);
   assert.equal(summary.succeeded, 1);
   assert.equal(summary.retried, 0);
@@ -130,6 +141,7 @@ test("outbox worker schedules retry with backoff on transient handler error", ()
   });
 
   const summary = worker.runOnce();
+  assert.equal(summary.recovered_stuck, 0);
   assert.equal(summary.claimed, 1);
   assert.equal(summary.succeeded, 0);
   assert.equal(summary.retried, 1);
@@ -163,6 +175,7 @@ test("outbox worker moves event to dead-letter after max attempts", () => {
   });
 
   const summary = worker.runOnce();
+  assert.equal(summary.recovered_stuck, 0);
   assert.equal(summary.claimed, 1);
   assert.equal(summary.succeeded, 0);
   assert.equal(summary.retried, 0);
@@ -217,16 +230,51 @@ test("outbox worker stats expose queue and runtime observability", () => {
   assert.equal(stats.queue.total, 5);
   assert.equal(stats.queue.pending, 2);
   assert.equal(stats.queue.processing, 1);
+  assert.equal(stats.queue.stuck_processing, 1);
   assert.equal(stats.queue.sent, 1);
   assert.equal(stats.queue.failed, 1);
   assert.equal(stats.queue.due_now, 1);
   assert.equal(stats.runtime.is_running, false);
   assert.equal(stats.runtime.ticks_total, 0);
+  assert.equal(stats.runtime.recovered_stuck_total, 0);
   assert.equal(stats.config.poll_ms, 3000);
   assert.equal(stats.config.batch_size, 15);
   assert.equal(stats.config.max_attempts, 4);
+  assert.equal(stats.config.processing_timeout_ms, 300000);
   assert.equal(stats.config.retry_base_ms, 1200);
   assert.equal(stats.config.retry_max_ms, 15000);
+
+  database.close();
+});
+
+test("outbox worker recovers stale processing entries before claim", () => {
+  const database = createInMemoryDb();
+  const nowIso = "2026-02-24T10:00:00.000Z";
+  const { outboxId } = insertOutboxEntry(database, {
+    status: "processing",
+    updatedAt: "2026-02-24T09:30:00.000Z"
+  });
+
+  const worker = createOutboxWorkerService({
+    db: database,
+    nowProvider: () => nowIso,
+    processingTimeoutMs: 300000,
+    processEvent() {}
+  });
+
+  const summary = worker.runOnce();
+  assert.equal(summary.recovered_stuck, 1);
+  assert.equal(summary.claimed, 1);
+  assert.equal(summary.succeeded, 1);
+  assert.equal(summary.retried, 0);
+  assert.equal(summary.dead_lettered, 0);
+
+  const row = database.prepare("SELECT * FROM event_outbox WHERE id = ?").get(outboxId);
+  assert.equal(row.status, "sent");
+  assert.equal(row.attempts, 0);
+
+  const stats = worker.getStats();
+  assert.equal(stats.runtime.recovered_stuck_total, 1);
 
   database.close();
 });

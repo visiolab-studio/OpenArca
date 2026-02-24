@@ -53,6 +53,10 @@ module.exports = {
   outboxWorkerPollMs: toPositiveInt(process.env.OUTBOX_WORKER_POLL_MS, 5000),
   outboxWorkerBatchSize: toPositiveInt(process.env.OUTBOX_WORKER_BATCH_SIZE, 20),
   outboxWorkerMaxAttempts: toPositiveInt(process.env.OUTBOX_WORKER_MAX_ATTEMPTS, 5),
+  outboxWorkerProcessingTimeoutMs: toPositiveInt(
+    process.env.OUTBOX_WORKER_PROCESSING_TIMEOUT_MS,
+    300000
+  ),
   outboxWorkerRetryBaseMs: toPositiveInt(process.env.OUTBOX_WORKER_RETRY_BASE_MS, 10000),
   outboxWorkerRetryMaxMs: toPositiveInt(process.env.OUTBOX_WORKER_RETRY_MAX_MS, 300000)
 };

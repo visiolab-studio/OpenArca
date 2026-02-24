@@ -54,6 +54,23 @@ appendDomainEventToOutbox({
 ```js
 appendDomainEventToOutbox({
   database: db,
+  eventName: "task.synced",
+  aggregateType: "ticket",
+  aggregateId: ticketId,
+  actorUserId: user.id,
+  payload: {
+    ticket_status: "verified",
+    assignee_id: "dev-1",
+    normalized: true,
+    ensured: true
+  },
+  source: "core"
+});
+```
+
+```js
+appendDomainEventToOutbox({
+  database: db,
   eventName: "ticket.closed",
   aggregateType: "ticket",
   aggregateId: ticketId,

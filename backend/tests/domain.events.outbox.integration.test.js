@@ -142,6 +142,58 @@ test("updating ticket status writes ticket.status_changed event into durable out
   assert.equal(payload.new_status, "verified");
 });
 
+test("updating ticket planning writes task.synced event into durable outbox", async () => {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Outbox task.synced event should exist after planning update"
+      })
+    );
+
+  assert.equal(created.statusCode, 201);
+
+  const updated = await request
+    .patch(`/api/tickets/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      assignee_id: devAuth.user.id
+    });
+
+  assert.equal(updated.statusCode, 200);
+
+  const row = db
+    .prepare(
+      `SELECT
+        eo.event_name AS event_name,
+        eo.status AS outbox_status,
+        de.aggregate_id AS aggregate_id,
+        de.actor_user_id AS actor_user_id,
+        de.payload_json AS payload_json
+      FROM event_outbox eo
+      JOIN domain_events de ON de.id = eo.event_id
+      WHERE de.aggregate_type = 'ticket'
+        AND de.aggregate_id = ?
+        AND eo.event_name = 'task.synced'
+      ORDER BY datetime(eo.created_at) DESC
+      LIMIT 1`
+    )
+    .get(created.body.id);
+
+  assert.ok(row);
+  assert.equal(row.event_name, "task.synced");
+  assert.equal(row.outbox_status, "pending");
+  assert.equal(row.aggregate_id, created.body.id);
+  assert.equal(row.actor_user_id, devAuth.user.id);
+
+  const payload = JSON.parse(row.payload_json || "{}");
+  assert.equal(payload.ticket_status, "verified");
+  assert.equal(payload.assignee_id, devAuth.user.id);
+  assert.equal(payload.normalized, true);
+  assert.equal(payload.ensured, true);
+});
+
 test("closing ticket writes ticket.closed event into durable outbox", async () => {
   const created = await request
     .post("/api/tickets")

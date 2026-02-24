@@ -673,6 +673,23 @@ function createTicketsService(options = {}) {
           });
         }
 
+        if (shouldNormalizeLinkedTasks || shouldEnsureDevTask) {
+          appendDomainEvent({
+            database,
+            eventName: "task.synced",
+            aggregateType: "ticket",
+            aggregateId: ticketId,
+            actorUserId: user.id,
+            payload: {
+              ticket_status: newStatus,
+              assignee_id: nextAssigneeId || null,
+              normalized: Boolean(shouldNormalizeLinkedTasks),
+              ensured: Boolean(shouldEnsureDevTask)
+            },
+            source: "core"
+          });
+        }
+
         if (hasStatusChange) {
           appendDomainEvent({
             database,

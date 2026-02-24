@@ -547,15 +547,24 @@ test("tickets service update ticket appends ticket.status_changed domain event",
 
   assert.equal(result.oldStatus, "verified");
   assert.equal(result.newStatus, "in_progress");
-  assert.equal(appendedEvents.length, 1);
-  assert.equal(appendedEvents[0].eventName, "ticket.status_changed");
-  assert.equal(appendedEvents[0].aggregateType, "ticket");
-  assert.equal(appendedEvents[0].aggregateId, "ticket-1");
-  assert.equal(appendedEvents[0].actorUserId, "dev-1");
-  assert.deepEqual(appendedEvents[0].payload, {
+  assert.equal(appendedEvents.length, 2);
+  const statusChanged = appendedEvents.find((event) => event.eventName === "ticket.status_changed");
+  const taskSynced = appendedEvents.find((event) => event.eventName === "task.synced");
+  assert.ok(statusChanged);
+  assert.ok(taskSynced);
+  assert.equal(statusChanged.aggregateType, "ticket");
+  assert.equal(statusChanged.aggregateId, "ticket-1");
+  assert.equal(statusChanged.actorUserId, "dev-1");
+  assert.deepEqual(statusChanged.payload, {
     old_status: "verified",
     new_status: "in_progress",
     assignee_id: "dev-2"
+  });
+  assert.deepEqual(taskSynced.payload, {
+    ticket_status: "in_progress",
+    assignee_id: "dev-2",
+    normalized: true,
+    ensured: true
   });
 });
 
@@ -599,6 +608,59 @@ test("tickets service update ticket skips status_changed event without status tr
   assert.equal(result.oldStatus, "verified");
   assert.equal(result.newStatus, "verified");
   assert.equal(appendedEvents.length, 0);
+});
+
+test("tickets service update ticket appends task.synced for assignee change without status change", () => {
+  const capture = { sql: "", params: [] };
+  const appendedEvents = [];
+  const assigneeId = "11111111-1111-4111-8111-111111111111";
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      getFactory: (sql) => {
+        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+          return {
+            id: "ticket-1",
+            reporter_id: "user-1",
+            status: "verified",
+            assignee_id: null,
+            title: "Ticket title",
+            description: "D".repeat(120),
+            priority: "normal"
+          };
+        }
+        if (sql.includes("SELECT 1 FROM users WHERE id = ?")) {
+          return { 1: 1 };
+        }
+        return undefined;
+      },
+      runFactory: () => ({ changes: 1 })
+    }),
+    taskSyncService: {
+      normalizeLinkedDevTasksForTicket() {},
+      ensureDevTaskForAcceptedTicket() {}
+    },
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-1", outbox_id: "outbox-1", status: "pending" };
+    }
+  });
+
+  const result = service.updateTicket({
+    ticketId: "ticket-1",
+    user: { id: "dev-1", role: "developer" },
+    rawPayload: { assignee_id: assigneeId }
+  });
+
+  assert.equal(result.oldStatus, "verified");
+  assert.equal(result.newStatus, "verified");
+  assert.equal(appendedEvents.length, 1);
+  assert.equal(appendedEvents[0].eventName, "task.synced");
+  assert.deepEqual(appendedEvents[0].payload, {
+    ticket_status: "verified",
+    assignee_id: assigneeId,
+    normalized: true,
+    ensured: true
+  });
 });
 
 test("tickets service update ticket appends ticket.closed event on closing transition", () => {
@@ -656,10 +718,14 @@ test("tickets service update ticket appends ticket.closed event on closing trans
 
   assert.equal(result.oldStatus, "verified");
   assert.equal(result.newStatus, "closed");
-  assert.equal(appendedEvents.length, 2);
-  assert.equal(appendedEvents[0].eventName, "ticket.status_changed");
-  assert.equal(appendedEvents[1].eventName, "ticket.closed");
-  assert.deepEqual(appendedEvents[1].payload, {
+  assert.equal(appendedEvents.length, 3);
+  const taskSynced = appendedEvents.find((event) => event.eventName === "task.synced");
+  const statusChanged = appendedEvents.find((event) => event.eventName === "ticket.status_changed");
+  const closedEvent = appendedEvents.find((event) => event.eventName === "ticket.closed");
+  assert.ok(taskSynced);
+  assert.ok(statusChanged);
+  assert.ok(closedEvent);
+  assert.deepEqual(closedEvent.payload, {
     old_status: "verified",
     new_status: "closed",
     assignee_id: "dev-1"
@@ -718,8 +784,11 @@ test("tickets service update ticket does not append ticket.closed event when reo
 
   assert.equal(result.oldStatus, "closed");
   assert.equal(result.newStatus, "verified");
-  assert.equal(appendedEvents.length, 1);
-  assert.equal(appendedEvents[0].eventName, "ticket.status_changed");
+  assert.equal(appendedEvents.length, 2);
+  const eventNames = appendedEvents.map((event) => event.eventName);
+  assert.ok(eventNames.includes("task.synced"));
+  assert.ok(eventNames.includes("ticket.status_changed"));
+  assert.equal(eventNames.includes("ticket.closed"), false);
 });
 
 test("tickets service returns related tickets for developer without reporter filter", () => {

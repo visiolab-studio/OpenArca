@@ -1267,6 +1267,72 @@
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)
 
+## Step P6C-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Minimalny worker/scheduler dla `event_outbox` z retry policy, dead-letter i observability.
+
+### Implementation Plan
+- Dodać konfigurowalny worker `event_outbox` (polling + batch processing), domyślnie wyłączony.
+- Wprowadzić cykl statusów: `pending -> processing -> sent` oraz retry `pending` i dead-letter `failed`.
+- Zaimplementować retry policy (exponential backoff + limit prób).
+- Dodać runtime metrics workera (ticki, sukcesy, retry, dead-letter, last_error).
+- Dodać endpoint statystyk workera dla developerów.
+- Dodać testy unit dla workera (success/retry/dead-letter/stats).
+- Dodać testy integration endpointu statystyk (auth + RBAC + payload).
+- Uruchomić pełne quality gates + smoke E2E fallback.
+
+### Files changed
+- `.env.example`
+- `backend/.env.example`
+- `backend/config.js`
+- `backend/server.js`
+- `backend/routes/settings.js`
+- `backend/services/outbox-worker.js`
+- `backend/tests/outbox.worker.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/AGENTS.md`
+- `docs/skills/outbox-worker-lifecycle.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `curl -s http://localhost:4000/health` -> PASS (`status=ok`)
+- `curl -sI http://localhost:3000/login` -> PASS (`HTTP/1.1 200 OK`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (152/152)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Repo nie zawiera Playwright/Cypress, więc użyto fallbacku smoke:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - flow: OTP login (user/developer), create ticket, ticket detail, developer update/comment.
+- Route checks:
+  - `GET /login` -> 200
+  - `GET /health` -> 200
+
+### Result
+- Dodano serwis `createOutboxWorkerService` (`backend/services/outbox-worker.js`) z:
+  - polling schedulerem,
+  - lockowaniem due wpisów outbox (`pending` -> `processing`),
+  - retry policy (exponential backoff),
+  - dead-letter przez status `failed` po przekroczeniu `max_attempts`,
+  - runtime observability (`ticks_total`, `processed_total`, `retried_total`, `dead_letter_total`, `last_error`).
+- Worker jest domyślnie wyłączony przez `OUTBOX_WORKER_ENABLED=false`, więc nie narusza obecnych flow i testów.
+- Dodano endpoint `GET /api/settings/events/outbox/stats` (developer-only).
+- Dodano testy:
+  - unit worker: success/retry/dead-letter/stats,
+  - integration endpoint stats: `401`, `403`, `200` + payload contract.
+- Zachowano bezpieczeństwo:
+  - endpoint stats pod `authRequired + requireRole("developer")`,
+  - brak zmian osłabiających RBAC/ownership w istniejących endpointach write.
+
+### Skills created/updated
+- `docs/skills/outbox-worker-lifecycle.md` (created)
+
 ## Step P6A-25
 - Status: Done (approved by user)
 - Commit: `d66b13f`
@@ -1621,7 +1687,7 @@
 
 ## Step P6B-05
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `b19755f`
 - Description: Publikacja eventu domenowego `task.synced` przy synchronizacji ticketów z DevTodo.
 
 ### Implementation Plan

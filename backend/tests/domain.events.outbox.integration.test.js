@@ -51,6 +51,37 @@ test("events outbox endpoint keeps RBAC for standard user", async () => {
   assert.equal(response.body.error, "forbidden");
 });
 
+test("events outbox worker stats endpoint requires authentication", async () => {
+  const response = await request.get("/api/settings/events/outbox/stats");
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, "unauthorized");
+});
+
+test("events outbox worker stats endpoint keeps RBAC for standard user", async () => {
+  const response = await request
+    .get("/api/settings/events/outbox/stats")
+    .set("Authorization", `Bearer ${userAuth.token}`);
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.body.error, "forbidden");
+});
+
+test("events outbox worker stats endpoint returns queue and runtime payload for developer", async () => {
+  const response = await request
+    .get("/api/settings/events/outbox/stats")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(typeof response.body.generated_at, "string");
+  assert.equal(typeof response.body.queue, "object");
+  assert.equal(typeof response.body.runtime, "object");
+  assert.equal(typeof response.body.config, "object");
+  assert.equal(typeof response.body.queue.total, "number");
+  assert.equal(typeof response.body.queue.due_now, "number");
+  assert.equal(typeof response.body.runtime.is_running, "boolean");
+  assert.equal(typeof response.body.runtime.ticks_total, "number");
+});
+
 test("creating ticket writes ticket.created event into durable outbox", async () => {
   const created = await request
     .post("/api/tickets")

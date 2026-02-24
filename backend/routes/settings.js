@@ -9,6 +9,7 @@ const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
 const { enterpriseCheckService } = require("../services/enterpriseCheck");
 const { domainEventsService } = require("../services/domain-events");
+const { outboxWorkerService } = require("../services/outbox-worker");
 const { uploadsDir } = require("../config");
 const {
   getSetting,
@@ -163,6 +164,11 @@ router.use(authRequired, requireRole("developer"));
 
 router.get("/enterprise-check", requireFeature("enterprise_automation"), (req, res) => {
   const payload = enterpriseCheckService.buildPayload("enterprise_automation");
+  return res.json(payload);
+});
+
+router.get("/events/outbox/stats", (req, res) => {
+  const payload = outboxWorkerService.getStats();
   return res.json(payload);
 });
 

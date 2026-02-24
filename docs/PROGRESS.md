@@ -1269,7 +1269,7 @@
 
 ## Step P6C-01
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `3dc7187`
 - Description: Minimalny worker/scheduler dla `event_outbox` z retry policy, dead-letter i observability.
 
 ### Implementation Plan
@@ -1335,7 +1335,7 @@
 
 ## Step P6C-02
 - Status: Done (approved by user)
-- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Commit: `3b5ad2e`
 - Description: Recovery stale `processing` + manualny trigger workera (`runOnce`) dla operacyjnej kontroli.
 
 ### Implementation Plan
@@ -1397,6 +1397,57 @@
 - Zachowano bezpieczeństwo:
   - brak zmian osłabiających RBAC/ownership,
   - endpoint `run-once` za `authRequired + requireRole("developer")`.
+
+### Skills created/updated
+- `docs/skills/outbox-worker-lifecycle.md` (updated)
+
+## Step P6C-03
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po akceptacji i commicie)
+- Description: Observability kolejki outbox: metryka wieku najstarszego pending + testy kontraktu endpointu stats.
+
+### Implementation Plan
+- Dodać metrykę `queue.oldest_pending_age_seconds` w `outboxWorkerService.getStats()`.
+- Wyliczać metrykę deterministycznie na podstawie `created_at` najstarszego `pending`.
+- Zachować kompatybilność kontraktu endpointu `GET /api/settings/events/outbox/stats`.
+- Rozszerzyć testy unit workera o asercję nowej metryki.
+- Rozszerzyć test integracyjny endpointu stats o nową metrykę.
+- Zaktualizować skill workera o pole metryki.
+- Uruchomić pełne quality gates + smoke E2E fallback.
+
+### Files changed
+- `backend/services/outbox-worker.js`
+- `backend/tests/outbox.worker.service.unit.test.js`
+- `backend/tests/domain.events.outbox.integration.test.js`
+- `docs/skills/outbox-worker-lifecycle.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+- `curl -s http://localhost:4000/health` -> PASS (`status=ok`)
+- `curl -sI http://localhost:3000/login` -> PASS (`HTTP/1.1 200 OK`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (156/156)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- Repo nie zawiera Playwright/Cypress, więc użyto fallbacku smoke:
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - flow: OTP login (user/developer), create ticket, ticket detail, developer update/comment.
+- Route checks:
+  - `GET /login` -> 200
+  - `GET /health` -> 200
+
+### Result
+- Dodano metrykę `queue.oldest_pending_age_seconds` do endpointu stats workera.
+- Metryka jest liczona jako wiek (sekundy) najstarszego wpisu `pending` względem `generated_at`.
+- Rozszerzono testy:
+  - unit worker: deterministyczna asercja wartości metryki (`90s` w scenariuszu testowym),
+  - integration endpoint stats: asercja obecności typu `number`.
+- Zachowano RBAC i kontrakt endpointów write bez zmian.
 
 ### Skills created/updated
 - `docs/skills/outbox-worker-lifecycle.md` (updated)

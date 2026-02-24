@@ -48,7 +48,7 @@ curl -s -X POST -H "Authorization: Bearer <TOKEN_DEV>" \
 
 Oczekiwane pola:
 - `generated_at`
-- `queue.{total,due_now,stuck_processing,pending,processing,sent,failed}`
+- `queue.{total,due_now,oldest_pending_age_seconds,stuck_processing,pending,processing,sent,failed}`
 - `runtime.{is_running,ticks_total,processed_total,retried_total,dead_letter_total,recovered_stuck_total,last_error}`
 - `config.{poll_ms,batch_size,max_attempts,processing_timeout_ms,retry_base_ms,retry_max_ms}`
 

@@ -174,6 +174,16 @@ function createOutboxWorkerService(options = {}) {
       )
       .get(nowIso);
 
+    const oldestPendingRow = database
+      .prepare(
+        `SELECT created_at
+         FROM event_outbox
+         WHERE status = 'pending'
+         ORDER BY datetime(created_at) ASC
+         LIMIT 1`
+      )
+      .get();
+
     const staleThresholdIso = addMillisecondsToIso(nowIso, -processingTimeoutMs);
     const stuckProcessingRow = database
       .prepare(
@@ -185,10 +195,17 @@ function createOutboxWorkerService(options = {}) {
       .get(staleThresholdIso);
 
     const totalRow = database.prepare("SELECT COUNT(*) AS count FROM event_outbox").get();
+    const nowMs = Date.parse(nowIso);
+    const oldestPendingMs = Date.parse(String(oldestPendingRow?.created_at || ""));
+    const oldestPendingAgeSeconds =
+      Number.isFinite(nowMs) && Number.isFinite(oldestPendingMs)
+        ? Math.max(0, Math.floor((nowMs - oldestPendingMs) / 1000))
+        : 0;
 
     return {
       total: Number(totalRow?.count) || 0,
       due_now: Number(dueNowRow?.count) || 0,
+      oldest_pending_age_seconds: oldestPendingAgeSeconds,
       stuck_processing: Number(stuckProcessingRow?.count) || 0,
       pending: Number(byStatus.pending) || 0,
       processing: Number(byStatus.processing) || 0,

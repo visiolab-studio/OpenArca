@@ -85,6 +85,16 @@ function insertOutboxEntry(database, input = {}) {
       .run(input.updatedAt, outboxId);
   }
 
+  if (input.createdAt) {
+    database
+      .prepare(
+        `UPDATE event_outbox
+         SET created_at = ?
+         WHERE id = ?`
+      )
+      .run(input.createdAt, outboxId);
+  }
+
   return { eventId, outboxId };
 }
 
@@ -196,12 +206,14 @@ test("outbox worker stats expose queue and runtime observability", () => {
   insertOutboxEntry(database, {
     outboxId: "outbox-pending-due",
     status: "pending",
-    nextAttemptAt: "2026-02-24T09:59:00.000Z"
+    nextAttemptAt: "2026-02-24T09:59:00.000Z",
+    createdAt: "2026-02-24T09:58:30.000Z"
   });
   insertOutboxEntry(database, {
     outboxId: "outbox-pending-future",
     status: "pending",
-    nextAttemptAt: "2026-02-24T10:15:00.000Z"
+    nextAttemptAt: "2026-02-24T10:15:00.000Z",
+    createdAt: "2026-02-24T09:59:30.000Z"
   });
   insertOutboxEntry(database, {
     outboxId: "outbox-sent",
@@ -234,6 +246,7 @@ test("outbox worker stats expose queue and runtime observability", () => {
   assert.equal(stats.queue.sent, 1);
   assert.equal(stats.queue.failed, 1);
   assert.equal(stats.queue.due_now, 1);
+  assert.equal(stats.queue.oldest_pending_age_seconds, 90);
   assert.equal(stats.runtime.is_running, false);
   assert.equal(stats.runtime.ticks_total, 0);
   assert.equal(stats.runtime.recovered_stuck_total, 0);

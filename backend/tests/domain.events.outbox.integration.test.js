@@ -78,6 +78,7 @@ test("events outbox worker stats endpoint returns queue and runtime payload for 
   assert.equal(typeof response.body.config, "object");
   assert.equal(typeof response.body.queue.total, "number");
   assert.equal(typeof response.body.queue.due_now, "number");
+  assert.equal(typeof response.body.queue.oldest_pending_age_seconds, "number");
   assert.equal(typeof response.body.runtime.is_running, "boolean");
   assert.equal(typeof response.body.runtime.ticks_total, "number");
 });

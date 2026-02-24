@@ -135,9 +135,9 @@ test("rbac audit: developer can mutate protected resources", async () => {
   const patchSettings = await request
     .patch("/api/settings")
     .set("Authorization", `Bearer ${devAuth.token}`)
-    .send({ app_name: "EdudoroIT_SupportCenter RBAC Audit" });
+    .send({ app_name: "OpenArca RBAC Audit" });
   assert.equal(patchSettings.statusCode, 200);
-  assert.equal(patchSettings.body.app_name, "EdudoroIT_SupportCenter RBAC Audit");
+  assert.equal(patchSettings.body.app_name, "OpenArca RBAC Audit");
 
   const promoteUser = await request
     .patch(`/api/users/${secondUserAuth.user.id}`)

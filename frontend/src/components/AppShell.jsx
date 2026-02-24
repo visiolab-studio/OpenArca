@@ -16,9 +16,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import appLogo from "../assets/edudoro_itsc_logo.png";
+import appLogo from "../assets/logo-openarca.png";
+import openArcaLogoGrey from "../assets/logo-openarca-grey.png";
+import polandFlag from "../assets/poland.png";
+import unitedStatesFlag from "../assets/united-states.png";
 import { API_BASE_URL } from "../api/client";
 import { getPublicSettings } from "../api/settings";
+import appPackage from "../../package.json";
 
 const themeStorageKey = "taskflow-theme";
 
@@ -35,6 +39,8 @@ const developerItems = [
 ];
 
 const adminItem = { to: "/admin", labelKey: "nav.admin", icon: Settings };
+const openArcaUrl = "https://www.openarca.com";
+const openArcaLicenseUrl = "https://github.com/visiolab-studio/OpenArca/blob/main/LICENSE";
 
 function resolveInitialTheme() {
   if (typeof window === "undefined") return "light";
@@ -117,6 +123,8 @@ export default function AppShell() {
   const isFullWidth = location.pathname.startsWith("/board");
   const appName = branding.app_name || t("app.name");
   const logoSrc = branding.app_logo_url ? `${API_BASE_URL}${branding.app_logo_url}` : appLogo;
+  const poweredByLogoSrc = openArcaLogoGrey;
+  const appVersion = appPackage?.version || "0.0.0";
   const userAvatarSrc = user?.avatar_filename
     ? `${API_BASE_URL}/api/auth/avatar/${user.avatar_filename}?v=${encodeURIComponent(
       user.avatar_updated_at || "1"
@@ -151,8 +159,9 @@ export default function AppShell() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-logo">
-            <img src={logoSrc} alt="EdudoroIT logo" className="sidebar-logo-image" />
+            <img src={logoSrc} alt={`${appName} logo`} className="sidebar-logo-image" />
             <span className="sidebar-logo-text">{appName}</span>
+            <span className="sidebar-powered">Powered by OpenArca</span>
           </NavLink>
         </div>
 
@@ -239,6 +248,31 @@ export default function AppShell() {
             <LogOut size={14} />
             <span>{t("app.logout")}</span>
           </button>
+
+          <div className="sidebar-signature">
+            <a
+              href={openArcaUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="sidebar-signature-link"
+              aria-label="OpenArca website"
+              title="OpenArca"
+            >
+              <img src={poweredByLogoSrc} alt="OpenArca" className="sidebar-signature-logo" />
+            </a>
+            <div className="sidebar-signature-meta">
+              Built on OpenArca <span className="sidebar-signature-version">v{appVersion}</span>{" "}
+              ·{" "}
+              <a
+                href={openArcaLicenseUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="sidebar-signature-license"
+              >
+                AGPL-3.0-only
+              </a>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -260,7 +294,7 @@ export default function AppShell() {
                 className={language === "pl" ? "lang-option active" : "lang-option"}
                 onClick={() => handleLanguageChange("pl")}
               >
-                <span className="flag flag-pl" aria-hidden="true" />
+                <img src={polandFlag} alt="" className="lang-flag" aria-hidden="true" />
                 <span>PL</span>
               </button>
               <button
@@ -268,7 +302,7 @@ export default function AppShell() {
                 className={language === "en" ? "lang-option active" : "lang-option"}
                 onClick={() => handleLanguageChange("en")}
               >
-                <span className="flag flag-us" aria-hidden="true" />
+                <img src={unitedStatesFlag} alt="" className="lang-flag" aria-hidden="true" />
                 <span>EN</span>
               </button>
             </div>

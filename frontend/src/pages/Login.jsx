@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import appLogo from "../assets/edudoro_itsc_logo.png";
-import { API_BASE_URL } from "../api/client";
+import appLogo from "../assets/logo-openarca.png";
+import polandFlag from "../assets/poland.png";
+import unitedStatesFlag from "../assets/united-states.png";
 import { getPublicSettings } from "../api/settings";
 
 const OTP_LIFETIME_SECONDS = 10 * 60;
@@ -72,8 +73,8 @@ export default function LoginPage() {
     if (!expiresAt) return OTP_LIFETIME_SECONDS;
     return Math.floor((expiresAt - now) / 1000);
   }, [expiresAt, now]);
-  const logoSrc = branding.app_logo_url ? `${API_BASE_URL}${branding.app_logo_url}` : appLogo;
-  const logoAlt = branding.app_name || "EdudoroIT logo";
+  const logoSrc = appLogo;
+  const logoAlt = branding.app_name || "OpenArca";
 
   const code = digits.join("");
 
@@ -169,7 +170,7 @@ export default function LoginPage() {
               className={language === "pl" ? "lang-option active" : "lang-option"}
               onClick={() => setLanguage("pl")}
             >
-              <span className="flag flag-pl" aria-hidden="true" />
+              <img src={polandFlag} alt="" className="lang-flag" aria-hidden="true" />
               <span>PL</span>
             </button>
             <button
@@ -177,7 +178,7 @@ export default function LoginPage() {
               className={language === "en" ? "lang-option active" : "lang-option"}
               onClick={() => setLanguage("en")}
             >
-              <span className="flag flag-us" aria-hidden="true" />
+              <img src={unitedStatesFlag} alt="" className="lang-flag" aria-hidden="true" />
               <span>EN</span>
             </button>
           </div>

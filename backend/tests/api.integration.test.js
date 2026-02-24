@@ -217,7 +217,7 @@ test("developer can create, list and remove external references", async () => {
     .set("Authorization", `Bearer ${devAuth.token}`)
     .send({
       ref_type: "git_pr",
-      url: "https://github.com/visiolab-studio/EdudoroIT_SupportCenter/pull/42",
+      url: "https://github.com/visiolab-studio/OpenArca/pull/42",
       title: "PR #42"
     });
   assert.equal(createRef.statusCode, 201);

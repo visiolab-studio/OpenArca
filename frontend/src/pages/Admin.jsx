@@ -4,7 +4,7 @@ import { createProject, deleteProject, getProjects, patchProject } from "../api/
 import { API_BASE_URL } from "../api/client";
 import { getSettings, patchSettings, testEmail, uploadAppLogo } from "../api/settings";
 import { getUsers, patchUser } from "../api/users";
-import appLogo from "../assets/edudoro_itsc_logo.png";
+import appLogo from "../assets/logo-openarca.png";
 
 const tabs = ["app", "smtp", "projects", "users"];
 

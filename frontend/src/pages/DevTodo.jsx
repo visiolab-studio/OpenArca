@@ -924,7 +924,7 @@ export default function DevTodoPage() {
         </article>
         <button
           type="button"
-          className="btn btn-yellow todo-create-open-btn"
+          className="btn btn-accent todo-create-open-btn"
           onClick={() => setShowCreateModal(true)}
         >
           <Plus size={14} />
@@ -1029,7 +1029,7 @@ export default function DevTodoPage() {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>
                   {t("app.cancel")}
                 </button>
-                <button className="btn btn-yellow" type="submit">
+                <button className="btn btn-accent" type="submit">
                   {t("dev.create")}
                 </button>
               </div>
@@ -1139,7 +1139,7 @@ export default function DevTodoPage() {
                 {previewTask.status === "in_progress" ? (
                   <button
                     type="button"
-                    className="btn btn-yellow"
+                    className="btn btn-accent"
                     onClick={handlePreviewComplete}
                     disabled={Boolean(previewBusy)}
                   >
@@ -1153,7 +1153,7 @@ export default function DevTodoPage() {
                 <button type="button" className="btn btn-secondary" onClick={closeTaskPreview} disabled={Boolean(previewBusy)}>
                   {t("app.cancel")}
                 </button>
-                <button type="button" className="btn btn-yellow" onClick={saveTaskPreview} disabled={Boolean(previewBusy)}>
+                <button type="button" className="btn btn-accent" onClick={saveTaskPreview} disabled={Boolean(previewBusy)}>
                   {previewBusy === "save" ? t("app.loading") : t("app.save")}
                 </button>
               </div>
@@ -1231,7 +1231,7 @@ export default function DevTodoPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-yellow"
+                      className="btn btn-accent"
                       onClick={() => handleCompleteTask("close")}
                       disabled={Boolean(completionBusy)}
                     >
@@ -1241,7 +1241,7 @@ export default function DevTodoPage() {
                 ) : (
                   <button
                     type="button"
-                    className="btn btn-yellow"
+                    className="btn btn-accent"
                     onClick={() => handleCompleteTask("close")}
                     disabled={Boolean(completionBusy)}
                   >
@@ -1408,7 +1408,7 @@ export default function DevTodoPage() {
                         </Link>
                         <button
                           type="button"
-                          className="btn btn-yellow btn-sm"
+                          className="btn btn-accent btn-sm"
                           onClick={() => handleClaimTicket(ticket, false)}
                           disabled={ticketActionId === ticket.id}
                         >
@@ -1460,7 +1460,7 @@ export default function DevTodoPage() {
                       </Link>
                       <button
                         type="button"
-                        className="btn btn-yellow btn-sm"
+                        className="btn btn-accent btn-sm"
                         onClick={() => handleAcceptTicket(ticket, false)}
                         disabled={ticketActionId === ticket.id}
                       >

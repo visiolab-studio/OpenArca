@@ -519,7 +519,7 @@ export default function NewTicketPage() {
               {t("app.next")}
             </button>
           ) : (
-            <button type="submit" className="btn btn-yellow" disabled={loading}>
+            <button type="submit" className="btn btn-accent" disabled={loading}>
               {t("app.submit")}
             </button>
           )}

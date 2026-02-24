@@ -1,5 +1,77 @@
 # EdudoroIT_SupportCenter — Progress Log
 
+## Step RC2-01
+- Status: Done (approved by user)
+- Commit: `pending-hash` (uzupełniany po commicie)
+- Description: Rebranding OpenArca + odświeżenie UI (faza A) + branding footer/sidebar/login.
+
+### Implementation Plan
+- Zmienić runtime naming i fallbacki z `EdudoroIT_SupportCenter` na `OpenArca`.
+- Dodać branding sidebar: `Powered by OpenArca`.
+- Dodać branding stopki: logo OpenArca, wersja aplikacji i link do licencji.
+- Dodać poprawne assety logo i flag PL/EN.
+- Podmienić klasę CTA `btn-yellow` na neutralną `btn-accent`.
+- Ujednolicić żółte bordery/cienie na primary teal wg `ui_book.md`.
+- Dodać checklistę prac RC2 w osobnym TODO.
+- Uruchomić pełne quality gates i smoke E2E.
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/settings.js`
+- `backend/tests/api.integration.test.js`
+- `backend/tests/rbac.ownership.audit.integration.test.js`
+- `frontend/index.html`
+- `frontend/src/components/AppShell.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/pages/Admin.jsx`
+- `frontend/src/pages/Board.jsx`
+- `frontend/src/pages/DevTodo.jsx`
+- `frontend/src/pages/Login.jsx`
+- `frontend/src/pages/NewTicket.jsx`
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/assets/logo-openarca.png`
+- `frontend/src/assets/logo-openarca-white.png`
+- `frontend/src/assets/logo-openarca-grey.png`
+- `frontend/src/assets/poland.png`
+- `frontend/src/assets/united-states.png`
+- `docs/OPENARCA_RC2_TODO.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (157/157)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- `curl -s http://localhost:4000/health` -> PASS (`status=ok`)
+
+### E2E run
+- Repo nie zawiera Playwright/Cypress, więc użyto smoke fallback:
+  - flow: OTP login user/developer, create ticket, ticket detail, developer update/comment.
+- Manual UI checks (zaakceptowane przez usera):
+  - login i sidebar branding OpenArca,
+  - poprawne flagi PL/EN,
+  - stopka z logo OpenArca, wersją i licencją.
+
+### Result
+- Produkt ma spójny rebranding na `OpenArca` (UI + backend fallbacki + komunikaty test email).
+- Dodany stały podpis pod logo: `Powered by OpenArca`.
+- Stopka zawiera:
+  - szare logo OpenArca,
+  - wersję aplikacji,
+  - link `AGPL-3.0-only` do `LICENSE`.
+- Login korzysta ze zaktualizowanego logo OpenArca.
+- Przełącznik języka używa dostarczonych flag `poland.png` i `united-states.png`.
+- Żółte akcenty border/shadow zostały przepięte na primary teal zgodnie z `ui_book.md`.
+- Nazewnictwo przycisków zostało oczyszczone z legacy:
+  - `btn-yellow` -> `btn-accent`.
+
+### Skills created/updated
+- none
+
 ## Step P5-telemetry-01
 - Status: Done (approved by user)
 - Commit: `aa9bca1`

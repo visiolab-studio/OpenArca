@@ -185,7 +185,7 @@ const schemaStatements = [
 const defaultSettings = [
   ["allowed_domains", '["example.com"]'],
   ["developer_emails", "[]"],
-  ["app_name", "EdudoroIT_SupportCenter"],
+  ["app_name", "OpenArca"],
   ["app_logo_filename", ""],
   ["app_logo_updated_at", ""],
   ["ticket_counter", "0"],
@@ -237,6 +237,11 @@ function initDb() {
     for (const [key, value] of defaultSettings) {
       insertSetting.run(key, value);
     }
+
+    // One-time rename migration for existing databases using legacy product name.
+    db.prepare(
+      "UPDATE settings SET value = 'OpenArca' WHERE key = 'app_name' AND value = 'EdudoroIT_SupportCenter'"
+    ).run();
   });
 
   migrate();

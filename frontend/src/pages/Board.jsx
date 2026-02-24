@@ -479,7 +479,7 @@ export default function BoardPage() {
                 <Link to={`/ticket/${previewTicket.id}`} className="btn btn-secondary">
                   {t("board.openDetails")}
                 </Link>
-                <button type="button" className="btn btn-yellow" onClick={savePreviewChanges} disabled={previewBusy}>
+                <button type="button" className="btn btn-accent" onClick={savePreviewChanges} disabled={previewBusy}>
                   {previewBusy ? t("app.loading") : t("app.save")}
                 </button>
               </div>

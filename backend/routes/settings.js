@@ -88,7 +88,7 @@ function buildPublicSettingsPayload(map) {
   const hasLogo = Boolean(String(map.app_logo_filename || "").trim());
 
   return {
-    app_name: map.app_name || "EdudoroIT_SupportCenter",
+    app_name: map.app_name || "OpenArca",
     app_url: map.app_url || "",
     app_logo_url: hasLogo ? `/api/settings/logo?v=${encodeURIComponent(version || "1")}` : null
   };
@@ -322,8 +322,8 @@ router.post("/logo", writeLimiter, upload.single("logo"), (req, res, next) => {
 
 async function handleTestEmail(req, res, next) {
   try {
-    const subject = "EdudoroIT_SupportCenter email provider test";
-    const text = "Email provider test message from EdudoroIT_SupportCenter admin panel.";
+    const subject = "OpenArca email provider test";
+    const text = "Email provider test message from OpenArca admin panel.";
     const result = await sendEmail({
       to: req.body.to,
       subject,

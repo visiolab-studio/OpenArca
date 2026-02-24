@@ -362,7 +362,7 @@ export default function TicketDetailPage() {
           {isDeveloper && ticket.status === "submitted" ? (
             <button
               type="button"
-              className="btn btn-yellow"
+              className="btn btn-accent"
               onClick={handleQuickAccept}
               disabled={isQuickAccepting}
             >

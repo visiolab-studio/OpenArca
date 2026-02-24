@@ -14,6 +14,11 @@ OpenArca sits between support desks and developer workflows.
 
 **Language:** [EN](#english) | [PL](#polski)
 
+### Official links
+- Project website: [https://openarca.com](https://openarca.com)
+- Documentation (EN): [https://docs.openarca.com/docs/overview](https://docs.openarca.com/docs/overview)
+- Dokumentacja (PL): [https://docs.openarca.com/pl/docs/overview](https://docs.openarca.com/pl/docs/overview)
+
 ### 1) Project in one sentence
 OpenArca helps teams move from incoming requests to structured execution without losing context.
 
@@ -177,6 +182,11 @@ Preferred channel: GitHub Security Advisories.
 ## Polski
 
 **Language:** [EN](#english) | [PL](#polski)
+
+### Oficjalne linki
+- Strona projektu: [https://openarca.com](https://openarca.com)
+- Dokumentacja (EN): [https://docs.openarca.com/docs/overview](https://docs.openarca.com/docs/overview)
+- Dokumentacja (PL): [https://docs.openarca.com/pl/docs/overview](https://docs.openarca.com/pl/docs/overview)
 
 ### 1) Projekt w jednym zdaniu
 OpenArca pomaga zespołom przejść od zgłoszenia do wykonania pracy bez utraty kontekstu.

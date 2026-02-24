@@ -2935,3 +2935,46 @@
 
 ### Skills created/updated
 - `docs/skills/tickets-route-to-service.md` (updated)
+
+## Step RC2-README-02
+- Status: Needs review
+- Description: Szybkie poprawki pozycjonowania OSS w `README.md` (badge, hook, core idea, target persona, HTTPS clone).
+
+### Implementation Plan
+- Dodać 2 badge (`License`, `Status`) na górze README.
+- Zmienić zdanie otwierające zgodnie z nowym pozycjonowaniem.
+- Dodać hook pozycjonujący „between support desks and developer workflows”.
+- Dodać sekcję `The core idea` pomiędzy `Why` i `What it is / isn't`.
+- Dodać sekcję `Who OpenArca is for`.
+- Zmienić `git clone` z SSH na HTTPS (EN/PL).
+- Zachować spójność wersji PL (odpowiedniki nowych sekcji).
+- Uruchomić quality gates i smoke.
+
+### Files changed
+- `README.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend yarn lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (157/157)
+- `docker compose exec -T frontend yarn test` -> PASS (15/15)
+- `docker compose exec -T frontend yarn build` -> PASS
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Uwaga: repo nadal nie ma Playwright/Cypress; utrzymany fallback smoke zgodnie z dotychczasowym procesem.
+
+### Result
+- Dodano 2 badge na górze README (`AGPL-3.0`, `early open release`).
+- Zmieniono pierwsze zdanie otwarcia README.
+- Dodano jednozdaniowy hook pozycjonujący produkt.
+- Dodano sekcję `The core idea` (EN) i `Kluczowa idea` (PL).
+- Dodano sekcję `Who OpenArca is for` (EN) i `Dla kogo jest OpenArca` (PL).
+- Zmieniono Quickstart clone na HTTPS w sekcji EN i PL.
+- Zaktualizowano numerację sekcji po obu wersjach językowych.
+
+### Skills created/updated
+- Brak zmian w skills.

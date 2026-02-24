@@ -1,215 +1,337 @@
-# EdudoroIT_SupportCenter
+# OpenArca
 
-EdudoroIT_SupportCenter to system obsługi zgłoszeń IT z podziałem na role zgłaszającego i developera, z widokiem obłożenia, tablicą Kanban, listą TODO developera oraz panelem ustawień aplikacji.
+![License](https://img.shields.io/badge/license-AGPL--3.0-green)
+![Status](https://img.shields.io/badge/status-early%20open%20release-blue)
 
-## Zakres funkcjonalny
+OpenArca is an Open Core execution workspace for teams that want to keep context while they ship.
+OpenArca sits between support desks and developer workflows.
 
-### 1. Użytkownik (zgłaszający)
-- Logowanie bez hasła przez OTP (8 cyfr, kod ważny 10 minut).
-- Dodawanie zgłoszeń przez wieloetapowy formularz (kategorie, priorytet, szczegóły, załączniki).
-- Wgląd we własne zgłoszenia z filtrami (`/my-tickets`).
-- Widok szczegółów zgłoszenia: opis, status, historia zmian, komentarze, załączniki.
-- Edycja zgłoszenia do czasu rozpoczęcia pracy po stronie IT (status `submitted`).
+**Language:** [EN](#english) | [PL](#polski)
 
-### 2. Developer / IT
-- Dashboard z metrykami, alertami i skrótami.
-- Globalny widok obłożenia (`/overview`): `in_progress`, kolejka (`verified` + `waiting`), `blocked`, `submitted`.
-- Kanban (`/board`) z DnD i szybkim podglądem/edycją zgłoszenia.
-- Lista TODO developera (`/dev-todo`) powiązana ze zgłoszeniami:
-  - zadania aktywne i zakończone,
-  - filtrowanie, sortowanie, reorder DnD,
-  - przejęcie/akceptacja zgłoszeń z kolejki.
-- Finalizacja zadania z komentarzem i wyborem wyniku (`closed` albo `waiting` do weryfikacji zgłaszającego).
+---
 
-### 3. Admin (w ramach roli `developer`)
-- Ustawienia aplikacji: nazwa, URL, domeny do logowania, lista maili developerów.
-- Branding: upload logo aplikacji.
-- Email provider: wybór `SMTP` albo `AWS SES`, zapis konfiguracji i test wysyłki.
-- Zarządzanie projektami.
-- Zarządzanie użytkownikami i rolami (`user` / `developer`).
+## English
 
-### 4. Profil użytkownika
-- Edycja imienia i nazwiska.
-- Podgląd emaila (read-only).
-- Upload avatara.
-- Wejście do profilu przez klikalny blok użytkownika w stopce sidebara.
+**Language:** [EN](#english) | [PL](#polski)
 
-## Statusy zgłoszeń i flow
+### 1) Project in one sentence
+OpenArca helps teams move from incoming requests to structured execution without losing context.
 
-- `submitted` - nowe zgłoszenie, czeka na weryfikację.
-- `verified` - zweryfikowane, gotowe do realizacji.
-- `in_progress` - w realizacji.
-- `waiting` - oczekuje na informację/weryfikację po stronie zgłaszającego.
-- `blocked` - zablokowane, wymagane dodatkowe dane/decyzja.
-- `closed` - zamknięte.
+### 2) Why OpenArca exists
+Teams often lose context between tickets, comments, and implementation work.
+Most tools are either too heavy for day-to-day execution or too shallow for operational clarity.
+OpenArca exists to keep work, decisions, and outcomes connected in one place.
 
-Logika automatyczna:
-- Akceptacja/planowanie zgłoszenia przez developera może automatycznie przełączyć `submitted -> verified`.
-- Dla zaakceptowanych/przypisanych zgłoszeń tworzony/aktualizowany jest powiązany task developerski.
-- Ponowne otwarcie zgłoszenia na Kanbanie synchronizuje status powiązanego taska TODO.
+### 3) The core idea
+Most tools organize work.
 
-## Stack technologiczny
+OpenArca preserves execution context.
 
-- Frontend: React 18, Vite, React Router, i18n, dnd-kit.
-- Backend: Node.js 20, Express, SQLite (`better-sqlite3`), Zod, JWT.
-- Uploady: `multer` (pliki i avatary/logo).
-- Email: `nodemailer` (SMTP) lub AWS SDK (SES).
-- Uruchomienie lokalne: Docker Compose + Mailpit.
+That means:
+- tickets stay connected to decisions
+- ownership survives handoffs
+- teams keep momentum without extra process
 
-## Wymagania
+### 4) Who OpenArca is for
+- Internal IT teams
+- Software agencies
+- Product teams tired of heavy PM tools
+- Developers who prefer flow over process
 
-- Docker + Docker Compose (zalecane)  
-lub
-- Node.js 20+ i npm.
+### 5) What it is / What it isn't
+**What it is**
+- An Open Core execution workspace for internal IT and dev operations.
+- A ticket + Kanban + developer TODO flow with role-based access.
+- A practical base for teams that want to self-host and extend safely.
 
-## Instalacja i uruchomienie (Docker)
+**What it isn't**
+- A generic helpdesk template.
+- A PM suite replacing strategic planning tools.
+- A closed SaaS black box.
 
-1. Skopiuj pliki środowiskowe:
+### 6) Key features
+**Users**
+- Passwordless OTP login.
+- Multi-step ticket submission with attachments.
+- "My tickets" list and ticket detail with status/history/comments.
+
+**Developers**
+- Workload overview (`/overview`) with queue grouping.
+- Kanban board (`/board`) with status flow.
+- Developer TODO (`/dev-todo`) synchronized with ticket lifecycle.
+- Closure summary flow before closing tickets.
+
+**Admin**
+- Allowed domains and developer emails.
+- App branding (name, logo, URL).
+- Mail providers: SMTP or AWS SES.
+- Projects and user/role management.
+
+### Screenshots
+Add screenshots to `docs/assets/` and reference them from README, for example:
+
+```md
+![Dashboard](docs/assets/dashboard.png)
+![Kanban](docs/assets/kanban.png)
+```
+
+Current state: screenshot files are not included yet.
+
+### 7) Run in 5 minutes (Docker Compose)
+Prerequisites:
+- Docker + Docker Compose
+
 ```bash
+git clone https://github.com/visiolab-studio/OpenArca.git
+cd OpenArca
 cp .env.example .env
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
+docker compose up --build -d
 ```
 
-2. Uruchom stack:
-```bash
-docker compose up --build
-```
+Open:
+- App: `http://localhost:3000`
+- API health: `http://localhost:4000/health`
+- Mailpit (OTP/email inbox): `http://localhost:8025`
 
-3. Adresy lokalne:
-- Frontend: `http://localhost:3000`
-- Backend health: `http://localhost:4000/health`
-- Mailpit UI (podgląd OTP/maili): `http://localhost:8025`
-
-Jeśli porty Mailpit są zajęte:
-```bash
-MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build
-```
-
-## Pierwsze uruchomienie (ważne)
-
-Domyślnie baza startuje z:
-- `allowed_domains = ["example.com"]`
-- `developer_emails = []`
-
-To oznacza, że przed pierwszym logowaniem warto ustawić własną domenę i pierwszy email developera:
+First boot note:
+- Default settings allow only `example.com` and no developer accounts.
+- Set your domain and first developer email:
 
 ```bash
-docker compose exec -T backend node -e "const db=require('./db'); db.prepare(\"UPDATE settings SET value = ? WHERE key = 'allowed_domains'\").run(JSON.stringify(['example.com','zlotynauczyciel.pl'])); db.prepare(\"UPDATE settings SET value = ? WHERE key = 'developer_emails'\").run(JSON.stringify(['piotr@zlotynauczyciel.pl'])); console.log('settings updated');"
+docker compose exec -T backend node -e "const db=require('./db'); db.prepare(\"UPDATE settings SET value=? WHERE key='allowed_domains'\").run(JSON.stringify(['example.com','yourcompany.com'])); db.prepare(\"UPDATE settings SET value=? WHERE key='developer_emails'\").run(JSON.stringify(['dev@yourcompany.com'])); console.log('settings updated');"
 ```
 
-Weryfikacja:
-```bash
-docker compose exec -T backend node -e "const db=require('./db'); console.log(db.prepare(\"SELECT key,value FROM settings WHERE key IN ('allowed_domains','developer_emails') ORDER BY key\").all());"
-```
+### 8) Configuration (minimal)
+Main runtime files:
+- Root env: [`.env.example`](.env.example)
+- Backend env: [`backend/.env.example`](backend/.env.example)
+- Frontend env: [`frontend/.env.example`](frontend/.env.example)
+- Compose services and ports: [`docker-compose.yml`](docker-compose.yml)
 
-## Jak korzystać (skrót)
+Default local ports:
+- Frontend: `3000`
+- Backend: `4000`
+- Mailpit SMTP/UI: `1025` / `8025`
 
-1. Wejdź na `http://localhost:3000/login`.
-2. Podaj email z dozwolonej domeny.
-3. Odczytaj kod OTP z Mailpit (`http://localhost:8025`) i zaloguj się.
-4. Użytkownik zgłasza ticket przez `Nowe zgłoszenie`.
-5. Developer obsługuje zgłoszenia przez `Kanban`, `Lista TODO`, `Obłożenie`.
-6. Ustawienia organizacyjne i email skonfigurujesz w `Ustawienia`.
+Mail delivery:
+- Configure in app settings (`/admin`) via `SMTP` or `AWS SES`.
 
-## Uruchomienie bez Dockera
+Useful docs:
+- Release/rollback checklist: [`docs/release-checklist.md`](docs/release-checklist.md)
 
-Wymagane: lokalny Node.js 20+ i dostępny backend SMTP (np. Mailpit).
+### 9) License (AGPL-3.0) and what it means for companies
+OpenArca is licensed under **AGPL-3.0-only**. See [`LICENSE`](LICENSE).
 
-```bash
-# terminal 1
-cd backend
-npm install
-npm run dev
+For companies (short version):
+- You can self-host and use OpenArca internally.
+- If you modify OpenArca and make it available to users over a network, you must provide source code of that modified version under AGPL.
+- If you need proprietary distribution terms, keep Open Core unmodified or use a separate commercial agreement for enterprise extensions.
 
-# terminal 2
-cd frontend
-npm install
-npm run dev
-```
+### 10) Contributing
+Start here:
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Pick an issue (look for `good first issue` label, or open a new issue describing what you want to work on).
+- Keep PRs focused: one feature/fix per branch.
 
-Domyślne adresy:
-- Frontend: `http://localhost:3000`
-- API: `http://localhost:4000`
-
-## Quality Gates
-
-Lokalnie w kontenerach:
+Minimum PR quality gates:
 
 ```bash
 docker compose exec -T backend npm run lint
 docker compose exec -T backend npm test
-docker compose exec -T frontend npm run lint
-docker compose exec -T frontend npm test
-docker compose exec -T frontend npm run build
+docker compose exec -T frontend yarn lint
+docker compose exec -T frontend yarn test
+docker compose exec -T frontend yarn build
 ```
 
-CI: `.github/workflows/ci.yml` (GitHub Actions, Node 20, lint + test + build).
+### 11) Security
+Do not report vulnerabilities publicly.
+Use the coordinated disclosure process from [`SECURITY.md`](SECURITY.md).
+Preferred channel: GitHub Security Advisories.
 
-## Bezpieczeństwo (zaimplementowane)
+### 12) Roadmap
+- Public roadmap: [`ROADMAP.md`](ROADMAP.md)
+- Work items: [GitHub Issues](https://github.com/visiolab-studio/OpenArca/issues)
 
-- `helmet` + CORS na backendzie.
-- JWT Bearer auth i RBAC (`user`, `developer`).
-- Walidacja requestów przez Zod.
-- Rate limiting:
-  - OTP: 3 żądania / 10 min / email.
-  - Endpointy zapisu: limit na minutę.
-- Bezpieczne uploady:
-  - whitelist MIME,
-  - limit pliku i limit sumaryczny,
-  - walidacja ścieżek i uprawnień dostępu do załączników/avatarów/logo.
+### 13) Maintainer / Author
+- **Piotr Tomczak** — Founder / Maintainer
+- **Visio Lab Sp. z o.o.**
+- GitHub: [@<maintainer-github>](https://github.com/<maintainer-github>)
 
-## Dane i reset środowiska
+### 14) FAQ (mini)
+**Can I self-host OpenArca?**
+- Yes. Docker Compose setup is included.
 
-Dane SQLite i uploady są trzymane na wolumenach Dockera (`backend_data`, `backend_uploads`).
+**Do we need to open source our internal usage?**
+- Internal usage itself does not force publication. AGPL obligations apply when you provide a modified network-accessible version to users.
 
-### Backup / restore (SQLite + uploads)
+**What is Open Core vs Enterprise here?**
+- This repository is Open Core. Enterprise-only capabilities are handled separately.
 
-Tworzenie backupu:
+**Where do OTP codes go in local development?**
+- To Mailpit (`http://localhost:8025`).
+
+---
+
+## Polski
+
+**Language:** [EN](#english) | [PL](#polski)
+
+### 1) Projekt w jednym zdaniu
+OpenArca pomaga zespołom przejść od zgłoszenia do wykonania pracy bez utraty kontekstu.
+
+### 2) Dlaczego OpenArca istnieje
+Zespoły regularnie tracą kontekst między zgłoszeniami, komentarzami i wdrożeniem.
+Wiele narzędzi jest albo zbyt ciężkich do codziennej pracy, albo zbyt płytkich operacyjnie.
+OpenArca powstała, żeby spiąć pracę, decyzje i wynik w jednym miejscu.
+
+### 3) Kluczowa idea
+Większość narzędzi organizuje pracę.
+
+OpenArca zachowuje kontekst wykonania.
+
+To znaczy:
+- zgłoszenia pozostają połączone z decyzjami
+- odpowiedzialność nie ginie przy przekazaniach
+- zespół utrzymuje tempo bez dokładania procesu
+
+### 4) Dla kogo jest OpenArca
+- Wewnętrzne zespoły IT
+- Software house'y
+- Zespoły produktowe zmęczone ciężkimi narzędziami PM
+- Developerzy, którzy wolą flow niż proces
+
+### 5) Czym jest / Czym nie jest
+**Czym jest**
+- Open Core workspace do operacyjnej pracy IT i dev.
+- Flow ticket + Kanban + TODO developera z kontrolą dostępu.
+- Praktyczna baza pod self-hosting i bezpieczne rozszerzenia.
+
+**Czym nie jest**
+- Generycznym helpdeskiem.
+- Suitem do planowania strategicznego.
+- Zamkniętym narzędziem SaaS.
+
+### 6) Kluczowe funkcje
+**Użytkownicy**
+- Logowanie OTP bez hasła.
+- Wieloetapowe zgłoszenia z załącznikami.
+- "Moje zgłoszenia" i szczegóły zgłoszenia (status/historia/komentarze).
+
+**Developerzy**
+- Widok obłożenia (`/overview`) z kolejkami statusów.
+- Kanban (`/board`) do pracy na statusach.
+- Lista TODO (`/dev-todo`) zsynchronizowana z cyklem życia zgłoszenia.
+- Wymuszenie podsumowania zamknięcia przed statusem `closed`.
+
+**Admin**
+- Domeny do logowania i lista emaili developerów.
+- Branding aplikacji (nazwa, logo, URL).
+- Dostawcy maili: SMTP lub AWS SES.
+- Zarządzanie projektami i użytkownikami.
+
+### Screenshots
+Dodaj zrzuty do `docs/assets/` i podlinkuj je w README, np.:
+
+```md
+![Dashboard](docs/assets/dashboard.png)
+![Kanban](docs/assets/kanban.png)
+```
+
+Aktualnie: pliki screenshotów nie są jeszcze dodane.
+
+### 7) Uruchom w 5 minut (Docker Compose)
+Wymagania:
+- Docker + Docker Compose
+
 ```bash
-./scripts/backup.sh
+git clone https://github.com/visiolab-studio/OpenArca.git
+cd OpenArca
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+docker compose up --build -d
 ```
 
-Backup do wskazanego pliku:
-```bash
-./scripts/backup.sh --output backups/edudoroit-backup-manual.tar.gz
-```
+Adresy:
+- Aplikacja: `http://localhost:3000`
+- Health API: `http://localhost:4000/health`
+- Mailpit (OTP/skrzynka): `http://localhost:8025`
 
-Szybki backup bez zatrzymywania usług (mniej spójny):
-```bash
-./scripts/backup.sh --hot
-```
-
-Przywracanie backupu:
-```bash
-./scripts/restore.sh --input backups/edudoroit-backup-manual.tar.gz --yes
-```
-
-Skróty przez `Makefile`:
-```bash
-make backup
-make restore BACKUP=backups/edudoroit-backup-manual.tar.gz
-```
-
-Uwaga:
-- `restore` nadpisuje dane (`/app/data`, `/app/uploads`) i jest operacją destrukcyjną.
-- Skrypty używają `docker compose run` na serwisie `backend`, więc działają z tymi samymi wolumenami co aplikacja.
-
-Pełny reset lokalnego środowiska (usuwa dane):
+Uwaga przy pierwszym starcie:
+- Domyślnie dozwolona jest tylko domena `example.com`, a lista developerów jest pusta.
+- Ustaw własną domenę i pierwszego developera:
 
 ```bash
-docker compose down -v
+docker compose exec -T backend node -e "const db=require('./db'); db.prepare(\"UPDATE settings SET value=? WHERE key='allowed_domains'\").run(JSON.stringify(['example.com','twojafirma.pl'])); db.prepare(\"UPDATE settings SET value=? WHERE key='developer_emails'\").run(JSON.stringify(['dev@twojafirma.pl'])); console.log('settings updated');"
 ```
 
-## Release i rollback
+### 8) Konfiguracja (minimum)
+Główne pliki runtime:
+- Root env: [`.env.example`](.env.example)
+- Backend env: [`backend/.env.example`](backend/.env.example)
+- Frontend env: [`frontend/.env.example`](frontend/.env.example)
+- Serwisy i porty: [`docker-compose.yml`](docker-compose.yml)
 
-Checklista release/rollback: `docs/release-checklist.md`.
+Domyślne porty lokalne:
+- Frontend: `3000`
+- Backend: `4000`
+- Mailpit SMTP/UI: `1025` / `8025`
 
-## Governance Open Source
+Wysyłka maili:
+- Konfiguracja w panelu `/admin` przez `SMTP` lub `AWS SES`.
 
-- `LICENSE` (AGPL-3.0-only)
-- `CONTRIBUTING.md`
-- `SECURITY.md`
-- `CODE_OF_CONDUCT.md`
-- `CHANGELOG.md`
-- `ROADMAP.md`
+Przydatna dokumentacja:
+- Checklista release/rollback: [`docs/release-checklist.md`](docs/release-checklist.md)
+
+### 9) Licencja (AGPL-3.0) i co to znaczy dla firm
+OpenArca jest na licencji **AGPL-3.0-only**. Zobacz [`LICENSE`](LICENSE).
+
+Dla firm, w skrócie:
+- Możesz self-hostować i używać OpenArca wewnętrznie.
+- Jeśli modyfikujesz OpenArca i udostępniasz taką wersję użytkownikom przez sieć, musisz udostępnić kod źródłowy tej wersji na AGPL.
+- Jeśli potrzebujesz modelu zamkniętego dla rozszerzeń, rozdziel Open Core i warstwę komercyjną.
+
+### 10) Contributing
+Start:
+- Przeczytaj [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Wybierz issue (najlepiej z etykietą `good first issue`; jeśli jej brak, otwórz issue z propozycją zakresu).
+- Rób małe, jednoznaczne PR-y.
+
+Minimalne quality gates dla PR:
+
+```bash
+docker compose exec -T backend npm run lint
+docker compose exec -T backend npm test
+docker compose exec -T frontend yarn lint
+docker compose exec -T frontend yarn test
+docker compose exec -T frontend yarn build
+```
+
+### 11) Security
+Nie zgłaszaj podatności publicznie.
+Stosuj procedurę coordinated disclosure z [`SECURITY.md`](SECURITY.md).
+Preferowany kanał: GitHub Security Advisories.
+
+### 12) Roadmapa
+- Publiczna roadmapa: [`ROADMAP.md`](ROADMAP.md)
+- Lista prac: [GitHub Issues](https://github.com/visiolab-studio/OpenArca/issues)
+
+### 13) Maintainer / Author
+- **Piotr Tomczak** — Founder / Maintainer
+- **Visio Lab Sp. z o.o.**
+- GitHub: [@<maintainer-github>](https://github.com/<maintainer-github>)
+
+### 14) FAQ (mini)
+**Czy mogę hostować OpenArca samodzielnie?**
+- Tak. W repo jest gotowy stack Docker Compose.
+
+**Czy muszę publikować kod przy użyciu wewnętrznym?**
+- Samo użycie wewnętrzne nie wymaga publikacji. Obowiązki AGPL pojawiają się przy udostępnianiu zmodyfikowanej wersji przez sieć użytkownikom.
+
+**Jak rozumieć Open Core vs Enterprise?**
+- To repo to Open Core. Funkcje Enterprise są utrzymywane osobno.
+
+**Gdzie znajdę kody OTP lokalnie?**
+- W Mailpit: `http://localhost:8025`.

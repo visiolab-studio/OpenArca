@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- -
+
+### Changed
+- -
+
+### Notes
+- -
+
+## [0.2.1-rc.2] - 2026-02-24
+
+### Added
 - `LICENSE` with AGPL-3.0-only declaration for Open Core governance baseline.
 - Product telemetry events: `ticket.created`, `ticket.closed`, `board.drag`, `devtodo.reorder`, `closure_summary_added`.
 - Activation and usage stats endpoints:

@@ -157,7 +157,7 @@ Preferred channel: GitHub Security Advisories.
 ### 13) Maintainer / Author
 - **Piotr Tomczak** — Founder / Maintainer
 - **Visio Lab Sp. z o.o.**
-- GitHub: [@<maintainer-github>](https://github.com/<maintainer-github>)
+- GitHub: [@visiolab-studio](https://github.com/visiolab-studio)
 
 ### 14) FAQ (mini)
 **Can I self-host OpenArca?**
@@ -321,7 +321,7 @@ Preferowany kanał: GitHub Security Advisories.
 ### 13) Maintainer / Author
 - **Piotr Tomczak** — Founder / Maintainer
 - **Visio Lab Sp. z o.o.**
-- GitHub: [@<maintainer-github>](https://github.com/<maintainer-github>)
+- GitHub: [@visiolab-studio](https://github.com/visiolab-studio)
 
 ### 14) FAQ (mini)
 **Czy mogę hostować OpenArca samodzielnie?**

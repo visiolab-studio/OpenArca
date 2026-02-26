@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   createProject,
@@ -15,6 +16,7 @@ import appLogo from "../assets/logo-openarca.png";
 import ProjectBadge from "../components/ProjectBadge";
 
 const tabs = ["app", "smtp", "projects", "users"];
+const DEFAULT_PROJECT_COLOR = "#6B7280";
 
 function parseError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
@@ -52,7 +54,7 @@ export default function AdminPage() {
 
   const [projects, setProjects] = useState([]);
   const [projectDrafts, setProjectDrafts] = useState({});
-  const [newProject, setNewProject] = useState({ name: "", description: "", color: "#6B7280" });
+  const [newProject, setNewProject] = useState({ name: "", description: "", color: DEFAULT_PROJECT_COLOR });
   const [projectModalId, setProjectModalId] = useState("");
   const [projectModalDraft, setProjectModalDraft] = useState(null);
   const [projectIconFile, setProjectIconFile] = useState(null);
@@ -103,7 +105,7 @@ export default function AdminPage() {
             {
               name: project.name || "",
               description: project.description || "",
-              color: project.color || "#6B7280",
+              color: project.color || DEFAULT_PROJECT_COLOR,
               icon_url: project.icon_url || null
             }
           ])
@@ -284,7 +286,7 @@ export default function AdminPage() {
     const draft = projectDrafts[project.id] || {
       name: project.name || "",
       description: project.description || "",
-      color: project.color || "#6B7280",
+      color: project.color || DEFAULT_PROJECT_COLOR,
       icon_url: project.icon_url || null
     };
 
@@ -326,14 +328,14 @@ export default function AdminPage() {
         [projectId]: {
           name: updated.name || "",
           description: updated.description || "",
-          color: updated.color || "#6B7280",
+          color: updated.color || DEFAULT_PROJECT_COLOR,
           icon_url: updated.icon_url || null
         }
       }));
       setProjectModalDraft({
         name: updated.name || "",
         description: updated.description || "",
-        color: updated.color || "#6B7280",
+        color: updated.color || DEFAULT_PROJECT_COLOR,
         icon_url: updated.icon_url || null
       });
       setProjectIconFile(null);
@@ -358,7 +360,7 @@ export default function AdminPage() {
         const nextDraft = {
           name: refreshed.name || "",
           description: refreshed.description || "",
-          color: refreshed.color || "#6B7280",
+          color: refreshed.color || DEFAULT_PROJECT_COLOR,
           icon_url: refreshed.icon_url || null
         };
         setProjectDrafts((current) => ({ ...current, [projectId]: nextDraft }));
@@ -709,11 +711,25 @@ export default function AdminPage() {
               />
               <input
                 type="color"
+                className="form-input admin-color-input"
                 value={newProject.color}
                 onChange={(event) =>
                   setNewProject((current) => ({ ...current, color: event.target.value }))
                 }
               />
+              <div className="admin-color-row">
+                <span className="admin-color-value">{newProject.color}</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setNewProject((current) => ({ ...current, color: DEFAULT_PROJECT_COLOR }))}
+                  title={t("admin.resetProjectColor")}
+                  aria-label={t("admin.resetProjectColor")}
+                  disabled={newProject.color.toLowerCase() === DEFAULT_PROJECT_COLOR.toLowerCase()}
+                >
+                  <RotateCcw size={12} />
+                </button>
+              </div>
             </div>
             <button type="submit" className="btn">{t("dev.create")}</button>
           </form>
@@ -790,13 +806,28 @@ export default function AdminPage() {
               <label className="form-group">
                 <span className="form-label">{t("admin.projectColor")}</span>
                 <input
-                  className="form-input"
+                  className="form-input admin-color-input"
                   type="color"
                   value={projectModalDraft.color}
                   onChange={(event) =>
                     setProjectModalDraft((current) => ({ ...current, color: event.target.value }))
                   }
                 />
+                <div className="admin-color-row">
+                  <span className="admin-color-value">{projectModalDraft.color}</span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      setProjectModalDraft((current) => ({ ...current, color: DEFAULT_PROJECT_COLOR }))
+                    }
+                    title={t("admin.resetProjectColor")}
+                    aria-label={t("admin.resetProjectColor")}
+                    disabled={projectModalDraft.color.toLowerCase() === DEFAULT_PROJECT_COLOR.toLowerCase()}
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                </div>
               </label>
 
               <div className="form-group">

@@ -281,6 +281,7 @@
     "newProject": "New project",
     "projectSettings": "Project settings",
     "projectColor": "Project color",
+    "resetProjectColor": "Reset to default color",
     "projectIcon": "Project icon",
     "removeProjectIcon": "Remove icon",
     "projects": "Projects",

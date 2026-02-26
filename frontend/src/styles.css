@@ -2505,6 +2505,44 @@ table th {
   padding: 8px 0;
 }
 
+.admin-color-input {
+  width: 52px;
+  min-width: 52px;
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.admin-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.admin-color-input::-webkit-color-swatch {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.admin-color-input::-moz-color-swatch {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.admin-color-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-color-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .internal-note {
   background: var(--yellow-subtle);
   border: 1px solid rgba(15, 118, 110, 0.4);

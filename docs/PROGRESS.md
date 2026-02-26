@@ -1,5 +1,31 @@
 # OpenArca — Progress Log
 
+## Step RC2-Projects-UX-Color-Reset-01
+- Status: Done (approved by user)
+- Commit: pending
+- Description: Poprawa UX wyboru koloru projektu (czytelny picker + wartość HEX) oraz reset koloru do wartości domyślnej.
+
+### Files changed
+- `frontend/src/pages/Admin.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (158/158)
+- `docker compose exec -T frontend npm test` -> PASS (17/17)
+- `docker compose exec -T frontend npm run build` -> PASS
+
+### E2E run
+- Stack działa poprawnie (backend/frontend uruchomione w compose).
+- Zastosowano smoke fallback zgodny z procesem (brak Playwright/Cypress w repo).
+
+### Skills created/updated
+- none
+
 ## Step RC2-Projects-Visibility-01
 - Status: Done (approved by user)
 - Commit: pending

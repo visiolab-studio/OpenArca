@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { createProject, deleteProject, getProjects, patchProject } from "../api/projects";
+import {
+  createProject,
+  deleteProject,
+  deleteProjectIcon,
+  getProjects,
+  patchProject,
+  uploadProjectIcon
+} from "../api/projects";
 import { API_BASE_URL } from "../api/client";
 import { getSettings, patchSettings, testEmail, uploadAppLogo } from "../api/settings";
 import { getUsers, patchUser } from "../api/users";
 import appLogo from "../assets/logo-openarca.png";
+import ProjectBadge from "../components/ProjectBadge";
 
 const tabs = ["app", "smtp", "projects", "users"];
 
@@ -45,6 +53,10 @@ export default function AdminPage() {
   const [projects, setProjects] = useState([]);
   const [projectDrafts, setProjectDrafts] = useState({});
   const [newProject, setNewProject] = useState({ name: "", description: "", color: "#6B7280" });
+  const [projectModalId, setProjectModalId] = useState("");
+  const [projectModalDraft, setProjectModalDraft] = useState(null);
+  const [projectIconFile, setProjectIconFile] = useState(null);
+  const [projectModalBusy, setProjectModalBusy] = useState(false);
 
   const [users, setUsers] = useState([]);
   const [userDrafts, setUserDrafts] = useState({});
@@ -91,7 +103,8 @@ export default function AdminPage() {
             {
               name: project.name || "",
               description: project.description || "",
-              color: project.color || "#6B7280"
+              color: project.color || "#6B7280",
+              icon_url: project.icon_url || null
             }
           ])
         )
@@ -256,7 +269,8 @@ export default function AdminPage() {
         [created.id]: {
           name: created.name,
           description: created.description || "",
-          color: created.color || "#6B7280"
+          color: created.color || "#6B7280",
+          icon_url: created.icon_url || null
         }
       }));
       setNewProject({ name: "", description: "", color: "#6B7280" });
@@ -266,23 +280,96 @@ export default function AdminPage() {
     }
   }
 
+  function openProjectSettings(project) {
+    const draft = projectDrafts[project.id] || {
+      name: project.name || "",
+      description: project.description || "",
+      color: project.color || "#6B7280",
+      icon_url: project.icon_url || null
+    };
+
+    setProjectModalId(project.id);
+    setProjectModalDraft({ ...draft });
+    setProjectIconFile(null);
+  }
+
+  function closeProjectSettings() {
+    if (projectModalBusy) return;
+    setProjectModalId("");
+    setProjectModalDraft(null);
+    setProjectIconFile(null);
+  }
+
   async function handleSaveProject(projectId) {
-    const draft = projectDrafts[projectId];
+    const draft = projectModalDraft || projectDrafts[projectId];
     if (!draft) return;
 
     setError("");
     setNotice("");
 
     try {
-      const updated = await patchProject(projectId, {
+      setProjectModalBusy(true);
+
+      let updated = await patchProject(projectId, {
         name: draft.name,
         description: draft.description || null,
         color: draft.color
       });
+
+      if (projectIconFile) {
+        updated = await uploadProjectIcon(projectId, projectIconFile);
+      }
+
       setProjects((current) => current.map((project) => (project.id === projectId ? updated : project)));
+      setProjectDrafts((current) => ({
+        ...current,
+        [projectId]: {
+          name: updated.name || "",
+          description: updated.description || "",
+          color: updated.color || "#6B7280",
+          icon_url: updated.icon_url || null
+        }
+      }));
+      setProjectModalDraft({
+        name: updated.name || "",
+        description: updated.description || "",
+        color: updated.color || "#6B7280",
+        icon_url: updated.icon_url || null
+      });
+      setProjectIconFile(null);
       setNotice("saved");
     } catch (patchError) {
       setError(parseError(patchError));
+    } finally {
+      setProjectModalBusy(false);
+    }
+  }
+
+  async function handleDeleteProjectIcon(projectId) {
+    setError("");
+    setNotice("");
+    try {
+      setProjectModalBusy(true);
+      await deleteProjectIcon(projectId);
+      const updated = await getProjects();
+      setProjects(updated);
+      const refreshed = updated.find((project) => project.id === projectId);
+      if (refreshed) {
+        const nextDraft = {
+          name: refreshed.name || "",
+          description: refreshed.description || "",
+          color: refreshed.color || "#6B7280",
+          icon_url: refreshed.icon_url || null
+        };
+        setProjectDrafts((current) => ({ ...current, [projectId]: nextDraft }));
+        setProjectModalDraft(nextDraft);
+      }
+      setProjectIconFile(null);
+      setNotice("saved");
+    } catch (iconError) {
+      setError(parseError(iconError));
+    } finally {
+      setProjectModalBusy(false);
     }
   }
 
@@ -293,6 +380,16 @@ export default function AdminPage() {
     try {
       await deleteProject(projectId);
       setProjects((current) => current.filter((project) => project.id !== projectId));
+      setProjectDrafts((current) => {
+        const next = { ...current };
+        delete next[projectId];
+        return next;
+      });
+      if (projectModalId === projectId) {
+        setProjectModalId("");
+        setProjectModalDraft(null);
+        setProjectIconFile(null);
+      }
       setNotice("saved");
     } catch (deleteError) {
       setError(parseError(deleteError));
@@ -622,51 +719,22 @@ export default function AdminPage() {
           </form>
 
           <h2>{t("admin.projects")}</h2>
-          <div className="form-grid">
+          <div className="form-grid admin-projects-list">
             {projects.map((project) => {
-              const draft = projectDrafts[project.id] || {
-                name: project.name,
-                description: project.description || "",
-                color: project.color || "#6B7280"
-              };
-
               return (
-                <div key={project.id} className="card">
-                  <div className="filters-grid">
-                    <input
-                      type="text"
-                      value={draft.name}
-                      onChange={(event) =>
-                        setProjectDrafts((current) => ({
-                          ...current,
-                          [project.id]: { ...draft, name: event.target.value }
-                        }))
-                      }
+                <div key={project.id} className="card admin-project-row">
+                  <div className="admin-project-meta">
+                    <ProjectBadge
+                      name={project.name}
+                      color={project.color}
+                      iconUrl={project.icon_url}
+                      showEmpty
                     />
-                    <input
-                      type="text"
-                      value={draft.description}
-                      onChange={(event) =>
-                        setProjectDrafts((current) => ({
-                          ...current,
-                          [project.id]: { ...draft, description: event.target.value }
-                        }))
-                      }
-                    />
-                    <input
-                      type="color"
-                      value={draft.color}
-                      onChange={(event) =>
-                        setProjectDrafts((current) => ({
-                          ...current,
-                          [project.id]: { ...draft, color: event.target.value }
-                        }))
-                      }
-                    />
+                    <p className="muted">{project.description || "-"}</p>
                   </div>
                   <div className="row-actions">
-                    <button type="button" className="btn btn-ghost" onClick={() => handleSaveProject(project.id)}>
-                      {t("app.save")}
+                    <button type="button" className="btn btn-ghost" onClick={() => openProjectSettings(project)}>
+                      {t("admin.projectSettings")}
                     </button>
                     <button type="button" className="btn btn-ghost" onClick={() => handleDeleteProject(project.id)}>
                       {t("dev.delete")}
@@ -677,6 +745,108 @@ export default function AdminPage() {
             })}
           </div>
         </article>
+      ) : null}
+
+      {!loading && activeTab === "projects" && projectModalId && projectModalDraft ? (
+        <div className="todo-modal-backdrop" onClick={closeProjectSettings}>
+          <article className="card todo-create-modal admin-project-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="todo-create-modal-header">
+              <h2 className="card-title">{t("admin.projectSettings")}</h2>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={closeProjectSettings}
+                disabled={projectModalBusy}
+              >
+                {t("app.cancel")}
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label className="form-group">
+                <span className="form-label">{t("admin.name")}</span>
+                <input
+                  className="form-input"
+                  type="text"
+                  value={projectModalDraft.name}
+                  onChange={(event) =>
+                    setProjectModalDraft((current) => ({ ...current, name: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="form-group">
+                <span className="form-label">{t("tickets.description")}</span>
+                <textarea
+                  className="form-textarea"
+                  rows={3}
+                  value={projectModalDraft.description}
+                  onChange={(event) =>
+                    setProjectModalDraft((current) => ({ ...current, description: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="form-group">
+                <span className="form-label">{t("admin.projectColor")}</span>
+                <input
+                  className="form-input"
+                  type="color"
+                  value={projectModalDraft.color}
+                  onChange={(event) =>
+                    setProjectModalDraft((current) => ({ ...current, color: event.target.value }))
+                  }
+                />
+              </label>
+
+              <div className="form-group">
+                <span className="form-label">{t("admin.projectIcon")}</span>
+                <div className="admin-project-icon-preview">
+                  <ProjectBadge
+                    name={projectModalDraft.name}
+                    color={projectModalDraft.color}
+                    iconUrl={projectModalDraft.icon_url}
+                    showEmpty
+                  />
+                </div>
+                <div className="row-actions">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => setProjectIconFile(event.target.files?.[0] || null)}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleDeleteProjectIcon(projectModalId)}
+                    disabled={projectModalBusy || !projectModalDraft.icon_url}
+                  >
+                    {t("admin.removeProjectIcon")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="todo-create-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={closeProjectSettings}
+                disabled={projectModalBusy}
+              >
+                {t("app.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleSaveProject(projectModalId)}
+                disabled={projectModalBusy}
+              >
+                {projectModalBusy ? t("app.loading") : t("app.save")}
+              </button>
+            </div>
+          </article>
+        </div>
       ) : null}
 
       {!loading && activeTab === "users" ? (

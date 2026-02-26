@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import { getBoard, patchTicket } from "../api/tickets";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import PriorityBadge from "../components/PriorityBadge";
+import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
 
 const columnClasses = {
@@ -76,6 +77,13 @@ function TicketCard({ ticket, muted = false, onOpenPreview }) {
       ) : (
         <p className="kanban-card-title">{ticket.title}</p>
       )}
+      <ProjectBadge
+        name={ticket.project_name}
+        color={ticket.project_color}
+        iconUrl={ticket.project_icon_url}
+        className="kanban-project-badge"
+        showEmpty
+      />
       <div className="kanban-card-footer">
         <PriorityBadge priority={ticket.priority || "normal"} />
         <span className={isOverdue(ticket.planned_date) ? "kanban-card-date overdue" : "kanban-card-date"}>
@@ -414,6 +422,12 @@ export default function BoardPage() {
                 <span className="ticket-number">#{String(previewTicket.number).padStart(3, "0")}</span>
                 <PriorityBadge priority={previewTicket.priority || "normal"} />
                 <StatusBadge status={previewTicket.status} />
+                <ProjectBadge
+                  name={previewTicket.project_name}
+                  color={previewTicket.project_color}
+                  iconUrl={previewTicket.project_icon_url}
+                  showEmpty
+                />
               </div>
 
               <label className="form-group">

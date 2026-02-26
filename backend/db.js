@@ -41,6 +41,8 @@ const schemaStatements = [
     name TEXT NOT NULL,
     description TEXT,
     color TEXT DEFAULT '#6B7280',
+    icon_filename TEXT,
+    icon_updated_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS tickets (
@@ -228,6 +230,17 @@ function initDb() {
 
     if (!commentColumnNames.has("is_closure_summary")) {
       db.prepare("ALTER TABLE comments ADD COLUMN is_closure_summary INTEGER NOT NULL DEFAULT 0").run();
+    }
+
+    const projectColumns = db.prepare("PRAGMA table_info(projects)").all();
+    const projectColumnNames = new Set(projectColumns.map((column) => String(column.name)));
+
+    if (!projectColumnNames.has("icon_filename")) {
+      db.prepare("ALTER TABLE projects ADD COLUMN icon_filename TEXT").run();
+    }
+
+    if (!projectColumnNames.has("icon_updated_at")) {
+      db.prepare("ALTER TABLE projects ADD COLUMN icon_updated_at TEXT").run();
     }
 
     const insertSetting = db.prepare(

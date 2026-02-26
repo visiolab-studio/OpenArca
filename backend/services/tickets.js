@@ -27,7 +27,17 @@ function getReadableTicketOrThrow({ database, ticketId, user }) {
   assertUserContext(user);
 
   const ticket = database
-    .prepare("SELECT * FROM tickets WHERE id = ?")
+    .prepare(
+      `SELECT
+        t.*,
+        p.name AS project_name,
+        p.color AS project_color,
+        p.icon_filename AS project_icon_filename,
+        p.icon_updated_at AS project_icon_updated_at
+      FROM tickets t
+      LEFT JOIN projects p ON p.id = t.project_id
+      WHERE t.id = ?`
+    )
     .get(ticketId);
 
   if (!ticket) {
@@ -371,6 +381,8 @@ function buildBoardPayload(database) {
         t.id, t.number, t.title, t.description, t.status, t.priority, t.category, t.project_id,
         t.reporter_id, t.assignee_id, t.planned_date,
         p.name AS project_name, p.color AS project_color,
+        p.icon_filename AS project_icon_filename,
+        p.icon_updated_at AS project_icon_updated_at,
         ru.name AS reporter_name, au.name AS assignee_name
       FROM tickets t
       LEFT JOIN projects p ON p.id = t.project_id
@@ -382,7 +394,13 @@ function buildBoardPayload(database) {
 
   for (const row of rows) {
     if (payload[row.status]) {
-      payload[row.status].push(row);
+      payload[row.status].push({
+        ...row,
+        project_icon_url:
+          row.project_id && row.project_icon_filename
+            ? `/api/projects/${row.project_id}/icon?v=${encodeURIComponent(row.project_icon_updated_at || "1")}`
+            : null
+      });
     }
   }
 
@@ -402,7 +420,17 @@ function createTicketsService(options = {}) {
   return {
     getTicketById({ ticketId }) {
       return database
-        .prepare("SELECT * FROM tickets WHERE id = ?")
+        .prepare(
+          `SELECT
+            t.*,
+            p.name AS project_name,
+            p.color AS project_color,
+            p.icon_filename AS project_icon_filename,
+            p.icon_updated_at AS project_icon_updated_at
+          FROM tickets t
+          LEFT JOIN projects p ON p.id = t.project_id
+          WHERE t.id = ?`
+        )
         .get(ticketId);
     },
 
@@ -1069,6 +1097,10 @@ function createTicketsService(options = {}) {
 
       return {
         ...ticket,
+        project_icon_url:
+          ticket.project_id && ticket.project_icon_filename
+            ? `/api/projects/${ticket.project_id}/icon?v=${encodeURIComponent(ticket.project_icon_updated_at || "1")}`
+            : null,
         comments,
         attachments,
         history,
@@ -1126,14 +1158,23 @@ function createTicketsService(options = {}) {
             t.created_at,
             t.updated_at,
             p.name AS project_name,
-            p.color AS project_color
+            p.color AS project_color,
+            p.icon_filename AS project_icon_filename,
+            p.icon_updated_at AS project_icon_updated_at
           FROM tickets t
           LEFT JOIN projects p ON p.id = t.project_id
           ${where}
           ORDER BY t.updated_at DESC
           LIMIT 500`
         )
-        .all(...params);
+        .all(...params)
+        .map((row) => ({
+          ...row,
+          project_icon_url:
+            row.project_id && row.project_icon_filename
+              ? `/api/projects/${row.project_id}/icon?v=${encodeURIComponent(row.project_icon_updated_at || "1")}`
+              : null
+        }));
     },
 
     getBoard() {

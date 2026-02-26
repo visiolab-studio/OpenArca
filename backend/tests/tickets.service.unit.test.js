@@ -110,7 +110,8 @@ test("tickets service returns ticket by id", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        assert.match(sql, /SELECT \* FROM tickets WHERE id = \?/);
+        assert.match(sql, /FROM tickets t/);
+        assert.match(sql, /WHERE t\.id = \?/);
         assert.deepEqual(params, ["ticket-1"]);
         return { id: "ticket-1", title: "Sample ticket" };
       }
@@ -313,7 +314,7 @@ test("tickets service update ticket blocks non-developer when ticket is locked",
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1", status: "verified" };
         }
         return undefined;
@@ -335,7 +336,7 @@ test("tickets service update ticket validates patch payload and exposes details"
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "dev-1", status: "submitted" };
         }
         return undefined;
@@ -364,7 +365,7 @@ test("tickets service update ticket requires closure summary before closing", ()
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1", status: "verified" };
         }
         if (sql.includes("FROM comments")) {
@@ -393,7 +394,7 @@ test("tickets service update ticket auto-verifies planning and returns side-effe
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           ticketReadCount += 1;
           if (ticketReadCount === 1) {
             return {
@@ -476,7 +477,7 @@ test("tickets service update ticket marks board drag metadata for non-submitted 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return {
             id: "ticket-1",
             reporter_id: "user-1",
@@ -514,7 +515,7 @@ test("tickets service update ticket appends ticket.status_changed domain event",
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return {
             id: "ticket-1",
             reporter_id: "user-1",
@@ -574,7 +575,7 @@ test("tickets service update ticket skips status_changed event without status tr
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return {
             id: "ticket-1",
             reporter_id: "user-1",
@@ -617,7 +618,7 @@ test("tickets service update ticket appends task.synced for assignee change with
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return {
             id: "ticket-1",
             reporter_id: "user-1",
@@ -670,7 +671,7 @@ test("tickets service update ticket appends ticket.closed event on closing trans
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           ticketReadCount += 1;
           if (ticketReadCount === 1) {
             return {
@@ -739,7 +740,7 @@ test("tickets service update ticket does not append ticket.closed event when reo
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           ticketReadCount += 1;
           if (ticketReadCount === 1) {
             return {
@@ -841,7 +842,7 @@ test("tickets service returns related list for developer with access check", () 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1" };
         }
@@ -871,7 +872,7 @@ test("tickets service returns related list for owner user", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1" };
         }
@@ -900,7 +901,7 @@ test("tickets service related list throws ticket_not_found when source is missin
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -921,7 +922,7 @@ test("tickets service related list throws forbidden for non-owner user", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "owner-1" };
         }
         return { count: 0 };
@@ -944,7 +945,7 @@ test("tickets service creates ticket relation and returns refreshed related list
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           if (params[0] === "ticket-source") {
             return { id: "ticket-source", reporter_id: "user-1" };
           }
@@ -998,7 +999,7 @@ test("tickets service create relation returns existing list when relation alread
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-source", reporter_id: "user-1" };
         }
         if (sql.includes("SELECT id, number FROM tickets WHERE number = ?")) {
@@ -1041,7 +1042,7 @@ test("tickets service create relation throws ticket_not_found for missing source
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1063,7 +1064,7 @@ test("tickets service create relation throws related_ticket_not_found", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-source", reporter_id: "user-1" };
         }
         if (sql.includes("SELECT id, number FROM tickets WHERE id = ?")) {
@@ -1088,7 +1089,7 @@ test("tickets service create relation throws ticket_relation_self_ref", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-source", reporter_id: "user-1" };
         }
         if (sql.includes("SELECT id, number FROM tickets WHERE id = ?")) {
@@ -1129,7 +1130,7 @@ test("tickets service deletes ticket relation for developer", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           if (params[0] === "ticket-source") {
             return { id: "ticket-source", reporter_id: "user-1" };
           }
@@ -1164,7 +1165,7 @@ test("tickets service delete relation throws ticket_not_found", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?") && params[0] === "missing-source") {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?") && params[0] === "missing-source") {
           return undefined;
         }
         return { id: "ticket-related", reporter_id: "user-1" };
@@ -1186,7 +1187,7 @@ test("tickets service delete relation throws related_ticket_not_found", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           if (params[0] === "ticket-source") {
             return { id: "ticket-source", reporter_id: "user-1" };
           }
@@ -1213,7 +1214,7 @@ test("tickets service delete relation throws ticket_relation_not_found", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-source", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1257,7 +1258,7 @@ test("tickets service creates ticket attachments and returns created records", (
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1" };
         }
@@ -1311,7 +1312,7 @@ test("tickets service create attachments throws attachments_required for empty f
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1334,7 +1335,7 @@ test("tickets service create attachments throws attachments_too_large", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1357,7 +1358,7 @@ test("tickets service create attachments throws ticket_not_found", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1380,7 +1381,7 @@ test("tickets service create attachments throws forbidden for non-owner user", (
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "owner-1" };
         }
         return { count: 0 };
@@ -1404,7 +1405,7 @@ test("tickets service creates comment and returns side-effects metadata", () => 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         if (sql.includes("SELECT * FROM comments WHERE id = ?")) {
@@ -1445,7 +1446,7 @@ test("tickets service create comment blocks internal for non-developer", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1467,7 +1468,7 @@ test("tickets service create comment blocks closure summary for non-developer", 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1489,7 +1490,7 @@ test("tickets service create comment validates closure summary visibility", () =
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1511,7 +1512,7 @@ test("tickets service create comment validates parent comment id", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         if (sql.includes("SELECT id FROM comments WHERE id = ? AND ticket_id = ?")) {
@@ -1542,7 +1543,7 @@ test("tickets service create comment throws ticket_not_found", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1586,7 +1587,7 @@ test("tickets service returns ticket external references for developer", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1" };
         }
@@ -1617,7 +1618,7 @@ test("tickets service creates external reference for developer and returns refre
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1" };
         }
@@ -1664,7 +1665,7 @@ test("tickets service returns ticket external references for ticket owner", () =
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1691,7 +1692,7 @@ test("tickets service create external reference throws ticket_not_found", () => 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1735,7 +1736,7 @@ test("tickets service deletes external reference for developer", () => {
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1" };
         }
@@ -1766,7 +1767,7 @@ test("tickets service delete external reference throws ticket_not_found", () => 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1803,7 +1804,7 @@ test("tickets service delete external reference throws external_reference_not_fo
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "user-1" };
         }
         return { count: 0 };
@@ -1831,7 +1832,7 @@ test("tickets service ticket external references throws ticket_not_found", () =>
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1852,7 +1853,7 @@ test("tickets service ticket external references throws forbidden for non-owner 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "owner-1" };
         }
         return { count: 0 };
@@ -1873,7 +1874,7 @@ test("tickets service returns ticket detail for developer with full comments", (
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1", title: "Sample ticket" };
         }
@@ -1920,7 +1921,7 @@ test("tickets service returns ticket detail for user with only public comments",
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql, params) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           assert.deepEqual(params, ["ticket-1"]);
           return { id: "ticket-1", reporter_id: "user-1", title: "Sample ticket" };
         }
@@ -1962,7 +1963,7 @@ test("tickets service ticket detail throws ticket_not_found when ticket is missi
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return undefined;
         }
         return { count: 0 };
@@ -1983,7 +1984,7 @@ test("tickets service ticket detail throws forbidden for non-owner user", () => 
   const service = createTicketsService({
     db: createDbStub(capture, {
       getFactory: (sql) => {
-        if (sql.includes("SELECT * FROM tickets WHERE id = ?")) {
+        if (sql.includes("FROM tickets t") && sql.includes("WHERE t.id = ?")) {
           return { id: "ticket-1", reporter_id: "other-user" };
         }
         return { count: 0 };

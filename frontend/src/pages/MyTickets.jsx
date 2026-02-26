@@ -5,6 +5,7 @@ import { getTickets } from "../api/tickets";
 import { getProjects } from "../api/projects";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
+import ProjectBadge from "../components/ProjectBadge";
 import { CATEGORY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import { formatDateShort } from "../utils/format";
 
@@ -165,7 +166,12 @@ export default function MyTicketsPage() {
                     <Link to={`/ticket/${ticket.id}`}>{ticket.title}</Link>
                   </td>
                   <td>
-                    {projects.find((project) => project.id === ticket.project_id)?.name || "-"}
+                    <ProjectBadge
+                      name={ticket.project_name || projects.find((project) => project.id === ticket.project_id)?.name}
+                      color={ticket.project_color}
+                      iconUrl={ticket.project_icon_url || projects.find((project) => project.id === ticket.project_id)?.icon_url}
+                      showEmpty
+                    />
                   </td>
                   <td>{t(`category.${ticket.category}`)}</td>
                   <td><PriorityBadge priority={ticket.priority} /></td>

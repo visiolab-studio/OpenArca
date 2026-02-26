@@ -1,4 +1,67 @@
-# EdudoroIT_SupportCenter — Progress Log
+# OpenArca — Progress Log
+
+## Step RC2-Projects-Visibility-01
+- Status: Done (approved by user)
+- Commit: pending
+- Description: Widoczność projektu we wszystkich kluczowych widokach + osobne filtry projektu w TODO + ustawienia projektu w popupie z uploadem ikony.
+
+### Implementation Plan
+- Rozszerzyć model projektu o ikonę (`icon_filename`, `icon_updated_at`) z migracją.
+- Dodać endpointy upload/get/delete ikony projektu z walidacją MIME i cleanup plików.
+- Propagować `project_icon_url` do payloadów ticketów (`list`, `detail`, `board`).
+- Dodać wspólny komponent `ProjectBadge` z domyślną ikoną.
+- Wyświetlić badge projektu w `TicketDetail`, `Board`, `DevTodo`, `MyTickets`.
+- Rozdzielić filtry projektu w `DevTodo` na listę TODO i kolejkę.
+- Przebudować zakładkę projektów w Admin na listę + popup ustawień.
+- Dodać testy backend RBAC/integracyjne i test komponentu frontend.
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/projects.js`
+- `backend/services/tickets.js`
+- `backend/tests/api.integration.test.js`
+- `backend/tests/rbac.ownership.audit.integration.test.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `backend/tests/outbox.worker.service.unit.test.js`
+- `frontend/src/api/projects.js`
+- `frontend/src/assets/project-default.svg`
+- `frontend/src/components/ProjectBadge.jsx`
+- `frontend/src/components/__tests__/ProjectBadge.test.jsx`
+- `frontend/src/pages/Admin.jsx`
+- `frontend/src/pages/Board.jsx`
+- `frontend/src/pages/DevTodo.jsx`
+- `frontend/src/pages/MyTickets.jsx`
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/styles.css`
+- `docs/AGENTS.md`
+- `docs/skills/project-badges-and-icons.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose up --build -d` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (17/17)
+- `docker compose exec -T backend npm test` -> PASS (158/158)
+- `docker compose exec -T frontend npm run build` -> PASS
+
+### E2E run
+- Stack smoke:
+  - `docker compose ps` -> PASS (backend/frontend/mailpit healthy)
+  - `curl -s http://localhost:4000/health` -> PASS (`status=ok`)
+  - route checks: `/`, `/login`, `/new-ticket`, `/my-tickets`, `/board`, `/dev-todo`, `/admin` -> PASS (200)
+- Browser flow fallback (repo bez Playwright/Cypress):
+  - `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - obejmuje: OTP login user, create ticket, ticket detail, OTP login developer, status update + comment.
+
+### Risks / follow-ups
+- Brak automatycznego testu Playwright/Cypress dla nowego UI popupu projektu; potrzebna ręczna walidacja UX.
+- Zmiana w `backend/tests/outbox.worker.service.unit.test.js` stabilizuje istniejący test czasu (`updatedAt` ustawiony deterministycznie).
+
+### Skills created/updated
+- `docs/skills/project-badges-and-icons.md` (created)
 
 ## Step RC2-01
 - Status: Done (approved by user)

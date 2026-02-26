@@ -82,6 +82,33 @@ test("rbac audit: user cannot access developer-only write endpoints", async () =
     .send({ role: "developer" });
   assert.equal(userRolePatchDenied.statusCode, 403);
   assert.equal(userRolePatchDenied.body.error, "forbidden");
+
+  const projectCreatedByDev = await request
+    .post("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ name: "RBAC project icon audit", color: "#1266AA" });
+  assert.equal(projectCreatedByDev.statusCode, 201);
+
+  const tinyPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6p9RkAAAAASUVORK5CYII=",
+    "base64"
+  );
+
+  const projectIconUploadDenied = await request
+    .post(`/api/projects/${projectCreatedByDev.body.id}/icon`)
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .attach("icon", tinyPng, {
+      filename: "icon.png",
+      contentType: "image/png"
+    });
+  assert.equal(projectIconUploadDenied.statusCode, 403);
+  assert.equal(projectIconUploadDenied.body.error, "forbidden");
+
+  const projectIconDeleteDenied = await request
+    .delete(`/api/projects/${projectCreatedByDev.body.id}/icon`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(projectIconDeleteDenied.statusCode, 403);
+  assert.equal(projectIconDeleteDenied.body.error, "forbidden");
 });
 
 test("ownership audit: user cannot mutate other reporter ticket", async () => {

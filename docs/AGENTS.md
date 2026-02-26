@@ -1,4 +1,4 @@
-# EdudoroIT_SupportCenter — Agent Playbook
+# OpenArca — Agent Playbook
 
 ## How to work in this repo
 - Pracuj krokami, jeden feature na raz.
@@ -71,3 +71,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/task-sync-service-split.md`
 - `docs/skills/domain-events-outbox.md`
 - `docs/skills/outbox-worker-lifecycle.md`
+- `docs/skills/project-badges-and-icons.md`

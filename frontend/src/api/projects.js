@@ -15,6 +15,19 @@ export async function patchProject(id, payload) {
   return response.data;
 }
 
+export async function uploadProjectIcon(id, file) {
+  const formData = new FormData();
+  formData.append("icon", file);
+  const response = await client.post(`/api/projects/${id}/icon`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return response.data;
+}
+
+export async function deleteProjectIcon(id) {
+  await client.delete(`/api/projects/${id}/icon`);
+}
+
 export async function deleteProject(id) {
   await client.delete(`/api/projects/${id}`);
 }

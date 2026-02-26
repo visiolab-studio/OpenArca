@@ -370,6 +370,84 @@ test("settings logo upload updates public branding endpoint", async () => {
   assert.equal(logoAsset.headers["content-type"]?.startsWith("image/"), true);
 });
 
+test("project icon upload is available and propagated to ticket payloads", async () => {
+  const createdProject = await request
+    .post("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Project icon integration",
+      description: "Project for icon propagation verification",
+      color: "#159A4A"
+    });
+  assert.equal(createdProject.statusCode, 201);
+  assert.equal(createdProject.body.icon_url, null);
+
+  const tinyPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6p9RkAAAAASUVORK5CYII=",
+    "base64"
+  );
+
+  const uploadIcon = await request
+    .post(`/api/projects/${createdProject.body.id}/icon`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .attach("icon", tinyPng, {
+      filename: "project-icon.png",
+      contentType: "image/png"
+    });
+  assert.equal(uploadIcon.statusCode, 200);
+  assert.equal(typeof uploadIcon.body.icon_url, "string");
+  assert.equal(uploadIcon.body.icon_url.startsWith(`/api/projects/${createdProject.body.id}/icon`), true);
+
+  const iconAsset = await request.get(uploadIcon.body.icon_url);
+  assert.equal(iconAsset.statusCode, 200);
+  assert.equal(iconAsset.headers["content-type"]?.startsWith("image/"), true);
+
+  const createTicket = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field(
+      makeBugPayload({
+        title: "Ticket with project icon mapping",
+        project_id: createdProject.body.id
+      })
+    );
+  assert.equal(createTicket.statusCode, 201);
+
+  const listForUser = await request
+    .get("/api/tickets?my=1")
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(listForUser.statusCode, 200);
+  const listed = listForUser.body.find((ticket) => ticket.id === createTicket.body.id);
+  assert.equal(Boolean(listed?.project_icon_url), true);
+
+  const detailForDev = await request
+    .get(`/api/tickets/${createTicket.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(detailForDev.statusCode, 200);
+  assert.equal(Boolean(detailForDev.body.project_icon_url), true);
+
+  const boardForDev = await request
+    .get("/api/tickets/board")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(boardForDev.statusCode, 200);
+  const boardHit = Object.values(boardForDev.body)
+    .flat()
+    .find((ticket) => ticket?.id === createTicket.body.id);
+  assert.equal(Boolean(boardHit?.project_icon_url), true);
+
+  const deleteIcon = await request
+    .delete(`/api/projects/${createdProject.body.id}/icon`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(deleteIcon.statusCode, 204);
+
+  const projectsAfterDelete = await request
+    .get("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(projectsAfterDelete.statusCode, 200);
+  const deletedIconProject = projectsAfterDelete.body.find((project) => project.id === createdProject.body.id);
+  assert.equal(deletedIconProject.icon_url, null);
+});
+
 test("settings support SES provider selection and mask secrets", async () => {
   const patchSettings = await request
     .patch("/api/settings")

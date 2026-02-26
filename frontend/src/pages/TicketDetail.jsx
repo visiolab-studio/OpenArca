@@ -16,6 +16,7 @@ import { API_BASE_URL } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
+import ProjectBadge from "../components/ProjectBadge";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import { formatDate, formatDateShort } from "../utils/format";
 
@@ -357,6 +358,13 @@ export default function TicketDetailPage() {
         <div>
           <p className="ticket-number">#{String(ticket.number).padStart(3, "0")}</p>
           <h1 className="issue-summary">{ticket.title}</h1>
+          <ProjectBadge
+            name={ticket.project_name}
+            color={ticket.project_color}
+            iconUrl={ticket.project_icon_url}
+            className="ticket-header-project"
+            showEmpty
+          />
         </div>
         <div className="row-actions">
           {isDeveloper && ticket.status === "submitted" ? (
@@ -693,6 +701,15 @@ export default function TicketDetailPage() {
 
         <aside className="ticket-sidebar">
           <article className="ticket-meta-card">
+            <div className="ticket-meta-row">
+              <span className="ticket-meta-label">{t("tickets.project")}</span>
+              <ProjectBadge
+                name={ticket.project_name}
+                color={ticket.project_color}
+                iconUrl={ticket.project_icon_url}
+                showEmpty
+              />
+            </div>
             <div className="ticket-meta-row">
               <span className="ticket-meta-label">{t("tickets.status")}</span>
               <StatusBadge status={ticket.status} />

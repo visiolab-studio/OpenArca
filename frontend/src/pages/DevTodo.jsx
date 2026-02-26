@@ -30,6 +30,7 @@ import {
 } from "../api/devTasks";
 import { addComment, getTickets, patchTicket } from "../api/tickets";
 import PriorityBadge from "../components/PriorityBadge";
+import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { PRIORITY_OPTIONS } from "../utils/constants";
@@ -190,6 +191,12 @@ function TaskRow({
               <span className={`todo-assignee-pill ${ticketAssignmentClass}`}>
                 {ticketAssignmentLabel}
               </span>
+              <ProjectBadge
+                name={ticket?.project_name}
+                color={ticket?.project_color}
+                iconUrl={ticket?.project_icon_url}
+                showEmpty
+              />
             </div>
           </>
         )}
@@ -260,6 +267,8 @@ export default function DevTodoPage() {
 
   const [priorityFilter, setPriorityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [activeProjectFilter, setActiveProjectFilter] = useState("");
+  const [queueProjectFilter, setQueueProjectFilter] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [completeTask, setCompleteTask] = useState(null);
   const [completionComment, setCompletionComment] = useState("");
@@ -370,6 +379,32 @@ export default function DevTodoPage() {
     });
   }, [linkedTicketIds, ticketsMap, user?.id]);
 
+  const projectOptions = useMemo(() => {
+    const byId = new Map();
+    for (const ticket of Object.values(ticketsMap)) {
+      if (!ticket.project_id) continue;
+      if (!byId.has(ticket.project_id)) {
+        byId.set(ticket.project_id, {
+          id: ticket.project_id,
+          name: ticket.project_name || ticket.project_id,
+          color: ticket.project_color || null,
+          icon_url: ticket.project_icon_url || null
+        });
+      }
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "pl")
+    );
+  }, [ticketsMap]);
+
+  const matchProjectFilter = useCallback((ticket, filterValue) => {
+    if (!filterValue) return true;
+    if (filterValue === "__none__") {
+      return !ticket?.project_id;
+    }
+    return ticket?.project_id === filterValue;
+  }, []);
+
   async function persistOrder(nextTasks) {
     if (!Array.isArray(nextTasks) || nextTasks.length === 0) {
       return;
@@ -385,11 +420,22 @@ export default function DevTodoPage() {
     return activeTasks.filter((task) => {
       if (priorityFilter && task.priority !== priorityFilter) return false;
       if (statusFilter && task.status !== statusFilter) return false;
+      const taskTicket = task.ticket_id ? ticketsMap[task.ticket_id] : null;
+      if (!matchProjectFilter(taskTicket, activeProjectFilter)) return false;
       return true;
     });
-  }, [activeTasks, priorityFilter, statusFilter]);
+  }, [activeProjectFilter, activeTasks, matchProjectFilter, priorityFilter, statusFilter, ticketsMap]);
 
-  const hasActiveFilters = Boolean(statusFilter || priorityFilter);
+  const visibleDoneTasks = useMemo(() => {
+    return doneTasks.filter((task) => {
+      const taskTicket = task.ticket_id ? ticketsMap[task.ticket_id] : null;
+      return matchProjectFilter(taskTicket, activeProjectFilter);
+    });
+  }, [activeProjectFilter, doneTasks, matchProjectFilter, ticketsMap]);
+
+  const hasActiveFilters = Boolean(
+    statusFilter || priorityFilter || activeProjectFilter || queueProjectFilter
+  );
 
   const queuedTickets = useMemo(() => {
     return Object.values(ticketsMap)
@@ -416,9 +462,14 @@ export default function DevTodoPage() {
     return queuedTickets.filter((ticket) => {
       if (priorityFilter && ticket.priority !== priorityFilter) return false;
       if (statusFilter === "in_progress") return false;
+      if (!matchProjectFilter(ticket, queueProjectFilter)) return false;
       return true;
     });
-  }, [queuedTickets, priorityFilter, statusFilter]);
+  }, [matchProjectFilter, priorityFilter, queueProjectFilter, queuedTickets, statusFilter]);
+
+  const visibleSubmittedTickets = useMemo(() => {
+    return submittedTickets.filter((ticket) => matchProjectFilter(ticket, queueProjectFilter));
+  }, [matchProjectFilter, queueProjectFilter, submittedTickets]);
 
   const summary = useMemo(() => {
     const sourceTasks = hasActiveFilters ? visibleActiveTasks : activeTasks;
@@ -1058,6 +1109,12 @@ export default function DevTodoPage() {
               <div className="row-actions">
                 <StatusBadge status={previewTask.status} />
                 <PriorityBadge priority={previewTask.priority} />
+                <ProjectBadge
+                  name={previewTaskTicket?.project_name}
+                  color={previewTaskTicket?.project_color}
+                  iconUrl={previewTaskTicket?.project_icon_url}
+                  showEmpty
+                />
                 {previewTask.ticket_id ? (
                   <Link to={`/ticket/${previewTask.ticket_id}`} className="todo-ticket-link">
                     {previewTaskTicketRef}
@@ -1281,13 +1338,28 @@ export default function DevTodoPage() {
                 ))}
               </select>
 
-              {(statusFilter || priorityFilter) ? (
+              <select
+                className="form-select"
+                value={activeProjectFilter}
+                onChange={(event) => setActiveProjectFilter(event.target.value)}
+              >
+                <option value="">{t("dev.projectFilterTodo")}</option>
+                <option value="__none__">{t("tickets.projectNone")}</option>
+                {projectOptions.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+
+              {(statusFilter || priorityFilter || activeProjectFilter) ? (
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => {
                     setStatusFilter("");
                     setPriorityFilter("");
+                    setActiveProjectFilter("");
                   }}
                 >
                   {t("dev.clearFilters")}
@@ -1386,6 +1458,30 @@ export default function DevTodoPage() {
                   {visibleQueueTickets.length}/{queuedTickets.length}
                 </span>
               </div>
+              <div className="todo-queue-filters">
+                <select
+                  className="form-select"
+                  value={queueProjectFilter}
+                  onChange={(event) => setQueueProjectFilter(event.target.value)}
+                >
+                  <option value="">{t("dev.projectFilterQueue")}</option>
+                  <option value="__none__">{t("tickets.projectNone")}</option>
+                  {projectOptions.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+                {queueProjectFilter ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setQueueProjectFilter("")}
+                  >
+                    {t("dev.clearFilters")}
+                  </button>
+                ) : null}
+              </div>
               <p className="muted">{t("dev.unassignedAcceptedHint")}</p>
 
               <ul className="list-plain">
@@ -1397,6 +1493,12 @@ export default function DevTodoPage() {
                           #{String(ticket.number).padStart(3, "0")} · {ticket.title}
                         </span>
                         <div className="row-actions">
+                          <ProjectBadge
+                            name={ticket.project_name}
+                            color={ticket.project_color}
+                            iconUrl={ticket.project_icon_url}
+                            showEmpty
+                          />
                           <StatusBadge status={ticket.status} />
                           <PriorityBadge priority={ticket.priority} />
                         </div>
@@ -1435,13 +1537,13 @@ export default function DevTodoPage() {
           <h2 className="card-title">{t("dev.toVerifyTitle")}</h2>
           <p className="muted">{t("dev.toVerifyHint")}</p>
 
-          {!loading && submittedTickets.length === 0 ? (
+          {!loading && visibleSubmittedTickets.length === 0 ? (
             <p>{t("dev.noTicketsToVerify")}</p>
           ) : null}
 
-          {!loading && submittedTickets.length > 0 ? (
+          {!loading && visibleSubmittedTickets.length > 0 ? (
             <ul className="list-plain">
-              {submittedTickets.map((ticket) => (
+              {visibleSubmittedTickets.map((ticket) => (
                 <li key={ticket.id}>
                   <div className="ticket-row-link todo-verify-row">
                     <div className="todo-verify-row-head">
@@ -1449,6 +1551,12 @@ export default function DevTodoPage() {
                         #{String(ticket.number).padStart(3, "0")} · {ticket.title}
                       </span>
                       <div className="row-actions">
+                        <ProjectBadge
+                          name={ticket.project_name}
+                          color={ticket.project_color}
+                          iconUrl={ticket.project_icon_url}
+                          showEmpty
+                        />
                         <StatusBadge status={ticket.status} />
                         <PriorityBadge priority={ticket.priority} />
                       </div>
@@ -1485,13 +1593,23 @@ export default function DevTodoPage() {
 
       <article className="card">
         <h2 className="card-title">{t("dev.done")}</h2>
-        {doneTasks.length === 0 ? <p>{t("dev.noDoneTasks")}</p> : null}
-        {doneTasks.length > 0 ? (
+        {visibleDoneTasks.length === 0 ? <p>{t("dev.noDoneTasks")}</p> : null}
+        {visibleDoneTasks.length > 0 ? (
           <div className="todo-list">
-            {doneTasks.map((task) => (
+            {visibleDoneTasks.map((task) => (
               <article key={task.id} className="todo-item todo-item-done">
                 <span className="todo-priority-dot" data-priority={task.priority} />
-                <div className="todo-item-title">{task.title}</div>
+                <div>
+                  <div className="todo-item-title">{task.title}</div>
+                  <div className="todo-item-meta-line">
+                    <ProjectBadge
+                      name={task.ticket_id ? ticketsMap[task.ticket_id]?.project_name : null}
+                      color={task.ticket_id ? ticketsMap[task.ticket_id]?.project_color : null}
+                      iconUrl={task.ticket_id ? ticketsMap[task.ticket_id]?.project_icon_url : null}
+                      showEmpty
+                    />
+                  </div>
+                </div>
                 <div className="todo-date">{task.planned_date || "-"}</div>
                 <div className="todo-date">{task.updated_at?.slice(0, 10) || "-"}</div>
               </article>

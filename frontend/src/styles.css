@@ -1191,6 +1191,10 @@ select:focus {
   gap: 8px;
 }
 
+.ticket-header-project {
+  margin-top: 8px;
+}
+
 .preview-jira-label {
   font-size: 12px;
   text-transform: uppercase;
@@ -1331,6 +1335,42 @@ select:focus {
 .priority-low {
   background: var(--bg-tertiary);
   color: var(--text-tertiary);
+}
+
+.project-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 2px 8px 2px 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.project-badge-empty {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+}
+
+.project-badge-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border-subtle);
+  background: white;
+  flex: 0 0 auto;
+}
+
+.project-badge-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-stats {
@@ -1801,6 +1841,10 @@ table th {
   overflow: hidden;
 }
 
+.kanban-project-badge {
+  margin: 0 0 10px;
+}
+
 .kanban-card-title-btn {
   border: none;
   background: transparent;
@@ -2207,6 +2251,12 @@ table th {
   color: var(--text-primary);
 }
 
+.todo-queue-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .todo-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2424,6 +2474,35 @@ table th {
 .ticket-meta-row > :last-child {
   text-align: right;
   word-break: break-word;
+}
+
+.ticket-meta-row .project-badge {
+  margin-left: auto;
+}
+
+.admin-projects-list {
+  gap: 12px;
+}
+
+.admin-project-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-project-meta {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-project-modal {
+  width: min(760px, 100%);
+}
+
+.admin-project-icon-preview {
+  padding: 8px 0;
 }
 
 .internal-note {

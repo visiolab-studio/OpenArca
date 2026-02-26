@@ -225,7 +225,9 @@ test("outbox worker stats expose queue and runtime observability", () => {
   });
   insertOutboxEntry(database, {
     outboxId: "outbox-processing",
-    status: "processing"
+    status: "processing",
+    updatedAt: "2026-02-24T09:30:00.000Z",
+    createdAt: "2026-02-24T09:30:00.000Z"
   });
 
   const worker = createOutboxWorkerService({

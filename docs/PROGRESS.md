@@ -2,7 +2,7 @@
 
 ## Step RC2-Projects-UX-Color-Reset-01
 - Status: Done (approved by user)
-- Commit: pending
+- Commit: `19d7376`
 - Description: Poprawa UX wyboru koloru projektu (czytelny picker + wartość HEX) oraz reset koloru do wartości domyślnej.
 
 ### Files changed
@@ -28,7 +28,7 @@
 
 ## Step RC2-Projects-Visibility-01
 - Status: Done (approved by user)
-- Commit: pending
+- Commit: `5897800`
 - Description: Widoczność projektu we wszystkich kluczowych widokach + osobne filtry projektu w TODO + ustawienia projektu w popupie z uploadem ikony.
 
 ### Implementation Plan

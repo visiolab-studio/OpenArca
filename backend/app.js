@@ -11,6 +11,7 @@ const authRoutes = require("./routes/auth");
 const ticketRoutes = require("./routes/tickets");
 const devTaskRoutes = require("./routes/devTasks");
 const projectRoutes = require("./routes/projects");
+const ticketTemplateRoutes = require("./routes/ticketTemplates");
 const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
 const { authRequired } = require("./middleware/auth");
@@ -55,6 +56,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/dev-tasks", devTaskRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/ticket-templates", ticketTemplateRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/settings", settingsRoutes);
 

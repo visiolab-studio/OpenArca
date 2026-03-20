@@ -448,6 +448,210 @@ test("project icon upload is available and propagated to ticket payloads", async
   assert.equal(deletedIconProject.icon_url, null);
 });
 
+test("ticket templates CRUD works for developer and blocks user writes", async () => {
+  const project = await request
+    .post("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Template CRUD project",
+      description: "Project for template CRUD verification",
+      color: "#0F766E"
+    });
+  assert.equal(project.statusCode, 201);
+
+  const userCannotCreate = await request
+    .post("/api/ticket-templates")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .send({
+      name: "User blocked template",
+      project_id: project.body.id,
+      category: "bug",
+      urgency_reporter: "high",
+      title_template: "User should not create this",
+      description_template: "This payload should be blocked for standard users because it is write access.",
+      checklist_items: ["One"]
+    });
+  assert.equal(userCannotCreate.statusCode, 403);
+
+  const created = await request
+    .post("/api/ticket-templates")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Checkout incident template",
+      project_id: project.body.id,
+      category: "bug",
+      urgency_reporter: "critical",
+      title_template: "Checkout error in production",
+      description_template: "Describe the production issue, affected scope, and what users see during checkout.",
+      checklist_items: ["Collect error message", "Attach screenshots"]
+    });
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.body.project_id, project.body.id);
+  assert.deepEqual(created.body.checklist_items, ["Collect error message", "Attach screenshots"]);
+  assert.equal(created.body.is_active, true);
+
+  const getCreated = await request
+    .get(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(getCreated.statusCode, 200);
+  assert.equal(getCreated.body.id, created.body.id);
+
+  const patched = await request
+    .patch(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Checkout incident template updated",
+      is_active: false,
+      checklist_items: ["Collect error message", "Attach screenshots", "Add order ID"]
+    });
+  assert.equal(patched.statusCode, 200);
+  assert.equal(patched.body.name, "Checkout incident template updated");
+  assert.equal(patched.body.is_active, false);
+  assert.deepEqual(patched.body.checklist_items, [
+    "Collect error message",
+    "Attach screenshots",
+    "Add order ID"
+  ]);
+
+  const hiddenForUser = await request
+    .get(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(hiddenForUser.statusCode, 404);
+  assert.equal(hiddenForUser.body.error, "ticket_template_not_found");
+
+  const userCannotPatch = await request
+    .patch(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .send({ is_active: true });
+  assert.equal(userCannotPatch.statusCode, 403);
+
+  const remove = await request
+    .delete(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(remove.statusCode, 204);
+
+  const getAfterDelete = await request
+    .get(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(getAfterDelete.statusCode, 404);
+});
+
+test("ticket templates list applies project fallback and hides inactive rows from standard user", async () => {
+  const projectA = await request
+    .post("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Template list project A",
+      description: "Project A for template fallback checks",
+      color: "#166534"
+    });
+  assert.equal(projectA.statusCode, 201);
+
+  const projectB = await request
+    .post("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Template list project B",
+      description: "Project B for template fallback checks",
+      color: "#14532D"
+    });
+  assert.equal(projectB.statusCode, 201);
+
+  const createTemplate = (payload) =>
+    request
+      .post("/api/ticket-templates")
+      .set("Authorization", `Bearer ${devAuth.token}`)
+      .send(payload);
+
+  const globalTemplate = await createTemplate({
+    name: "Global feature intake",
+    project_id: null,
+    category: "feature",
+    urgency_reporter: "normal",
+    title_template: "New feature request",
+    description_template: "Describe the requested capability and expected business outcome in detail.",
+    checklist_items: ["Describe current workaround"]
+  });
+  assert.equal(globalTemplate.statusCode, 201);
+
+  const projectTemplate = await createTemplate({
+    name: "Project A bug intake",
+    project_id: projectA.body.id,
+    category: "bug",
+    urgency_reporter: "high",
+    title_template: "Project A production bug",
+    description_template: "Describe the bug, reproduction path, and visible impact for project A users.",
+    checklist_items: ["Include environment", "Add affected URL"]
+  });
+  assert.equal(projectTemplate.statusCode, 201);
+
+  const inactiveTemplate = await createTemplate({
+    name: "Inactive project A template",
+    project_id: projectA.body.id,
+    category: "other",
+    urgency_reporter: "low",
+    title_template: "Inactive template",
+    description_template: "This template should be hidden from standard users in regular listing mode.",
+    checklist_items: [],
+    is_active: false
+  });
+  assert.equal(inactiveTemplate.statusCode, 201);
+
+  const otherProjectTemplate = await createTemplate({
+    name: "Project B question intake",
+    project_id: projectB.body.id,
+    category: "question",
+    urgency_reporter: "normal",
+    title_template: "Question for project B",
+    description_template: "Provide the context and exact question that needs support from the IT team.",
+    checklist_items: ["Add expected answer scope"]
+  });
+  assert.equal(otherProjectTemplate.statusCode, 201);
+
+  const userList = await request
+    .get(`/api/ticket-templates?project_id=${projectA.body.id}`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(userList.statusCode, 200);
+  assert.deepEqual(
+    userList.body.map((template) => template.name),
+    ["Project A bug intake", "Global feature intake"]
+  );
+
+  const devListWithInactive = await request
+    .get(`/api/ticket-templates?project_id=${projectA.body.id}&include_inactive=1`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(devListWithInactive.statusCode, 200);
+  assert.deepEqual(
+    devListWithInactive.body.map((template) => template.name),
+    ["Inactive project A template", "Project A bug intake", "Global feature intake"]
+  );
+});
+
+test("ticket templates validate referenced project on create and list", async () => {
+  const missingProjectId = "11111111-1111-4111-8111-111111111111";
+
+  const createMissingProject = await request
+    .post("/api/ticket-templates")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      name: "Missing project template",
+      project_id: missingProjectId,
+      category: "bug",
+      urgency_reporter: "high",
+      title_template: "Missing project bug",
+      description_template: "This template should fail because the referenced project does not exist.",
+      checklist_items: ["One item"]
+    });
+  assert.equal(createMissingProject.statusCode, 404);
+  assert.equal(createMissingProject.body.error, "project_not_found");
+
+  const listMissingProject = await request
+    .get(`/api/ticket-templates?project_id=${missingProjectId}`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(listMissingProject.statusCode, 404);
+  assert.equal(listMissingProject.body.error, "project_not_found");
+});
+
 test("settings support SES provider selection and mask secrets", async () => {
   const patchSettings = await request
     .patch("/api/settings")

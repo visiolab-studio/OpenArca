@@ -45,6 +45,20 @@ const schemaStatements = [
     icon_updated_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS ticket_templates (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    category TEXT NOT NULL DEFAULT 'other',
+    urgency_reporter TEXT NOT NULL DEFAULT 'normal',
+    title_template TEXT NOT NULL,
+    description_template TEXT NOT NULL,
+    checklist_json TEXT NOT NULL DEFAULT '[]',
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_by TEXT REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS tickets (
     id TEXT PRIMARY KEY,
     number INTEGER NOT NULL UNIQUE,
@@ -172,6 +186,7 @@ const schemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_otp_codes_email_used ON otp_codes(email, used)`,
   `CREATE INDEX IF NOT EXISTS idx_tickets_reporter_status ON tickets(reporter_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_comments_ticket ON comments(ticket_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_ticket_templates_project_active ON ticket_templates(project_id, is_active, created_at)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_relations_pair_unique ON ticket_relations(ticket_id_a, ticket_id_b)`,
   `CREATE INDEX IF NOT EXISTS idx_ticket_relations_a ON ticket_relations(ticket_id_a)`,
   `CREATE INDEX IF NOT EXISTS idx_ticket_relations_b ON ticket_relations(ticket_id_b)`,
@@ -241,6 +256,27 @@ function initDb() {
 
     if (!projectColumnNames.has("icon_updated_at")) {
       db.prepare("ALTER TABLE projects ADD COLUMN icon_updated_at TEXT").run();
+    }
+
+    const templateColumns = db.prepare("PRAGMA table_info(ticket_templates)").all();
+    const templateColumnNames = new Set(templateColumns.map((column) => String(column.name)));
+
+    if (templateColumns.length > 0) {
+      if (!templateColumnNames.has("urgency_reporter")) {
+        db.prepare("ALTER TABLE ticket_templates ADD COLUMN urgency_reporter TEXT NOT NULL DEFAULT 'normal'").run();
+      }
+
+      if (!templateColumnNames.has("checklist_json")) {
+        db.prepare("ALTER TABLE ticket_templates ADD COLUMN checklist_json TEXT NOT NULL DEFAULT '[]'").run();
+      }
+
+      if (!templateColumnNames.has("is_active")) {
+        db.prepare("ALTER TABLE ticket_templates ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1").run();
+      }
+
+      if (!templateColumnNames.has("updated_at")) {
+        db.prepare("ALTER TABLE ticket_templates ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))").run();
+      }
     }
 
     const insertSetting = db.prepare(

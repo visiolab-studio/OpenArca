@@ -3304,3 +3304,56 @@
 
 ### Skills created/updated
 - `docs/skills/saved-views-and-filter-presets.md` (updated)
+
+## Step OPEN-O4A-TicketTemplates-01
+- Status: Done (approved by user)
+- Description: Backendowy fundament dla `ticket templates`: migracja SQLite, API CRUD, RBAC, fallback globalny/projektowy i testy integracyjne.
+
+### Implementation Plan
+- Dodać tabelę `ticket_templates` i migrację w `backend/db.js`.
+- Zdefiniować kontrakt templatek: nazwa, projekt/global, kategoria, ważność, tytuł, opis, checklista, aktywność.
+- Dodać router z endpointami listy, szczegółu, tworzenia, edycji i usuwania.
+- Utrzymać RBAC: odczyt dla zalogowanego użytkownika, zapis tylko dla developera.
+- Dodać filtrowanie po `project_id` z fallbackiem projektowym + globalnym.
+- Zweryfikować walidację brakującego projektu.
+- Dodać testy integracyjne CRUD/RBAC/listowania.
+- Udokumentować wzorzec jako skill backendowy.
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/ticketTemplates.js`
+- `backend/app.js`
+- `backend/tests/api.integration.test.js`
+- `docs/skills/ticket-templates-backend.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`161/161`)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (`23/23`)
+- `docker compose exec -T frontend npm run build` -> PASS
+- `curl -sI http://localhost:3330/` -> PASS (`200 OK`)
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Dodano tabelę `ticket_templates` do SQLite wraz z migracją dla istniejących baz.
+- Dodano endpointy:
+  - `GET /api/ticket-templates`
+  - `GET /api/ticket-templates/:id`
+  - `POST /api/ticket-templates`
+  - `PATCH /api/ticket-templates/:id`
+  - `DELETE /api/ticket-templates/:id`
+- `GET ?project_id=...` zwraca najpierw template projektowe, potem globalne.
+- Zwykły użytkownik widzi tylko aktywne template; developer może pobrać także nieaktywne przez `include_inactive=1`.
+- Walidacja odrzuca nieistniejący `project_id`.
+- Checklista jest przechowywana jako JSON i mapowana do `checklist_items` w API.
+
+### Skills created/updated
+- `docs/skills/ticket-templates-backend.md` (new)

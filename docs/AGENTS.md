@@ -72,3 +72,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/domain-events-outbox.md`
 - `docs/skills/outbox-worker-lifecycle.md`
 - `docs/skills/project-badges-and-icons.md`
+- `docs/skills/saved-views-and-filter-presets.md`

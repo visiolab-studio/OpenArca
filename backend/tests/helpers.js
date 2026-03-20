@@ -12,8 +12,8 @@ function initTestEnv() {
   process.env.JWT_SECRET = "test-jwt-secret";
   process.env.JWT_EXPIRES_IN = "30d";
   process.env.PORT = "0";
-  process.env.APP_URL = "http://localhost:3000";
-  process.env.FRONTEND_ORIGIN = "http://localhost:3000";
+  process.env.APP_URL = "http://localhost:3330";
+  process.env.FRONTEND_ORIGIN = "http://localhost:3330";
   process.env.DATA_DIR = dataDir;
   process.env.UPLOADS_DIR = uploadsDir;
   process.env.SQLITE_PATH = path.join(dataDir, "test.sqlite");

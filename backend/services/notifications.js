@@ -20,7 +20,7 @@ function formatTicketNumber(number) {
 }
 
 function getTicketUrl(ticketId) {
-  const appUrl = getSetting("app_url", "http://localhost:3000");
+  const appUrl = getSetting("app_url", "http://localhost:3330");
   return `${appUrl.replace(/\/$/, "")}/ticket/${ticketId}`;
 }
 

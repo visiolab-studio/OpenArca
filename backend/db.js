@@ -203,7 +203,7 @@ const defaultSettings = [
   ["ses_session_token", ""],
   ["ses_from", ""],
   ["ses_endpoint", ""],
-  ["app_url", "http://localhost:3000"],
+  ["app_url", "http://localhost:3330"],
   ["edition", "open_core"],
   ["feature_flags", "{}"]
 ];

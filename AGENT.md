@@ -191,7 +191,7 @@ INSERT OR IGNORE INTO settings VALUES ('smtp_port', '587');
 INSERT OR IGNORE INTO settings VALUES ('smtp_user', '');
 INSERT OR IGNORE INTO settings VALUES ('smtp_pass', '');
 INSERT OR IGNORE INTO settings VALUES ('smtp_from', '');
-INSERT OR IGNORE INTO settings VALUES ('app_url', 'http://localhost:3000');
+INSERT OR IGNORE INTO settings VALUES ('app_url', 'http://localhost:3330');
 ```
 
 ---
@@ -654,7 +654,7 @@ Klucze do przetłumaczenia (przykłady):
   ```env
   PORT=4000
   JWT_SECRET=zmien-na-bezpieczny-klucz
-  APP_URL=http://localhost:3000
+  APP_URL=http://localhost:3330
   # SMTP (alternatywnie konfiguracja przez panel admin)
   SMTP_HOST=
   SMTP_PORT=587
@@ -762,7 +762,7 @@ cd backend
 npm install
 node server.js
 
-# Frontend (port 3000)
+# Frontend (port 3330)
 cd frontend
 npm install
 npm run dev

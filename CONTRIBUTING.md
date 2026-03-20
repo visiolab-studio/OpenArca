@@ -45,7 +45,7 @@ docker compose ps
 ```
 
 Service URLs:
-- App: `http://localhost:3000`
+- App: `http://localhost:3330`
 - API health: `http://localhost:4000/health`
 - Mailpit: `http://localhost:8025`
 
@@ -162,7 +162,7 @@ docker compose ps
 ```
 
 Adresy usług:
-- Aplikacja: `http://localhost:3000`
+- Aplikacja: `http://localhost:3330`
 - Health API: `http://localhost:4000/health`
 - Mailpit: `http://localhost:8025`
 

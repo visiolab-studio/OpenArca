@@ -29,7 +29,7 @@ Komendy pomocnicze:
 docker compose up --build -d
 docker compose ps
 curl -s http://localhost:4000/health
-curl -sI http://localhost:3000/login
+curl -sI http://localhost:3330/login
 ```
 
 Jeśli brak Playwright/Cypress:

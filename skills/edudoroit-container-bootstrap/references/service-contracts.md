@@ -10,7 +10,7 @@
 - Backend:
   - `PORT=4000`
   - `JWT_SECRET=...`
-  - `APP_URL=http://localhost:3000`
+  - `APP_URL=http://localhost:3330`
   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - Frontend:
   - `VITE_API_URL=http://localhost:4000`

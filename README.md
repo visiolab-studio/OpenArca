@@ -96,7 +96,7 @@ docker compose up --build -d
 ```
 
 Open:
-- App: `http://localhost:3000`
+- App: `http://localhost:3330`
 - API health: `http://localhost:4000/health`
 - Mailpit (OTP/email inbox): `http://localhost:8025`
 
@@ -116,7 +116,7 @@ Main runtime files:
 - Compose services and ports: [`docker-compose.yml`](docker-compose.yml)
 
 Default local ports:
-- Frontend: `3000`
+- Frontend: `3330`
 - Backend: `4000`
 - Mailpit SMTP/UI: `1025` / `8025`
 
@@ -265,7 +265,7 @@ docker compose up --build -d
 ```
 
 Adresy:
-- Aplikacja: `http://localhost:3000`
+- Aplikacja: `http://localhost:3330`
 - Health API: `http://localhost:4000/health`
 - Mailpit (OTP/skrzynka): `http://localhost:8025`
 
@@ -285,7 +285,7 @@ Główne pliki runtime:
 - Serwisy i porty: [`docker-compose.yml`](docker-compose.yml)
 
 Domyślne porty lokalne:
-- Frontend: `3000`
+- Frontend: `3330`
 - Backend: `4000`
 - Mailpit SMTP/UI: `1025` / `8025`
 

@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "vite --host 0.0.0.0 --port 3330",
     "lint": "eslint . --max-warnings=0 --ignore-pattern dist --ignore-pattern node_modules",
     "test": "vitest run",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 3000"
+    "preview": "vite preview --host 0.0.0.0 --port 3330"
   },
   "engines": {
     "node": ">=20.0.0"

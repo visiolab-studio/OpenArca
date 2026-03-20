@@ -1,5 +1,81 @@
 # OpenArca — Progress Log
 
+## Step OPEN-O1-SavedViews-MyTickets-01
+- Status: Done (approved by user)
+- Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.
+
+### Implementation Plan
+- Dodać lokalny model filtrów i saved views dla `My Tickets`.
+- Dodać szybkie presety: `My critical`, `Waiting`, `Blocked`, `This week`.
+- Rozszerzyć sam widok o filtr priorytetu, potrzebny dla presetów i zapisanych widoków.
+- Zapisywać aktywne filtry oraz listę widoków w `localStorage`.
+- Dodać UX: wybór widoku, zapis aktualnego widoku, usuwanie widoku, reset filtrów.
+- Wydzielić helper `savedViews` pod kolejne kroki dla `Board` i `DevTodo`.
+- Dodać test frontendowy dla presetów i zapisu/przywracania widoku.
+- Dodać skill opisujący wzorzec `saved views`.
+
+### Files changed
+- `frontend/src/pages/MyTickets.jsx`
+- `frontend/src/utils/savedViews.js`
+- `frontend/src/pages/__tests__/MyTickets.savedViews.test.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/styles.css`
+- `docs/AGENTS.md`
+- `docs/skills/saved-views-and-filter-presets.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+  - backend uruchomiony na `4000`,
+  - frontend uruchomiony na `3330`,
+  - mailpit uruchomiony lokalnie na `1026/8026`.
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (158/158)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (19/19)
+- `docker compose exec -T frontend npm run build` -> PASS
+
+### E2E run
+- `docker compose ps` -> PASS dla `backend`, `frontend`, `mailpit`
+- `curl -s http://localhost:4000/health` -> PASS
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- `docker compose exec -T frontend node -e "fetch('http://127.0.0.1:3330')..."` -> PASS
+- Host `curl` na `3330` był ograniczony przez sandbox CLI, więc dostępność frontendu potwierdzono przez logi Vite i fetch z wnętrza kontenera.
+
+### Result
+- `My Tickets` ma szybkie presety filtrów do codziennej pracy.
+- Użytkownik może zapisać własny widok filtrów lokalnie i przywrócić go po resecie lub odświeżeniu strony.
+- Dodany został filtr priorytetu, potrzebny do presetów i saved views.
+- Logika saved views została wydzielona do reużywalnego helpera pod kolejne kroki dla `Board` i `DevTodo`.
+
+### Skills created/updated
+- `docs/skills/saved-views-and-filter-presets.md` (created)
+
+## Step RC2-Docs-Cleanup-01
+- Status: Done
+- Description: Synchronizacja dokumentów statusowych po zamknięciu Open RC2, tak aby backlog Open, roadmapa strategiczna i checklisty release nie wprowadzały w błąd.
+
+### Files changed
+- `docs/OPENARCA_RC2_TODO.md`
+- `docs/fonder-road.md`
+- `docs/release-checklist.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- Nie uruchamiano quality gates, ponieważ zakres obejmuje wyłącznie porządkowanie dokumentacji i nie zmienia kodu aplikacji.
+
+### E2E run
+- Nie dotyczy (brak zmian runtime/UI/API).
+
+### Result
+- `docs/OPENARCA_RC2_TODO.md` przestał udawać aktywne TODO i stał się dokumentem closeout + future open backlog.
+- `docs/fonder-road.md` został przestawiony z planu wykonawczego RC1/RC2 na roadmapę strategiczną po zamknięciu Open RC2.
+- `docs/release-checklist.md` używa aktualnej nazwy produktu `OpenArca`.
+
+### Skills created/updated
+- none
+
 ## Step RC2-Projects-UX-Color-Reset-01
 - Status: Done (approved by user)
 - Commit: `19d7376`

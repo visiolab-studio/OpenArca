@@ -44,6 +44,19 @@ Przykładowe presety:
 - `This week`
 - `Unassigned` dla widoków developerskich
 
+Przykład dla Kanban:
+```js
+const DEFAULT_FILTERS = {
+  projectId: "",
+  category: "",
+  priority: "",
+  statusScope: "",
+  plannedWindow: ""
+};
+```
+
+Preset `This week` w Kanban może działać na `planned_date`, nawet jeśli ten filtr nie ma osobnego pola formularza.
+
 ## Definition of Done
 - [ ] Filtry widoku wracają po odświeżeniu strony.
 - [ ] Użytkownik może zapisać i usunąć własny widok.
@@ -59,5 +72,7 @@ Przykładowe presety:
 
 ## Powiązane pliki w repo
 - `frontend/src/pages/MyTickets.jsx`
+- `frontend/src/pages/Board.jsx`
 - `frontend/src/utils/savedViews.js`
 - `frontend/src/pages/__tests__/MyTickets.savedViews.test.jsx`
+- `frontend/src/pages/__tests__/Board.savedViews.test.jsx`

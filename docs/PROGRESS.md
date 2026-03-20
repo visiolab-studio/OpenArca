@@ -3208,3 +3208,51 @@
 
 ### Skills created/updated
 - Brak zmian w skills.
+
+## Step OPEN-O2-SavedViews-Board-01
+- Status: Done (approved by user)
+- Description: Dodanie `saved views` i szybkich presetów do widoku `Board / Kanban`, z lokalną persystencją filtrów bez zmian backendu.
+
+### Implementation Plan
+- Dodać lokalny stan filtrów i zapisanych widoków dla `Board`.
+- Wprowadzić szybkie presety dopasowane do Kanban: `Critical`, `Waiting`, `Blocked`, `This week`.
+- Zapisywać i przywracać kombinacje filtrów `project/category/priority` oraz zakresów presetów.
+- Dodać UI: zapis, wybór, usuwanie i reset widoków.
+- Nie zmieniać logiki DnD ani popupu edycji zgłoszenia.
+- Dodać pojedynczy test frontendu dla presetów i persystencji.
+- Zaktualizować skill i playbook agenta do faktycznych komend repo.
+- Uruchomić pełne quality gates oraz smoke.
+
+### Files changed
+- `frontend/src/pages/Board.jsx`
+- `frontend/src/pages/__tests__/Board.savedViews.test.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `docs/skills/saved-views-and-filter-presets.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`158/158`)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (`21/21`)
+- `docker compose exec -T frontend npm run build` -> PASS
+- `curl -sI http://localhost:3330/` -> PASS (`200 OK`)
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- `Board` zapamiętuje aktywne filtry po odświeżeniu strony.
+- Dodano szybkie presety dla Kanban: `Critical`, `Waiting`, `Blocked`, `This week`.
+- Użytkownik może zapisać własny widok, ponownie go wybrać, usunąć i zresetować filtry.
+- Preset `This week` działa na `planned_date`, bez rozbudowy formularza o dodatkowy filtr.
+- Zmiana nie narusza DnD ani popupu podglądu/edycji zgłoszenia.
+- `docs/AGENTS.md` został zsynchronizowany z faktycznymi komendami `npm` używanymi w repo.
+
+### Skills created/updated
+- `docs/skills/saved-views-and-filter-presets.md` (updated)

@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, X } from "lucide-react";
+import { BookmarkPlus, CalendarDays, RotateCcw, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { getBoard, patchTicket } from "../api/tickets";
@@ -17,6 +17,13 @@ import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/con
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
+import {
+  areFiltersEqual,
+  createSavedView,
+  loadSavedViewsState,
+  normalizeFilters,
+  saveSavedViewsState
+} from "../utils/savedViews";
 
 const columnClasses = {
   submitted: "col-submitted",
@@ -26,6 +33,33 @@ const columnClasses = {
   blocked: "col-blocked",
   closed: "col-closed"
 };
+
+const SAVED_VIEWS_STORAGE_KEY = "openarca.board.savedViews.v1";
+const DEFAULT_FILTERS = {
+  projectId: "",
+  category: "",
+  priority: "",
+  statusScope: "",
+  plannedWindow: ""
+};
+
+function getThisWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  return {
+    dateFrom: monday.toISOString().slice(0, 10),
+    dateTo: sunday.toISOString().slice(0, 10)
+  };
+}
 
 function findContainer(columns, id) {
   if (STATUS_OPTIONS.includes(id)) {
@@ -150,6 +184,7 @@ function KanbanColumn({ title, status, tickets, collapsed, onToggle, onOpenPrevi
 export default function BoardPage() {
   const { t } = useTranslation();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const initialSavedViewsState = loadSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS);
 
   const [columns, setColumns] = useState(() =>
     Object.fromEntries(STATUS_OPTIONS.map((status) => [status, []]))
@@ -159,9 +194,10 @@ export default function BoardPage() {
   const [activeId, setActiveId] = useState(null);
   const [collapsedClosed, setCollapsedClosed] = useState(true);
 
-  const [projectFilter, setProjectFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
+  const [filters, setFilters] = useState(initialSavedViewsState.activeFilters);
+  const [savedViews, setSavedViews] = useState(initialSavedViewsState.views);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
+  const [viewName, setViewName] = useState("");
   const [previewTicketId, setPreviewTicketId] = useState("");
   const [previewDraft, setPreviewDraft] = useState(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -224,18 +260,116 @@ export default function BoardPage() {
     return Array.from(set.entries()).map(([id, name]) => ({ id, name }));
   }, [columns]);
 
+  const quickViews = useMemo(() => {
+    return [
+      {
+        key: "critical",
+        label: t("board.quickViewCritical"),
+        filters: { ...DEFAULT_FILTERS, priority: "critical" }
+      },
+      {
+        key: "waiting",
+        label: t("board.quickViewWaiting"),
+        filters: { ...DEFAULT_FILTERS, statusScope: "waiting" }
+      },
+      {
+        key: "blocked",
+        label: t("board.quickViewBlocked"),
+        filters: { ...DEFAULT_FILTERS, statusScope: "blocked" }
+      },
+      {
+        key: "this_week",
+        label: t("board.quickViewThisWeek"),
+        filters: { ...DEFAULT_FILTERS, plannedWindow: "this_week" }
+      }
+    ];
+  }, [t]);
+
+  useEffect(() => {
+    saveSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS, {
+      activeFilters: filters,
+      views: savedViews
+    });
+  }, [filters, savedViews]);
+
+  function updateFilters(patch) {
+    setSelectedSavedViewId("");
+    setFilters((current) => normalizeFilters({ ...current, ...patch }, DEFAULT_FILTERS));
+  }
+
+  function applyFilters(nextFilters, nextViewId = "") {
+    setSelectedSavedViewId(nextViewId);
+    setFilters(normalizeFilters(nextFilters, DEFAULT_FILTERS));
+  }
+
+  function handleApplyQuickView(quickView) {
+    setViewName("");
+    applyFilters(quickView.filters);
+  }
+
+  function handleResetFilters() {
+    setViewName("");
+    applyFilters(DEFAULT_FILTERS);
+  }
+
+  function handleSelectSavedView(nextViewId) {
+    setSelectedSavedViewId(nextViewId);
+    const nextView = savedViews.find((view) => view.id === nextViewId);
+    if (!nextView) return;
+    setViewName(nextView.name);
+    applyFilters(nextView.filters, nextView.id);
+  }
+
+  function handleSaveView() {
+    const normalizedName = viewName.trim();
+    if (!normalizedName) return;
+
+    if (selectedSavedViewId) {
+      setSavedViews((current) =>
+        current.map((view) =>
+          view.id === selectedSavedViewId
+            ? {
+                ...view,
+                name: normalizedName,
+                filters: normalizeFilters(filters, DEFAULT_FILTERS)
+              }
+            : view
+        )
+      );
+      return;
+    }
+
+    const nextView = createSavedView(normalizedName, filters, DEFAULT_FILTERS);
+    setSelectedSavedViewId(nextView.id);
+    setSavedViews((current) => [...current, nextView]);
+  }
+
+  function handleDeleteView() {
+    if (!selectedSavedViewId) return;
+    setSavedViews((current) => current.filter((view) => view.id !== selectedSavedViewId));
+    setSelectedSavedViewId("");
+    setViewName("");
+  }
+
   const filteredColumns = useMemo(() => {
+    const thisWeek = getThisWeekRange();
     const matches = (ticket) => {
-      if (projectFilter && ticket.project_id !== projectFilter) return false;
-      if (categoryFilter && ticket.category !== categoryFilter) return false;
-      if (priorityFilter && ticket.priority !== priorityFilter) return false;
+      if (filters.projectId && ticket.project_id !== filters.projectId) return false;
+      if (filters.category && ticket.category !== filters.category) return false;
+      if (filters.priority && ticket.priority !== filters.priority) return false;
+      if (filters.statusScope && ticket.status !== filters.statusScope) return false;
+      if (filters.plannedWindow === "this_week") {
+        const plannedDate = String(ticket.planned_date || "").slice(0, 10);
+        if (!plannedDate) return false;
+        if (plannedDate < thisWeek.dateFrom || plannedDate > thisWeek.dateTo) return false;
+      }
       return true;
     };
 
     return Object.fromEntries(
       STATUS_OPTIONS.map((status) => [status, (columns[status] || []).filter(matches)])
     );
-  }, [columns, projectFilter, categoryFilter, priorityFilter]);
+  }, [columns, filters]);
 
   const activeTicket = useMemo(() => {
     if (!activeId) return null;
@@ -361,9 +495,78 @@ export default function BoardPage() {
   return (
     <section className="page-content page-content--full">
       <article className="card form-grid filters-grid">
+        <div className="saved-views-bar form-group-wide">
+          <div className="saved-views-header">
+            <span className="form-label">{t("tickets.quickFilters")}</span>
+            <span className="form-hint">{t("tickets.savedViewsHint")}</span>
+          </div>
+          <div className="saved-views-chips">
+            {quickViews.map((quickView) => (
+              <button
+                key={quickView.key}
+                type="button"
+                className={
+                  areFiltersEqual(filters, quickView.filters, DEFAULT_FILTERS)
+                    ? "btn btn-accent"
+                    : "btn btn-secondary"
+                }
+                onClick={() => handleApplyQuickView(quickView)}
+              >
+                {quickView.label}
+              </button>
+            ))}
+            <button type="button" className="btn btn-secondary" onClick={handleResetFilters}>
+              <RotateCcw size={14} />
+              <span>{t("tickets.resetFilters")}</span>
+            </button>
+          </div>
+        </div>
+
+        <label className="form-group">
+          <span className="form-label">{t("tickets.savedViews")}</span>
+          <select className="form-select" value={selectedSavedViewId} onChange={(event) => handleSelectSavedView(event.target.value)}>
+            <option value="">{t("tickets.noSavedViews")}</option>
+            {savedViews.map((view) => (
+              <option key={view.id} value={view.id}>
+                {view.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="form-group">
+          <span className="form-label">{t("tickets.savedViewName")}</span>
+          <input
+            className="form-input"
+            type="text"
+            value={viewName}
+            placeholder={t("tickets.savedViewNamePlaceholder")}
+            onChange={(event) => setViewName(event.target.value)}
+          />
+        </label>
+
+        <div className="form-group saved-view-actions">
+          <span className="form-label">{t("tickets.applySavedView")}</span>
+          <div className="row-actions">
+            <button type="button" className="btn btn-accent" onClick={handleSaveView} disabled={!viewName.trim()}>
+              <BookmarkPlus size={14} />
+              <span>{selectedSavedViewId ? t("app.save") : t("tickets.saveView")}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleDeleteView}
+              disabled={!selectedSavedViewId}
+            >
+              <Trash2 size={14} />
+              <span>{t("tickets.deleteView")}</span>
+            </button>
+          </div>
+        </div>
+
         <label className="form-group">
           <span className="form-label">{t("tickets.project")}</span>
-          <select className="form-select" value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+          <select className="form-select" value={filters.projectId} onChange={(event) => updateFilters({ projectId: event.target.value })}>
             <option value="">-</option>
             {allProjects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -375,7 +578,7 @@ export default function BoardPage() {
 
         <label className="form-group">
           <span className="form-label">{t("tickets.category")}</span>
-          <select className="form-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <select className="form-select" value={filters.category} onChange={(event) => updateFilters({ category: event.target.value })}>
             <option value="">-</option>
             {CATEGORY_OPTIONS.map((value) => (
               <option key={value} value={value}>
@@ -387,7 +590,7 @@ export default function BoardPage() {
 
         <label className="form-group">
           <span className="form-label">{t("tickets.priority")}</span>
-          <select className="form-select" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+          <select className="form-select" value={filters.priority} onChange={(event) => updateFilters({ priority: event.target.value })}>
             <option value="">-</option>
             {PRIORITY_OPTIONS.map((value) => (
               <option key={value} value={value}>

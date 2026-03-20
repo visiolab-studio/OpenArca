@@ -19,9 +19,9 @@
   - `docker compose exec -T backend npm run lint`
   - `docker compose exec -T backend npm test`
 - Frontend:
-  - `docker compose exec -T frontend yarn lint`
-  - `docker compose exec -T frontend yarn test`
-  - `docker compose exec -T frontend yarn build`
+  - `docker compose exec -T frontend npm run lint`
+  - `docker compose exec -T frontend npm test`
+  - `docker compose exec -T frontend npm run build`
 - Stack smoke:
   - `docker compose up --build -d`
   - `docker compose ps`

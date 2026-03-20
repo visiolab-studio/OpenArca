@@ -114,7 +114,11 @@
     "previewTitle": "Podgląd zgłoszenia",
     "openDetails": "Otwórz szczegóły",
     "descriptionLabel": "Opis",
-    "noDescription": "Brak opisu zgłoszenia."
+    "noDescription": "Brak opisu zgłoszenia.",
+    "quickViewCritical": "Krytyczne",
+    "quickViewWaiting": "Oczekujące",
+    "quickViewBlocked": "Zablokowane",
+    "quickViewThisWeek": "Ten tydzień"
   },
   "tickets": {
     "title": "Tickety",

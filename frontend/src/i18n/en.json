@@ -114,7 +114,11 @@
     "previewTitle": "Ticket preview",
     "openDetails": "Open details",
     "descriptionLabel": "Description",
-    "noDescription": "No ticket description."
+    "noDescription": "No ticket description.",
+    "quickViewCritical": "Critical",
+    "quickViewWaiting": "Waiting",
+    "quickViewBlocked": "Blocked",
+    "quickViewThisWeek": "This week"
   },
   "tickets": {
     "title": "Tickets",

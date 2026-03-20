@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   createProject,
@@ -11,12 +11,29 @@ import {
 } from "../api/projects";
 import { API_BASE_URL } from "../api/client";
 import { getSettings, patchSettings, testEmail, uploadAppLogo } from "../api/settings";
+import {
+  createTicketTemplate,
+  deleteTicketTemplate,
+  getTicketTemplates,
+  patchTicketTemplate
+} from "../api/ticketTemplates";
 import { getUsers, patchUser } from "../api/users";
 import appLogo from "../assets/logo-openarca.png";
 import ProjectBadge from "../components/ProjectBadge";
+import { CATEGORY_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
 
 const tabs = ["app", "smtp", "projects", "users"];
 const DEFAULT_PROJECT_COLOR = "#6B7280";
+const EMPTY_TEMPLATE_DRAFT = {
+  name: "",
+  project_id: "",
+  category: "bug",
+  urgency_reporter: "normal",
+  title_template: "",
+  description_template: "",
+  checklist_text: "",
+  is_active: true
+};
 
 function parseError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
@@ -36,6 +53,35 @@ function fromCommaList(text) {
         .filter(Boolean)
     )
   );
+}
+
+function checklistItemsToText(items) {
+  if (!Array.isArray(items) || items.length === 0) return "";
+  return items.join("\n");
+}
+
+function checklistTextToItems(text) {
+  return String(text || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toTemplateDraft(template) {
+  if (!template) {
+    return { ...EMPTY_TEMPLATE_DRAFT };
+  }
+
+  return {
+    name: template.name || "",
+    project_id: template.project_id || "",
+    category: template.category || "bug",
+    urgency_reporter: template.urgency_reporter || "normal",
+    title_template: template.title_template || "",
+    description_template: template.description_template || "",
+    checklist_text: checklistItemsToText(template.checklist_items || []),
+    is_active: Boolean(template.is_active)
+  };
 }
 
 export default function AdminPage() {
@@ -59,6 +105,10 @@ export default function AdminPage() {
   const [projectModalDraft, setProjectModalDraft] = useState(null);
   const [projectIconFile, setProjectIconFile] = useState(null);
   const [projectModalBusy, setProjectModalBusy] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [templateModalId, setTemplateModalId] = useState("");
+  const [templateModalDraft, setTemplateModalDraft] = useState(null);
+  const [templateModalBusy, setTemplateModalBusy] = useState(false);
 
   const [users, setUsers] = useState([]);
   const [userDrafts, setUserDrafts] = useState({});
@@ -67,9 +117,10 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const [settingsData, projectsData, usersData] = await Promise.all([
+      const [settingsData, projectsData, templatesData, usersData] = await Promise.all([
         getSettings(),
         getProjects(),
+        getTicketTemplates({ includeInactive: true }),
         getUsers()
       ]);
 
@@ -96,6 +147,7 @@ export default function AdminPage() {
       });
 
       setProjects(projectsData);
+      setTemplates(templatesData);
       setUsers(usersData);
 
       setProjectDrafts(
@@ -137,6 +189,15 @@ export default function AdminPage() {
   const usersSorted = useMemo(() => {
     return [...users].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   }, [users]);
+  const templatesSorted = useMemo(() => {
+    return [...templates].sort((a, b) => {
+      if (a.project_id && !b.project_id) return -1;
+      if (!a.project_id && b.project_id) return 1;
+      const projectNameDiff = String(a.project_name || "").localeCompare(String(b.project_name || ""), "pl");
+      if (projectNameDiff !== 0) return projectNameDiff;
+      return String(a.name || "").localeCompare(String(b.name || ""), "pl");
+    });
+  }, [templates]);
   const appLogoPreviewUrl = settings?.app_logo_url ? `${API_BASE_URL}${settings.app_logo_url}` : appLogo;
 
   async function handleSaveAppSettings(event) {
@@ -323,6 +384,13 @@ export default function AdminPage() {
       }
 
       setProjects((current) => current.map((project) => (project.id === projectId ? updated : project)));
+      setTemplates((current) =>
+        current.map((template) =>
+          template.project_id === projectId
+            ? { ...template, project_name: updated.name || null }
+            : template
+        )
+      );
       setProjectDrafts((current) => ({
         ...current,
         [projectId]: {
@@ -382,6 +450,8 @@ export default function AdminPage() {
     try {
       await deleteProject(projectId);
       setProjects((current) => current.filter((project) => project.id !== projectId));
+      const refreshedTemplates = await getTicketTemplates({ includeInactive: true });
+      setTemplates(refreshedTemplates);
       setProjectDrafts((current) => {
         const next = { ...current };
         delete next[projectId];
@@ -395,6 +465,76 @@ export default function AdminPage() {
       setNotice("saved");
     } catch (deleteError) {
       setError(parseError(deleteError));
+    }
+  }
+
+  function openTemplateCreate() {
+    setTemplateModalId("__new__");
+    setTemplateModalDraft({ ...EMPTY_TEMPLATE_DRAFT });
+  }
+
+  function openTemplateSettings(template) {
+    setTemplateModalId(template.id);
+    setTemplateModalDraft(toTemplateDraft(template));
+  }
+
+  function closeTemplateSettings(force = false) {
+    if (templateModalBusy && !force) return;
+    setTemplateModalId("");
+    setTemplateModalDraft(null);
+  }
+
+  async function handleSaveTemplate() {
+    if (!templateModalDraft) return;
+
+    setError("");
+    setNotice("");
+
+    const payload = {
+      name: templateModalDraft.name.trim(),
+      project_id: templateModalDraft.project_id || null,
+      category: templateModalDraft.category,
+      urgency_reporter: templateModalDraft.urgency_reporter,
+      title_template: templateModalDraft.title_template.trim(),
+      description_template: templateModalDraft.description_template.trim(),
+      checklist_items: checklistTextToItems(templateModalDraft.checklist_text),
+      is_active: Boolean(templateModalDraft.is_active)
+    };
+
+    try {
+      setTemplateModalBusy(true);
+      const saved = templateModalId === "__new__"
+        ? await createTicketTemplate(payload)
+        : await patchTicketTemplate(templateModalId, payload);
+
+      setTemplates((current) => {
+        if (templateModalId === "__new__") {
+          return [saved, ...current];
+        }
+        return current.map((template) => (template.id === templateModalId ? saved : template));
+      });
+      setNotice("saved");
+      closeTemplateSettings(true);
+    } catch (templateError) {
+      setError(parseError(templateError));
+    } finally {
+      setTemplateModalBusy(false);
+    }
+  }
+
+  async function handleDeleteTemplate(templateId) {
+    setError("");
+    setNotice("");
+
+    try {
+      await deleteTicketTemplate(templateId);
+      setTemplates((current) => current.filter((template) => template.id !== templateId));
+      if (templateModalId === templateId) {
+        closeTemplateSettings();
+      }
+      setNotice("saved");
+    } catch (templateError) {
+      setError(parseError(templateError));
     }
   }
 
@@ -760,6 +900,75 @@ export default function AdminPage() {
               );
             })}
           </div>
+
+          <div className="admin-section-divider" />
+
+          <div className="row-actions admin-templates-header">
+            <div>
+              <h2>{t("admin.ticketTemplates")}</h2>
+              <p className="muted">{t("admin.ticketTemplatesHint")}</p>
+            </div>
+            <button type="button" className="btn btn-accent" onClick={openTemplateCreate}>
+              <Plus size={14} />
+              <span>{t("admin.newTicketTemplate")}</span>
+            </button>
+          </div>
+
+          <div className="form-grid admin-template-list">
+            {templatesSorted.map((template) => (
+              <div key={template.id} className="card admin-template-card">
+                <div className="admin-template-card-head">
+                  <div>
+                    <h3 className="admin-template-card-title">{template.name}</h3>
+                    <div className="row-actions">
+                      <span className="badge badge-no-dot">
+                        {template.project_name || t("admin.templateGlobal")}
+                      </span>
+                      <span className="badge badge-no-dot">{t(`category.${template.category}`)}</span>
+                      <span className="badge badge-no-dot">{t(`priority.${template.urgency_reporter}`)}</span>
+                      <span className={template.is_active ? "badge badge-verified" : "badge badge-closed"}>
+                        {template.is_active ? t("admin.templateActive") : t("admin.templateInactive")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="row-actions">
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => openTemplateSettings(template)}>
+                      <Pencil size={12} />
+                      <span>{t("admin.projectSettings")}</span>
+                    </button>
+                    <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDeleteTemplate(template.id)}>
+                      <Trash2 size={12} />
+                      <span>{t("dev.delete")}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="admin-template-preview-grid">
+                  <div>
+                    <span className="form-label">{t("tickets.titleField")}</span>
+                    <p className="admin-template-preview-text">{template.title_template}</p>
+                  </div>
+                  <div>
+                    <span className="form-label">{t("tickets.description")}</span>
+                    <p className="admin-template-preview-text">{template.description_template}</p>
+                  </div>
+                </div>
+
+                {Array.isArray(template.checklist_items) && template.checklist_items.length > 0 ? (
+                  <div>
+                    <span className="form-label">{t("admin.templateChecklist")}</span>
+                    <ul className="admin-template-checklist">
+                      {template.checklist_items.map((item) => (
+                        <li key={`${template.id}-${item}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+
+            {templatesSorted.length === 0 ? <p className="muted">{t("admin.noTicketTemplates")}</p> : null}
+          </div>
         </article>
       ) : null}
 
@@ -874,6 +1083,162 @@ export default function AdminPage() {
                 disabled={projectModalBusy}
               >
                 {projectModalBusy ? t("app.loading") : t("app.save")}
+              </button>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {!loading && activeTab === "projects" && templateModalId && templateModalDraft ? (
+        <div className="todo-modal-backdrop" onClick={() => closeTemplateSettings()}>
+          <article className="card todo-create-modal admin-template-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="todo-create-modal-header">
+              <h2 className="card-title">
+                {templateModalId === "__new__" ? t("admin.newTicketTemplate") : t("admin.ticketTemplateSettings")}
+              </h2>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => closeTemplateSettings()}
+                disabled={templateModalBusy}
+              >
+                <X size={12} />
+                <span>{t("app.cancel")}</span>
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label className="form-group">
+                <span className="form-label">{t("admin.name")}</span>
+                <input
+                  className="form-input"
+                  type="text"
+                  value={templateModalDraft.name}
+                  onChange={(event) =>
+                    setTemplateModalDraft((current) => ({ ...current, name: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="form-group">
+                <span className="form-label">{t("tickets.project")}</span>
+                <select
+                  className="form-select"
+                  value={templateModalDraft.project_id}
+                  onChange={(event) =>
+                    setTemplateModalDraft((current) => ({ ...current, project_id: event.target.value }))
+                  }
+                >
+                  <option value="">{t("admin.templateGlobal")}</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="filters-grid">
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.category")}</span>
+                  <select
+                    className="form-select"
+                    value={templateModalDraft.category}
+                    onChange={(event) =>
+                      setTemplateModalDraft((current) => ({ ...current, category: event.target.value }))
+                    }
+                  >
+                    {CATEGORY_OPTIONS.map((category) => (
+                      <option key={category} value={category}>
+                        {t(`category.${category}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.urgency")}</span>
+                  <select
+                    className="form-select"
+                    value={templateModalDraft.urgency_reporter}
+                    onChange={(event) =>
+                      setTemplateModalDraft((current) => ({ ...current, urgency_reporter: event.target.value }))
+                    }
+                  >
+                    {PRIORITY_OPTIONS.map((priority) => (
+                      <option key={priority} value={priority}>
+                        {t(`priority.${priority}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="check-row admin-template-active-check">
+                  <input
+                    type="checkbox"
+                    checked={templateModalDraft.is_active}
+                    onChange={(event) =>
+                      setTemplateModalDraft((current) => ({ ...current, is_active: event.target.checked }))
+                    }
+                  />
+                  <span>{t("admin.templateActive")}</span>
+                </label>
+              </div>
+
+              <label className="form-group">
+                <span className="form-label">{t("admin.templateTitle")}</span>
+                <input
+                  className="form-input"
+                  type="text"
+                  value={templateModalDraft.title_template}
+                  onChange={(event) =>
+                    setTemplateModalDraft((current) => ({ ...current, title_template: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="form-group">
+                <span className="form-label">{t("admin.templateDescription")}</span>
+                <textarea
+                  className="form-textarea"
+                  rows={5}
+                  value={templateModalDraft.description_template}
+                  onChange={(event) =>
+                    setTemplateModalDraft((current) => ({ ...current, description_template: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="form-group">
+                <span className="form-label">{t("admin.templateChecklist")}</span>
+                <textarea
+                  className="form-textarea"
+                  rows={5}
+                  placeholder={t("admin.templateChecklistHint")}
+                  value={templateModalDraft.checklist_text}
+                  onChange={(event) =>
+                    setTemplateModalDraft((current) => ({ ...current, checklist_text: event.target.value }))
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="todo-create-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => closeTemplateSettings()}
+                disabled={templateModalBusy}
+              >
+                {t("app.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={handleSaveTemplate}
+                disabled={templateModalBusy}
+              >
+                {templateModalBusy ? t("app.loading") : t("app.save")}
               </button>
             </div>
           </article>

@@ -3357,3 +3357,52 @@
 
 ### Skills created/updated
 - `docs/skills/ticket-templates-backend.md` (new)
+
+## Step OPEN-O4B-TicketTemplatesAdmin-01
+- Status: Done (approved by user)
+- Description: Panel admina dla `ticket templates` w zakładce `Projects`: lista presetów, modal create/edit oraz usuwanie bez zmian istniejącego workflow projektów.
+
+### Implementation Plan
+- Dodać frontendowy klient API dla `ticket templates`.
+- Rozszerzyć `Admin.jsx` o stan, ładowanie i sortowanie templatek.
+- Osadzić sekcję templatek w zakładce `Projects`, bez rozbijania obecnego układu panelu.
+- Pokazać listę presetów z rozróżnieniem `global/project`, `active/inactive`, kategoria i priorytet.
+- Dodać modal create/edit z checklistą wpisywaną liniami.
+- Dodać bezpieczne usuwanie templatek z odświeżeniem lokalnego stanu.
+- Pokryć UI testem frontendu dla create flow.
+- Zweryfikować krok pełnym pakietem lint/test/build/smoke.
+
+### Files changed
+- `frontend/src/api/ticketTemplates.js`
+- `frontend/src/pages/Admin.jsx`
+- `frontend/src/pages/__tests__/Admin.ticketTemplates.test.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/styles.css`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`161/161`)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (`24/24`)
+- `docker compose exec -T frontend npm run build` -> PASS
+- `curl -sI http://localhost:3330/` -> PASS (`200 OK`)
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Zakładka `Projects` w panelu admina pokazuje teraz sekcję `ticket templates`.
+- Developer może utworzyć nowy preset jako globalny albo przypisany do projektu.
+- Dla każdego presetu widoczne są badge: projekt/global, kategoria, priorytet i status aktywności.
+- Modal create/edit obsługuje nazwę, projekt, kategorię, priorytet zgłaszającego, aktywność, tytuł, opis i checklistę.
+- Checklista jest wpisywana jako tekst linia-po-linii i normalizowana do `checklist_items`.
+- Usunięcie presetu aktualizuje listę lokalnie bez przeładowania całego panelu.
+- Istniejący workflow ustawień aplikacji, SMTP/SES, projektów i użytkowników pozostaje bez zmian.
+
+### Skills created/updated
+- `docs/skills/ticket-templates-backend.md` (referenced, no change)

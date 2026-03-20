@@ -2571,6 +2571,65 @@ table th {
   letter-spacing: 0.03em;
 }
 
+.admin-section-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: 8px 0 4px;
+}
+
+.admin-templates-header {
+  align-items: flex-start;
+}
+
+.admin-template-list {
+  gap: 12px;
+}
+
+.admin-template-card {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-template-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-template-card-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.admin-template-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.admin-template-preview-text {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.admin-template-checklist {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  display: grid;
+  gap: 6px;
+}
+
+.admin-template-modal {
+  width: min(880px, 100%);
+}
+
+.admin-template-active-check {
+  align-self: end;
+}
+
 .internal-note {
   background: var(--yellow-subtle);
   border: 1px solid rgba(15, 118, 110, 0.4);

@@ -8,6 +8,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  BookmarkPlus,
   CalendarDays,
   Check,
   Clock3,
@@ -15,6 +16,7 @@ import {
   Pencil,
   Plus,
   Play,
+  RotateCcw,
   Save,
   Trash2,
   X
@@ -34,8 +36,23 @@ import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { PRIORITY_OPTIONS } from "../utils/constants";
+import {
+  areFiltersEqual,
+  createSavedView,
+  loadSavedViewsState,
+  normalizeFilters,
+  saveSavedViewsState
+} from "../utils/savedViews";
 
 const priorityWeight = { critical: 0, high: 1, normal: 2, low: 3 };
+const SAVED_VIEWS_STORAGE_KEY = "openarca.devtodo.savedViews.v1";
+const DEFAULT_FILTERS = {
+  taskStatus: "",
+  priority: "",
+  ticketStatus: "",
+  activeProjectId: "",
+  queueProjectId: ""
+};
 
 function normalizeError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
@@ -256,6 +273,7 @@ export default function DevTodoPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const initialSavedViewsState = loadSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS);
 
   const [activeTasks, setActiveTasks] = useState([]);
   const [doneTasks, setDoneTasks] = useState([]);
@@ -265,10 +283,10 @@ export default function DevTodoPage() {
   const [error, setError] = useState("");
   const [ticketActionId, setTicketActionId] = useState("");
 
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [activeProjectFilter, setActiveProjectFilter] = useState("");
-  const [queueProjectFilter, setQueueProjectFilter] = useState("");
+  const [filters, setFilters] = useState(initialSavedViewsState.activeFilters);
+  const [savedViews, setSavedViews] = useState(initialSavedViewsState.views);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
+  const [viewName, setViewName] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [completeTask, setCompleteTask] = useState(null);
   const [completionComment, setCompletionComment] = useState("");
@@ -397,6 +415,32 @@ export default function DevTodoPage() {
     );
   }, [ticketsMap]);
 
+  const quickViews = useMemo(
+    () => [
+      {
+        key: "critical",
+        label: t("dev.quickViewCritical"),
+        filters: { ...DEFAULT_FILTERS, priority: "critical" }
+      },
+      {
+        key: "in_progress",
+        label: t("dev.quickViewInProgress"),
+        filters: { ...DEFAULT_FILTERS, taskStatus: "in_progress" }
+      },
+      {
+        key: "waiting",
+        label: t("dev.quickViewWaiting"),
+        filters: { ...DEFAULT_FILTERS, ticketStatus: "waiting" }
+      },
+      {
+        key: "blocked",
+        label: t("dev.quickViewBlocked"),
+        filters: { ...DEFAULT_FILTERS, ticketStatus: "blocked" }
+      }
+    ],
+    [t]
+  );
+
   const matchProjectFilter = useCallback((ticket, filterValue) => {
     if (!filterValue) return true;
     if (filterValue === "__none__") {
@@ -404,6 +448,72 @@ export default function DevTodoPage() {
     }
     return ticket?.project_id === filterValue;
   }, []);
+
+  useEffect(() => {
+    saveSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS, {
+      activeFilters: filters,
+      views: savedViews
+    });
+  }, [filters, savedViews]);
+
+  function updateFilters(patch) {
+    setSelectedSavedViewId("");
+    setFilters((current) => normalizeFilters({ ...current, ...patch }, DEFAULT_FILTERS));
+  }
+
+  function applyFilters(nextFilters, nextViewId = "") {
+    setSelectedSavedViewId(nextViewId);
+    setFilters(normalizeFilters(nextFilters, DEFAULT_FILTERS));
+  }
+
+  function handleApplyQuickView(quickView) {
+    setViewName("");
+    applyFilters(quickView.filters);
+  }
+
+  function handleResetFilters() {
+    setViewName("");
+    applyFilters(DEFAULT_FILTERS);
+  }
+
+  function handleSelectSavedView(nextViewId) {
+    setSelectedSavedViewId(nextViewId);
+    const nextView = savedViews.find((view) => view.id === nextViewId);
+    if (!nextView) return;
+    setViewName(nextView.name);
+    applyFilters(nextView.filters, nextView.id);
+  }
+
+  function handleSaveView() {
+    const normalizedName = viewName.trim();
+    if (!normalizedName) return;
+
+    if (selectedSavedViewId) {
+      setSavedViews((current) =>
+        current.map((view) =>
+          view.id === selectedSavedViewId
+            ? {
+                ...view,
+                name: normalizedName,
+                filters: normalizeFilters(filters, DEFAULT_FILTERS)
+              }
+            : view
+        )
+      );
+      return;
+    }
+
+    const nextView = createSavedView(normalizedName, filters, DEFAULT_FILTERS);
+    setSelectedSavedViewId(nextView.id);
+    setSavedViews((current) => [...current, nextView]);
+  }
+
+  function handleDeleteView() {
+    if (!selectedSavedViewId) return;
+    setSavedViews((current) => current.filter((view) => view.id !== selectedSavedViewId));
+    setSelectedSavedViewId("");
+    setViewName("");
+  }
 
   async function persistOrder(nextTasks) {
     if (!Array.isArray(nextTasks) || nextTasks.length === 0) {
@@ -418,23 +528,25 @@ export default function DevTodoPage() {
 
   const visibleActiveTasks = useMemo(() => {
     return activeTasks.filter((task) => {
-      if (priorityFilter && task.priority !== priorityFilter) return false;
-      if (statusFilter && task.status !== statusFilter) return false;
+      if (filters.priority && task.priority !== filters.priority) return false;
+      if (filters.taskStatus && task.status !== filters.taskStatus) return false;
       const taskTicket = task.ticket_id ? ticketsMap[task.ticket_id] : null;
-      if (!matchProjectFilter(taskTicket, activeProjectFilter)) return false;
+      if (filters.ticketStatus && taskTicket?.status !== filters.ticketStatus) return false;
+      if (!matchProjectFilter(taskTicket, filters.activeProjectId)) return false;
       return true;
     });
-  }, [activeProjectFilter, activeTasks, matchProjectFilter, priorityFilter, statusFilter, ticketsMap]);
+  }, [activeTasks, filters, matchProjectFilter, ticketsMap]);
 
   const visibleDoneTasks = useMemo(() => {
     return doneTasks.filter((task) => {
       const taskTicket = task.ticket_id ? ticketsMap[task.ticket_id] : null;
-      return matchProjectFilter(taskTicket, activeProjectFilter);
+      if (filters.ticketStatus && taskTicket?.status !== filters.ticketStatus) return false;
+      return matchProjectFilter(taskTicket, filters.activeProjectId);
     });
-  }, [activeProjectFilter, doneTasks, matchProjectFilter, ticketsMap]);
+  }, [doneTasks, filters, matchProjectFilter, ticketsMap]);
 
   const hasActiveFilters = Boolean(
-    statusFilter || priorityFilter || activeProjectFilter || queueProjectFilter
+    filters.taskStatus || filters.priority || filters.ticketStatus || filters.activeProjectId || filters.queueProjectId
   );
 
   const queuedTickets = useMemo(() => {
@@ -460,16 +572,17 @@ export default function DevTodoPage() {
 
   const visibleQueueTickets = useMemo(() => {
     return queuedTickets.filter((ticket) => {
-      if (priorityFilter && ticket.priority !== priorityFilter) return false;
-      if (statusFilter === "in_progress") return false;
-      if (!matchProjectFilter(ticket, queueProjectFilter)) return false;
+      if (filters.priority && ticket.priority !== filters.priority) return false;
+      if (filters.taskStatus === "in_progress") return false;
+      if (filters.ticketStatus && ticket.status !== filters.ticketStatus) return false;
+      if (!matchProjectFilter(ticket, filters.queueProjectId)) return false;
       return true;
     });
-  }, [matchProjectFilter, priorityFilter, queueProjectFilter, queuedTickets, statusFilter]);
+  }, [filters, matchProjectFilter, queuedTickets]);
 
   const visibleSubmittedTickets = useMemo(() => {
-    return submittedTickets.filter((ticket) => matchProjectFilter(ticket, queueProjectFilter));
-  }, [matchProjectFilter, queueProjectFilter, submittedTickets]);
+    return submittedTickets.filter((ticket) => matchProjectFilter(ticket, filters.queueProjectId));
+  }, [filters.queueProjectId, matchProjectFilter, submittedTickets]);
 
   const summary = useMemo(() => {
     const sourceTasks = hasActiveFilters ? visibleActiveTasks : activeTasks;
@@ -532,7 +645,7 @@ export default function DevTodoPage() {
     };
   }, [activeTasks, hasActiveFilters, queuedTickets, ticketsMap, user?.id, visibleActiveTasks, visibleQueueTickets]);
 
-  const canReorder = !priorityFilter && !statusFilter;
+  const canReorder = !filters.priority && !filters.taskStatus && !filters.ticketStatus && !filters.activeProjectId;
   const allTasks = useMemo(() => [...activeTasks, ...doneTasks], [activeTasks, doneTasks]);
   const previewTask = useMemo(
     () => allTasks.find((task) => task.id === previewTaskId) || null,
@@ -1314,12 +1427,88 @@ export default function DevTodoPage() {
       <section className="todo-main-grid">
         <article className="card">
           <h2 className="card-title">{t("dev.active")}</h2>
+          <div className="saved-views-bar">
+            <div className="saved-views-header">
+              <span className="form-label">{t("tickets.quickFilters")}</span>
+              <span className="form-hint">{t("tickets.savedViewsHint")}</span>
+            </div>
+            <div className="saved-views-chips">
+              {quickViews.map((quickView) => (
+                <button
+                  key={quickView.key}
+                  type="button"
+                  className={
+                    areFiltersEqual(filters, quickView.filters, DEFAULT_FILTERS)
+                      ? "btn btn-accent"
+                      : "btn btn-secondary"
+                  }
+                  onClick={() => handleApplyQuickView(quickView)}
+                >
+                  {quickView.label}
+                </button>
+              ))}
+              <button type="button" className="btn btn-secondary" onClick={handleResetFilters}>
+                <RotateCcw size={14} />
+                <span>{t("tickets.resetFilters")}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="filters-grid todo-saved-views-grid">
+            <label className="form-group">
+              <span className="form-label">{t("tickets.savedViews")}</span>
+              <select
+                className="form-select"
+                value={selectedSavedViewId}
+                onChange={(event) => handleSelectSavedView(event.target.value)}
+              >
+                <option value="">{t("tickets.noSavedViews")}</option>
+                {savedViews.map((view) => (
+                  <option key={view.id} value={view.id}>
+                    {view.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="form-group">
+              <span className="form-label">{t("tickets.savedViewName")}</span>
+              <input
+                className="form-input"
+                type="text"
+                value={viewName}
+                placeholder={t("tickets.savedViewNamePlaceholder")}
+                onChange={(event) => setViewName(event.target.value)}
+              />
+            </label>
+
+            <div className="form-group saved-view-actions">
+              <span className="form-label">{t("tickets.applySavedView")}</span>
+              <div className="row-actions">
+                <button type="button" className="btn btn-accent" onClick={handleSaveView} disabled={!viewName.trim()}>
+                  <BookmarkPlus size={14} />
+                  <span>{selectedSavedViewId ? t("app.save") : t("tickets.saveView")}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleDeleteView}
+                  disabled={!selectedSavedViewId}
+                >
+                  <Trash2 size={14} />
+                  <span>{t("tickets.deleteView")}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="todo-toolbar">
             <div className="todo-toolbar-left">
               <select
                 className="form-select"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                aria-label={t("tickets.status")}
+                value={filters.taskStatus}
+                onChange={(event) => updateFilters({ taskStatus: event.target.value })}
               >
                 <option value="">{t("tickets.status")}</option>
                 <option value="todo">{t("dev.taskTodo")}</option>
@@ -1327,8 +1516,9 @@ export default function DevTodoPage() {
               </select>
               <select
                 className="form-select"
-                value={priorityFilter}
-                onChange={(event) => setPriorityFilter(event.target.value)}
+                aria-label={t("tickets.priority")}
+                value={filters.priority}
+                onChange={(event) => updateFilters({ priority: event.target.value })}
               >
                 <option value="">{t("tickets.priority")}</option>
                 {PRIORITY_OPTIONS.map((priority) => (
@@ -1340,8 +1530,22 @@ export default function DevTodoPage() {
 
               <select
                 className="form-select"
-                value={activeProjectFilter}
-                onChange={(event) => setActiveProjectFilter(event.target.value)}
+                aria-label={t("dev.ticketWorkflowFilter")}
+                value={filters.ticketStatus}
+                onChange={(event) => updateFilters({ ticketStatus: event.target.value })}
+              >
+                <option value="">{t("dev.ticketWorkflowFilter")}</option>
+                <option value="verified">{t("status.verified")}</option>
+                <option value="waiting">{t("status.waiting")}</option>
+                <option value="blocked">{t("status.blocked")}</option>
+                <option value="in_progress">{t("status.in_progress")}</option>
+              </select>
+
+              <select
+                className="form-select"
+                aria-label={t("dev.projectFilterTodo")}
+                value={filters.activeProjectId}
+                onChange={(event) => updateFilters({ activeProjectId: event.target.value })}
               >
                 <option value="">{t("dev.projectFilterTodo")}</option>
                 <option value="__none__">{t("tickets.projectNone")}</option>
@@ -1352,14 +1556,17 @@ export default function DevTodoPage() {
                 ))}
               </select>
 
-              {(statusFilter || priorityFilter || activeProjectFilter) ? (
+              {(filters.taskStatus || filters.priority || filters.ticketStatus || filters.activeProjectId) ? (
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => {
-                    setStatusFilter("");
-                    setPriorityFilter("");
-                    setActiveProjectFilter("");
+                    updateFilters({
+                      taskStatus: "",
+                      priority: "",
+                      ticketStatus: "",
+                      activeProjectId: ""
+                    });
                   }}
                 >
                   {t("dev.clearFilters")}
@@ -1461,8 +1668,9 @@ export default function DevTodoPage() {
               <div className="todo-queue-filters">
                 <select
                   className="form-select"
-                  value={queueProjectFilter}
-                  onChange={(event) => setQueueProjectFilter(event.target.value)}
+                  aria-label={t("dev.projectFilterQueue")}
+                  value={filters.queueProjectId}
+                  onChange={(event) => updateFilters({ queueProjectId: event.target.value })}
                 >
                   <option value="">{t("dev.projectFilterQueue")}</option>
                   <option value="__none__">{t("tickets.projectNone")}</option>
@@ -1472,11 +1680,11 @@ export default function DevTodoPage() {
                     </option>
                   ))}
                 </select>
-                {queueProjectFilter ? (
+                {filters.queueProjectId ? (
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    onClick={() => setQueueProjectFilter("")}
+                    onClick={() => updateFilters({ queueProjectId: "" })}
                   >
                     {t("dev.clearFilters")}
                   </button>

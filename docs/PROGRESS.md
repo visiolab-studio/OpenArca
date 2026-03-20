@@ -3256,3 +3256,51 @@
 
 ### Skills created/updated
 - `docs/skills/saved-views-and-filter-presets.md` (updated)
+
+## Step OPEN-O3-SavedViews-DevTodo-01
+- Status: Done (approved by user)
+- Description: Dodanie `saved views` do `DevTodo`, wraz z filtrem statusu ticketu dla listy aktywnej i kolejki zaakceptowanych.
+
+### Implementation Plan
+- Dodać lokalny stan zapisanych widoków dla `DevTodo`.
+- Objąć nim filtry aktywnych zadań i kolejki zaakceptowanych.
+- Dodać brakujący filtr statusu ticketu, aby obsłużyć presety `Waiting` i `Blocked`.
+- Przygotować szybkie presety deweloperskie bez ruszania sekcji `Do weryfikacji`.
+- Zachować obecny workflow zadań, claim/accept oraz modale.
+- Dodać test frontendu dla presetów i przywracania zapisanego widoku.
+- Zweryfikować krok pełnym pakietem lint/test/build/smoke.
+- Zaktualizować skill z nowym pokryciem widoków.
+
+### Files changed
+- `frontend/src/pages/DevTodo.jsx`
+- `frontend/src/pages/__tests__/DevTodo.savedViews.test.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `docs/skills/saved-views-and-filter-presets.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`158/158`)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (`23/23`)
+- `docker compose exec -T frontend npm run build` -> PASS
+- `curl -sI http://localhost:3330/` -> PASS (`200 OK`)
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- `DevTodo` zapamiętuje aktywne filtry po odświeżeniu strony.
+- Dodano szybkie presety: `Critical`, `In progress`, `Waiting`, `Blocked`.
+- Dodano zapis, wybór, usuwanie i reset zapisanych widoków bez backendu.
+- Dodano nowy filtr `statusu zgłoszenia`, działający dla aktywnych zadań i kolejki zaakceptowanych.
+- Sekcja `Do weryfikacji` pozostaje poza zakresem filtrów, zgodnie z dotychczasowym flow produktu.
+- Reorder aktywnych zadań jest blokowany, gdy aktywna lista jest przefiltrowana, aby nie zapisywać kolejności dla podzbioru.
+- Toolbar filtry w `DevTodo` dostały etykiety dostępności (`aria-label`).
+
+### Skills created/updated
+- `docs/skills/saved-views-and-filter-presets.md` (updated)

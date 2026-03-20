@@ -73,6 +73,8 @@ Preset `This week` w Kanban może działać na `planned_date`, nawet jeśli ten 
 ## Powiązane pliki w repo
 - `frontend/src/pages/MyTickets.jsx`
 - `frontend/src/pages/Board.jsx`
+- `frontend/src/pages/DevTodo.jsx`
 - `frontend/src/utils/savedViews.js`
 - `frontend/src/pages/__tests__/MyTickets.savedViews.test.jsx`
 - `frontend/src/pages/__tests__/Board.savedViews.test.jsx`
+- `frontend/src/pages/__tests__/DevTodo.savedViews.test.jsx`

@@ -13,6 +13,35 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.2.4-rc2] - 2026-03-21
+
+### Added
+- Saved views with local persistence for:
+  - `My Tickets`
+  - `Kanban / Board`
+  - `DevTodo`
+- Quick filter presets for daily execution flows:
+  - critical
+  - waiting
+  - blocked
+  - this week
+  - developer queue filters
+- Ticket templates foundation for Open Core:
+  - developer CRUD API for ticket templates
+  - admin management UI in `Settings -> Projects`
+  - intake prefill in `New Ticket` with `project -> global` fallback
+- Agent and contributor skills/docs for ticket template backend and intake prefill flows.
+
+### Changed
+- `New Ticket` now pre-fills title, description, category and reporter urgency from the selected template.
+- Template checklists are appended to ticket description as a structured text block.
+- Admin template modal now shows field-level validation instead of a generic validation failure.
+- Accessibility/testability improved for `New Ticket` via explicit labels on core inputs.
+
+### Notes
+- Release candidate for the current Open Core intake workflow scope.
+- Existing Open RC2 documents outside the tracked release scope were intentionally left untouched.
+
 ## [0.2.3-rc2] - 2026-02-24
 
 ### Added

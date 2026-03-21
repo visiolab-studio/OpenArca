@@ -209,6 +209,11 @@
     "step2": "Step 2: Details",
     "step3": "Step 3: Extra",
     "step4": "Step 4: Preview",
+    "templateLabel": "Ticket template",
+    "templatePlaceholder": "No template",
+    "templateHint": "Selecting a template fills title, description, category and reporter urgency. Project templates are preferred, with global fallback.",
+    "templateApplyNotice": "This preset updated the core fields. Add category-specific details in the next steps before sending the ticket.",
+    "templateChecklistHeading": "Checklist",
     "businessGoal": "Business goal",
     "questionContext": "Question context",
     "confirm": "I confirm the ticket contains complete information"
@@ -319,6 +324,14 @@
     "templateChecklist": "Checklist",
     "templateChecklistHint": "One checklist item per line.",
     "noTicketTemplates": "No ticket templates yet.",
+    "templateValidation": {
+      "name": "Name must have 2 to 120 characters.",
+      "title": "Template title must have 5 to 160 characters.",
+      "description": "Template description must have 20 to 4000 characters.",
+      "checklist": "Checklist contains invalid items.",
+      "checklistCount": "Checklist can contain up to 12 items.",
+      "checklistItem": "Each checklist item must have at most 200 characters."
+    },
     "projects": "Projects",
     "users": "Users",
     "name": "Name",

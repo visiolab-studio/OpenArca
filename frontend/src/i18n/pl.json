@@ -209,6 +209,11 @@
     "step2": "Krok 2: Opis",
     "step3": "Krok 3: Dodatkowe",
     "step4": "Krok 4: Podgląd",
+    "templateLabel": "Szablon zgłoszenia",
+    "templatePlaceholder": "Bez szablonu",
+    "templateHint": "Wybór szablonu uzupełnia tytuł, opis, kategorię i ważność zgłaszającego. Najpierw pokazywane są szablony projektu, z fallbackiem globalnym.",
+    "templateApplyNotice": "Ten preset uzupełnił pola bazowe. W kolejnych krokach dodaj jeszcze szczegóły specyficzne dla wybranej kategorii.",
+    "templateChecklistHeading": "Checklista",
     "businessGoal": "Cel biznesowy",
     "questionContext": "Kontekst pytania",
     "confirm": "Potwierdzam kompletność danych"
@@ -319,6 +324,14 @@
     "templateChecklist": "Checklista",
     "templateChecklistHint": "Jeden element checklisty w jednej linii.",
     "noTicketTemplates": "Brak szablonów zgłoszeń.",
+    "templateValidation": {
+      "name": "Nazwa musi mieć od 2 do 120 znaków.",
+      "title": "Tytuł szablonu musi mieć od 5 do 160 znaków.",
+      "description": "Opis szablonu musi mieć od 20 do 4000 znaków.",
+      "checklist": "Checklista zawiera nieprawidłowe elementy.",
+      "checklistCount": "Checklista może zawierać maksymalnie 12 elementów.",
+      "checklistItem": "Każdy element checklisty może mieć maksymalnie 200 znaków."
+    },
     "projects": "Projekty",
     "users": "Użytkownicy",
     "name": "Imię",

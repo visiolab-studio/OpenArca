@@ -39,6 +39,17 @@ function parseError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
 }
 
+function parseValidationDetails(error) {
+  const details = error?.response?.data?.details;
+  if (!Array.isArray(details)) return {};
+
+  return details.reduce((acc, item) => {
+    if (!item?.path) return acc;
+    acc[item.path] = item.message || "invalid";
+    return acc;
+  }, {});
+}
+
 function toCommaList(values) {
   if (!Array.isArray(values)) return "";
   return values.join(", ");
@@ -84,6 +95,34 @@ function toTemplateDraft(template) {
   };
 }
 
+function validateTemplateDraft(draft) {
+  const errors = {};
+  const checklistItems = checklistTextToItems(draft?.checklist_text);
+
+  const nameLength = String(draft?.name || "").trim().length;
+  if (nameLength < 2 || nameLength > 120) {
+    errors.name = "admin.templateValidation.name";
+  }
+
+  const titleLength = String(draft?.title_template || "").trim().length;
+  if (titleLength < 5 || titleLength > 160) {
+    errors.title_template = "admin.templateValidation.title";
+  }
+
+  const descriptionLength = String(draft?.description_template || "").trim().length;
+  if (descriptionLength < 20 || descriptionLength > 4000) {
+    errors.description_template = "admin.templateValidation.description";
+  }
+
+  if (checklistItems.length > 12) {
+    errors.checklist_text = "admin.templateValidation.checklistCount";
+  } else if (checklistItems.some((item) => item.length > 200)) {
+    errors.checklist_text = "admin.templateValidation.checklistItem";
+  }
+
+  return errors;
+}
+
 export default function AdminPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("app");
@@ -109,6 +148,7 @@ export default function AdminPage() {
   const [templateModalId, setTemplateModalId] = useState("");
   const [templateModalDraft, setTemplateModalDraft] = useState(null);
   const [templateModalBusy, setTemplateModalBusy] = useState(false);
+  const [templateFormErrors, setTemplateFormErrors] = useState({});
 
   const [users, setUsers] = useState([]);
   const [userDrafts, setUserDrafts] = useState({});
@@ -471,17 +511,30 @@ export default function AdminPage() {
   function openTemplateCreate() {
     setTemplateModalId("__new__");
     setTemplateModalDraft({ ...EMPTY_TEMPLATE_DRAFT });
+    setTemplateFormErrors({});
   }
 
   function openTemplateSettings(template) {
     setTemplateModalId(template.id);
     setTemplateModalDraft(toTemplateDraft(template));
+    setTemplateFormErrors({});
   }
 
   function closeTemplateSettings(force = false) {
     if (templateModalBusy && !force) return;
     setTemplateModalId("");
     setTemplateModalDraft(null);
+    setTemplateFormErrors({});
+  }
+
+  function updateTemplateField(field, value) {
+    setTemplateModalDraft((current) => ({ ...current, [field]: value }));
+    setTemplateFormErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
   }
 
   async function handleSaveTemplate() {
@@ -489,6 +542,13 @@ export default function AdminPage() {
 
     setError("");
     setNotice("");
+    const localValidationErrors = validateTemplateDraft(templateModalDraft);
+    setTemplateFormErrors(localValidationErrors);
+
+    if (Object.keys(localValidationErrors).length > 0) {
+      setError("validation_error");
+      return;
+    }
 
     const payload = {
       name: templateModalDraft.name.trim(),
@@ -516,6 +576,19 @@ export default function AdminPage() {
       setNotice("saved");
       closeTemplateSettings(true);
     } catch (templateError) {
+      const validationDetails = parseValidationDetails(templateError);
+      if (Object.keys(validationDetails).length > 0) {
+        const mappedErrors = {};
+        if (validationDetails.name) mappedErrors.name = "admin.templateValidation.name";
+        if (validationDetails.title_template) mappedErrors.title_template = "admin.templateValidation.title";
+        if (validationDetails.description_template) {
+          mappedErrors.description_template = "admin.templateValidation.description";
+        }
+        if (validationDetails.checklist_items) {
+          mappedErrors.checklist_text = "admin.templateValidation.checklist";
+        }
+        setTemplateFormErrors(mappedErrors);
+      }
       setError(parseError(templateError));
     } finally {
       setTemplateModalBusy(false);
@@ -1111,13 +1184,14 @@ export default function AdminPage() {
               <label className="form-group">
                 <span className="form-label">{t("admin.name")}</span>
                 <input
-                  className="form-input"
+                  className={templateFormErrors.name ? "form-input error" : "form-input"}
                   type="text"
                   value={templateModalDraft.name}
-                  onChange={(event) =>
-                    setTemplateModalDraft((current) => ({ ...current, name: event.target.value }))
-                  }
+                  onChange={(event) => updateTemplateField("name", event.target.value)}
                 />
+                {templateFormErrors.name ? (
+                  <small className="form-error-msg">{t(templateFormErrors.name)}</small>
+                ) : null}
               </label>
 
               <label className="form-group">
@@ -1125,9 +1199,7 @@ export default function AdminPage() {
                 <select
                   className="form-select"
                   value={templateModalDraft.project_id}
-                  onChange={(event) =>
-                    setTemplateModalDraft((current) => ({ ...current, project_id: event.target.value }))
-                  }
+                  onChange={(event) => updateTemplateField("project_id", event.target.value)}
                 >
                   <option value="">{t("admin.templateGlobal")}</option>
                   {projects.map((project) => (
@@ -1144,9 +1216,7 @@ export default function AdminPage() {
                   <select
                     className="form-select"
                     value={templateModalDraft.category}
-                    onChange={(event) =>
-                      setTemplateModalDraft((current) => ({ ...current, category: event.target.value }))
-                    }
+                    onChange={(event) => updateTemplateField("category", event.target.value)}
                   >
                     {CATEGORY_OPTIONS.map((category) => (
                       <option key={category} value={category}>
@@ -1161,9 +1231,7 @@ export default function AdminPage() {
                   <select
                     className="form-select"
                     value={templateModalDraft.urgency_reporter}
-                    onChange={(event) =>
-                      setTemplateModalDraft((current) => ({ ...current, urgency_reporter: event.target.value }))
-                    }
+                    onChange={(event) => updateTemplateField("urgency_reporter", event.target.value)}
                   >
                     {PRIORITY_OPTIONS.map((priority) => (
                       <option key={priority} value={priority}>
@@ -1177,9 +1245,7 @@ export default function AdminPage() {
                   <input
                     type="checkbox"
                     checked={templateModalDraft.is_active}
-                    onChange={(event) =>
-                      setTemplateModalDraft((current) => ({ ...current, is_active: event.target.checked }))
-                    }
+                    onChange={(event) => updateTemplateField("is_active", event.target.checked)}
                   />
                   <span>{t("admin.templateActive")}</span>
                 </label>
@@ -1188,38 +1254,41 @@ export default function AdminPage() {
               <label className="form-group">
                 <span className="form-label">{t("admin.templateTitle")}</span>
                 <input
-                  className="form-input"
+                  className={templateFormErrors.title_template ? "form-input error" : "form-input"}
                   type="text"
                   value={templateModalDraft.title_template}
-                  onChange={(event) =>
-                    setTemplateModalDraft((current) => ({ ...current, title_template: event.target.value }))
-                  }
+                  onChange={(event) => updateTemplateField("title_template", event.target.value)}
                 />
+                {templateFormErrors.title_template ? (
+                  <small className="form-error-msg">{t(templateFormErrors.title_template)}</small>
+                ) : null}
               </label>
 
               <label className="form-group">
                 <span className="form-label">{t("admin.templateDescription")}</span>
                 <textarea
-                  className="form-textarea"
+                  className={templateFormErrors.description_template ? "form-textarea error" : "form-textarea"}
                   rows={5}
                   value={templateModalDraft.description_template}
-                  onChange={(event) =>
-                    setTemplateModalDraft((current) => ({ ...current, description_template: event.target.value }))
-                  }
+                  onChange={(event) => updateTemplateField("description_template", event.target.value)}
                 />
+                {templateFormErrors.description_template ? (
+                  <small className="form-error-msg">{t(templateFormErrors.description_template)}</small>
+                ) : null}
               </label>
 
               <label className="form-group">
                 <span className="form-label">{t("admin.templateChecklist")}</span>
                 <textarea
-                  className="form-textarea"
+                  className={templateFormErrors.checklist_text ? "form-textarea error" : "form-textarea"}
                   rows={5}
                   placeholder={t("admin.templateChecklistHint")}
                   value={templateModalDraft.checklist_text}
-                  onChange={(event) =>
-                    setTemplateModalDraft((current) => ({ ...current, checklist_text: event.target.value }))
-                  }
+                  onChange={(event) => updateTemplateField("checklist_text", event.target.value)}
                 />
+                {templateFormErrors.checklist_text ? (
+                  <small className="form-error-msg">{t(templateFormErrors.checklist_text)}</small>
+                ) : null}
               </label>
             </div>
 

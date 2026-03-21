@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { createTicket } from "../api/tickets";
 import { getProjects } from "../api/projects";
+import { getTicketTemplates } from "../api/ticketTemplates";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
 
 const steps = [1, 2, 3, 4];
@@ -24,6 +25,22 @@ function charCountClass(current, min) {
   if (current <= 0) return "form-char-count";
   if (current < min) return "form-char-count warning";
   return "form-char-count";
+}
+
+function buildTemplateDescription(template, t) {
+  const baseDescription = String(template?.description_template || "").trim();
+  const checklistItems = Array.isArray(template?.checklist_items) ? template.checklist_items : [];
+
+  if (checklistItems.length === 0) {
+    return baseDescription;
+  }
+
+  const checklistBlock = [
+    t("newTicket.templateChecklistHeading"),
+    ...checklistItems.map((item) => `- ${item}`)
+  ].join("\n");
+
+  return [baseDescription, checklistBlock].filter(Boolean).join("\n\n");
 }
 
 export function validateNewTicketForm(form) {
@@ -71,10 +88,12 @@ export default function NewTicketPage() {
   const { t } = useTranslation();
 
   const [projects, setProjects] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
   const [confirmed, setConfirmed] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -110,10 +129,66 @@ export default function NewTicketPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadTemplates() {
+      try {
+        const rows = await getTicketTemplates(
+          form.project_id ? { projectId: form.project_id } : undefined
+        );
+        const visibleRows = form.project_id
+          ? rows
+          : rows.filter((template) => !template.project_id);
+
+        if (!active) return;
+
+        setTemplates(visibleRows);
+        setSelectedTemplateId((current) =>
+          visibleRows.some((template) => template.id === current) ? current : ""
+        );
+      } catch (_error) {
+        if (!active) return;
+        setTemplates([]);
+        setSelectedTemplateId("");
+      }
+    }
+
+    loadTemplates();
+    return () => {
+      active = false;
+    };
+  }, [form.project_id]);
+
   const errors = useMemo(() => validateNewTicketForm(form), [form]);
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.id === selectedTemplateId) || null,
+    [selectedTemplateId, templates]
+  );
 
   function updateField(name, value) {
     setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function handleTemplateChange(templateId) {
+    setSelectedTemplateId(templateId);
+
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) return;
+
+    setForm((current) => ({
+      ...current,
+      category: template.category || current.category,
+      urgency_reporter: template.urgency_reporter || current.urgency_reporter,
+      title: template.title_template || "",
+      description: buildTemplateDescription(template, t),
+      steps_to_reproduce: "",
+      expected_result: "",
+      actual_result: "",
+      environment: "",
+      business_goal: "",
+      question_context: ""
+    }));
   }
 
   function moveStep(direction) {
@@ -244,6 +319,37 @@ export default function NewTicketPage() {
               </select>
             </label>
 
+            <label className="form-group">
+              <span className="form-label">{t("newTicket.templateLabel")}</span>
+              <select
+                className="form-select"
+                aria-label={t("newTicket.templateLabel")}
+                value={selectedTemplateId}
+                onChange={(event) => handleTemplateChange(event.target.value)}
+              >
+                <option value="">{t("newTicket.templatePlaceholder")}</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                    {template.project_name ? ` · ${template.project_name}` : ` · ${t("admin.templateGlobal")}`}
+                  </option>
+                ))}
+              </select>
+              <small className="form-hint">{t("newTicket.templateHint")}</small>
+            </label>
+
+            {selectedTemplate ? (
+              <div className="form-instruction-box">
+                <div className="form-instruction-box-title">{selectedTemplate.name}</div>
+                <p>
+                  {selectedTemplate.project_name || t("admin.templateGlobal")} ·{" "}
+                  {t(`category.${selectedTemplate.category}`)} ·{" "}
+                  {t(`priority.${selectedTemplate.urgency_reporter}`)}
+                </p>
+                <p>{t("newTicket.templateApplyNotice")}</p>
+              </div>
+            ) : null}
+
             <div>
               <p className="form-label">{t("tickets.category")}</p>
               <div className="category-selector">
@@ -273,6 +379,7 @@ export default function NewTicketPage() {
               <input
                 type="text"
                 className={errors.title ? "form-input error" : "form-input"}
+                aria-label={t("tickets.titleField")}
                 value={form.title}
                 onChange={(event) => updateField("title", event.target.value)}
                 maxLength={300}
@@ -308,6 +415,7 @@ export default function NewTicketPage() {
               <textarea
                 rows={6}
                 className={errors.description ? "form-textarea error" : "form-textarea"}
+                aria-label={t("tickets.description")}
                 value={form.description}
                 onChange={(event) => updateField("description", event.target.value)}
                 required
@@ -412,6 +520,7 @@ export default function NewTicketPage() {
               <span className="form-label">{t("tickets.urgency")}</span>
               <select
                 className="form-select"
+                aria-label={t("tickets.urgency")}
                 value={form.urgency_reporter}
                 onChange={(event) => updateField("urgency_reporter", event.target.value)}
               >

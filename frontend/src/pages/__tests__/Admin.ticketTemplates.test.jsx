@@ -142,4 +142,28 @@ describe("Admin ticket templates", () => {
       });
     });
   });
+
+  it("shows field validation and blocks submit when template description is too short", async () => {
+    render(<AdminPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "admin.tabProjects" }));
+    fireEvent.click(screen.getByRole("button", { name: "admin.newTicketTemplate" }));
+
+    fireEvent.change(screen.getByLabelText("admin.name"), {
+      target: { value: "Broken template" }
+    });
+    fireEvent.change(screen.getByLabelText("admin.templateTitle"), {
+      target: { value: "Short title" }
+    });
+    fireEvent.change(screen.getByLabelText("admin.templateDescription"), {
+      target: { value: "Too short" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "app.save" }));
+
+    expect(TicketTemplatesApi.createTicketTemplate).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("admin.templateValidation.description")
+    ).toBeInTheDocument();
+  });
 });

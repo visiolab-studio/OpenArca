@@ -3406,3 +3406,55 @@
 
 ### Skills created/updated
 - `docs/skills/ticket-templates-backend.md` (referenced, no change)
+
+## Step OPEN-O4C-TicketTemplatesIntake-01
+- Status: Done (approved by user)
+- Description: Podłączenie aktywnych `ticket templates` do formularza `New Ticket`, z fallbackiem `project -> global`, prefillem pól bazowych i checklistą w opisie.
+
+### Implementation Plan
+- Przejrzeć formularz `New Ticket` i osadzić selector templatek w kroku podstawowym.
+- Pobierać aktywne template z fallbackiem projektowym opartym o backend O4A.
+- Dla braku projektu pokazywać wyłącznie template globalne.
+- Po wyborze template uzupełniać `title`, `description`, `category` i `urgency_reporter`.
+- Checklistę templateki dopisywać do `description` jako blok tekstu.
+- Czyścić pola specyficzne dla kategorii, których template nie uzupełnia.
+- Dodać test frontendu dla fallbacku i prefilla.
+- Zweryfikować krok pełnym pakietem lint/test/build/smoke.
+
+### Files changed
+- `frontend/src/pages/Admin.jsx`
+- `frontend/src/pages/__tests__/Admin.ticketTemplates.test.jsx`
+- `frontend/src/pages/NewTicket.jsx`
+- `frontend/src/pages/__tests__/NewTicket.templates.test.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `docs/skills/ticket-templates-intake-prefill.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`161/161`)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (`26/26`)
+- `docker compose exec -T frontend npm run build` -> PASS
+- `curl -sI http://localhost:3330/` -> PASS (`200 OK`)
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Formularz `New Ticket` pokazuje selector `Szablon zgłoszenia / Ticket template`.
+- Bez wybranego projektu widoczne są tylko template globalne.
+- Po wyborze projektu formularz pobiera template projektowe z fallbackiem globalnym.
+- Wybór template uzupełnia pola bazowe: tytuł, opis, kategorię i ważność zgłaszającego.
+- Checklista jest dopisywana do opisu jako czytelny blok tekstu.
+- Pola specyficzne dla kategorii są resetowane przy zmianie template, żeby nie zostawiać ukrytych, niespójnych wartości.
+- Dodano jawne `aria-label` dla kluczowych pól formularza (`template`, `title`, `description`, `urgency`), co poprawia dostępność i testowalność.
+- Panel admina templatek dostał lokalną walidację i błędy per pole, dzięki czemu zapis nie kończy się już ślepym komunikatem `validation_error`.
+
+### Skills created/updated
+- `docs/skills/ticket-templates-intake-prefill.md` (new)

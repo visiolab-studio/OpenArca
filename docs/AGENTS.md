@@ -74,3 +74,4 @@ Szczegółowa checklista: `docs/skills/e2e-browser-baseline.md`.
 - `docs/skills/project-badges-and-icons.md`
 - `docs/skills/saved-views-and-filter-presets.md`
 - `docs/skills/ticket-templates-backend.md`
+- `docs/skills/ticket-templates-intake-prefill.md`

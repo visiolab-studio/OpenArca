@@ -3,10 +3,16 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import ProtectedRoute from "../ProtectedRoute";
 import DeveloperRoute from "../DeveloperRoute";
+import FeatureRoute from "../FeatureRoute";
 import * as AuthContext from "../../contexts/AuthContext";
+import * as CapabilitiesContext from "../../contexts/CapabilitiesContext";
 
 vi.mock("../../contexts/AuthContext", () => ({
   useAuth: vi.fn()
+}));
+
+vi.mock("../../contexts/CapabilitiesContext", () => ({
+  useCapabilities: vi.fn()
 }));
 
 vi.mock("../LoadingScreen", () => ({
@@ -39,9 +45,26 @@ function renderDeveloperRoute() {
   );
 }
 
+function renderFeatureRoute() {
+  return render(
+    <MemoryRouter initialEntries={["/support-threads"]}>
+      <Routes>
+        <Route element={<FeatureRoute featureKey="enterprise_support_threads" />}>
+          <Route path="/support-threads" element={<div>support-threads-page</div>} />
+        </Route>
+        <Route path="/" element={<div>dashboard-home</div>} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 describe("route guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    CapabilitiesContext.useCapabilities.mockReturnValue({
+      ready: true,
+      hasFeature: () => false
+    });
   });
 
   it("shows loading state before auth bootstrap", () => {
@@ -84,5 +107,23 @@ describe("route guards", () => {
     renderDeveloperRoute();
 
     expect(screen.getByText("developer-board")).toBeInTheDocument();
+  });
+
+  it("redirects when feature flag is disabled", () => {
+    renderFeatureRoute();
+
+    expect(screen.getByText("dashboard-home")).toBeInTheDocument();
+    expect(screen.queryByText("support-threads-page")).not.toBeInTheDocument();
+  });
+
+  it("allows feature route when capability is enabled", () => {
+    CapabilitiesContext.useCapabilities.mockReturnValue({
+      ready: true,
+      hasFeature: (flag) => flag === "enterprise_support_threads"
+    });
+
+    renderFeatureRoute();
+
+    expect(screen.getByText("support-threads-page")).toBeInTheDocument();
   });
 });

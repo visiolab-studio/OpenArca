@@ -244,6 +244,76 @@
 ### Skills created/updated
 - `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md` (updated)
 
+## Step E-ST3A-SupportThreads-FrontendInbox-01
+- Status: Done (approved by user)
+- Enterprise commit: `e3fe275`
+- Description: Pierwszy frontend modułu `Support Threads`: publiczny extension point dla prywatnych ekranów Enterprise oraz read-only inbox developera w osobnym repo.
+
+### Implementation Plan
+- Dodać frontendowy stub i alias `virtual:enterprise-frontend` w OpenArca.
+- Dodać `FeatureRoute` i render prywatnych tras w `App.jsx`.
+- Rozszerzyć `AppShell` o sekcje menu Enterprise filtrowane po capability.
+- Zbudować w repo Enterprise pierwszy ekran `Support Threads Inbox` z podstawowymi filtrami i podsumowaniem.
+- Dodać testy publicznego routingu oraz test prywatnego widoku przez alias.
+- Udokumentować wzorzec frontendowych modułów Enterprise.
+- Uruchomić quality gates i live smoke `http://localhost:3330/support-threads`.
+
+### Files changed
+- `frontend/src/App.jsx`
+- `frontend/src/components/AppShell.jsx`
+- `frontend/src/components/FeatureRoute.jsx`
+- `frontend/src/components/__tests__/AppShell.test.jsx`
+- `frontend/src/components/__tests__/routes.test.jsx`
+- `frontend/src/pages/__tests__/SupportThreadsInbox.enterprise.test.jsx`
+- `frontend/src/enterprise/extensions.stub.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/vite.config.js`
+- `docker-compose.enterprise.override.yml`
+- `docs/skills/enterprise-frontend-modules.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/extensions/index.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/api.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/DetailPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/InboxPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/styles.css`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/AGENTS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-frontend.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (166/166)
+- `npm test` in `/Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (10/10)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (31/31)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- `curl -sI http://localhost:3330/` -> PASS (`200 OK`)
+- `curl -sI http://localhost:3330/support-threads` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- frontend smoke fallback:
+  - stack z override montuje prywatny frontend z `/opt/openarca-enterprise`
+  - build publicznego frontendu przeszedł z aktywnym modułem Enterprise
+  - inbox page render jest pokryty testem `SupportThreadsInbox.enterprise.test.jsx`
+
+### Result
+- OpenArca ma już frontendowy extension point dla prywatnych modułów Enterprise.
+- Sidebar potrafi renderować sekcje Enterprise tylko dla aktywnych capability.
+- Prywatny moduł `Support Threads` wnosi własne trasy `/support-threads` oraz `/support-threads/:id`.
+- Inbox pokazuje podsumowanie, filtrowanie `q/status/scope`, stany `loading/error/empty` i podstawowe metadata wątków.
+- Tytuł wątku prowadzi do read-only detailu z historią wiadomości i załącznikami.
+- Vite jest przygotowany na współdzielone zależności z prywatnego repo przez aliasy do publicznego `node_modules`.
+
+### Skills created/updated
+- `docs/skills/enterprise-frontend-modules.md` (created)
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-frontend.md` (created)
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

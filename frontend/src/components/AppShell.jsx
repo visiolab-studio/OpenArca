@@ -15,6 +15,7 @@ import {
   Ticket
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useCapabilities } from "../contexts/CapabilitiesContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import appLogo from "../assets/logo-openarca.png";
 import openArcaLogoGrey from "../assets/logo-openarca-grey.png";
@@ -23,6 +24,7 @@ import unitedStatesFlag from "../assets/united-states.png";
 import { API_BASE_URL } from "../api/client";
 import { getPublicSettings } from "../api/settings";
 import appPackage from "../../package.json";
+import { enterpriseNavSections } from "virtual:enterprise-frontend";
 
 const themeStorageKey = "taskflow-theme";
 
@@ -68,6 +70,7 @@ export default function AppShell() {
   const location = useLocation();
   const { t } = useTranslation();
   const { user, isDeveloper, logout, updateProfile } = useAuth();
+  const { hasFeature } = useCapabilities();
   const { language, setLanguage } = useLanguage();
 
   const [theme, setTheme] = useState(() => resolveInitialTheme());
@@ -104,9 +107,32 @@ export default function AppShell() {
     return isDeveloper ? [...baseItems, ...developerItems] : baseItems;
   }, [isDeveloper]);
 
+  const activeEnterpriseSections = useMemo(() => {
+    if (!isDeveloper) return [];
+
+    return (enterpriseNavSections || [])
+      .map((section) => ({
+        ...section,
+        items: (section.items || []).filter((item) => {
+          return !item.featureKey || hasFeature(item.featureKey);
+        })
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [hasFeature, isDeveloper]);
+
   const titleItems = useMemo(() => {
-    return [...navItems, { to: "/profile", labelKey: "nav.profile" }];
-  }, [navItems]);
+    return [
+      ...navItems,
+      ...activeEnterpriseSections.flatMap((section) =>
+        section.items.map((item) => ({
+          to: item.to,
+          labelKey: item.labelKey,
+          label: item.label
+        }))
+      ),
+      { to: "/profile", labelKey: "nav.profile" }
+    ];
+  }, [activeEnterpriseSections, navItems]);
 
   const currentItem = useMemo(() => {
     if (location.pathname === "/") {
@@ -205,6 +231,30 @@ export default function AppShell() {
                 );
               })}
             </div>
+
+            {activeEnterpriseSections.map((section) => (
+              <div className="sidebar-section" key={section.labelKey || section.label}>
+                <p className="sidebar-section-label">
+                  {section.labelKey ? t(section.labelKey) : section.label}
+                </p>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const label = item.labelKey ? t(item.labelKey) : item.label;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        isActive ? "sidebar-item active" : "sidebar-item"
+                      }
+                    >
+                      <Icon className="sidebar-item-icon" />
+                      <span>{label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))}
 
             <div className="sidebar-section">
               <p className="sidebar-section-label">{t("nav.admin")}</p>

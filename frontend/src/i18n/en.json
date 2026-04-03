@@ -19,6 +19,8 @@
     "overview": "Workload",
     "board": "Kanban",
     "todo": "TODO List",
+    "enterprise": "Enterprise",
+    "supportThreads": "Support Threads",
     "admin": "Settings"
   },
   "auth": {

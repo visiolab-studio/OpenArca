@@ -19,6 +19,8 @@
     "overview": "Obłożenie",
     "board": "Kanban",
     "todo": "Lista TODO",
+    "enterprise": "Enterprise",
+    "supportThreads": "Wątki supportowe",
     "admin": "Ustawienia"
   },
   "auth": {

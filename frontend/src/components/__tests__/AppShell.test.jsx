@@ -3,11 +3,16 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppShell from "../AppShell";
 import * as AuthContext from "../../contexts/AuthContext";
+import * as CapabilitiesContext from "../../contexts/CapabilitiesContext";
 import * as LanguageContext from "../../contexts/LanguageContext";
 import * as SettingsApi from "../../api/settings";
 
 vi.mock("../../contexts/AuthContext", () => ({
   useAuth: vi.fn()
+}));
+
+vi.mock("../../contexts/CapabilitiesContext", () => ({
+  useCapabilities: vi.fn()
 }));
 
 vi.mock("../../contexts/LanguageContext", () => ({
@@ -22,6 +27,23 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => key
   })
+}));
+
+vi.mock("virtual:enterprise-frontend", () => ({
+  enterpriseNavSections: [
+    {
+      labelKey: "nav.enterprise",
+      items: [
+        {
+          to: "/support-threads",
+          labelKey: "nav.supportThreads",
+          featureKey: "enterprise_support_threads",
+          icon: () => null
+        }
+      ]
+    }
+  ],
+  enterpriseRoutes: []
 }));
 
 function renderShell() {
@@ -44,6 +66,10 @@ describe("AppShell role-based navigation", () => {
       language: "pl",
       setLanguage: vi.fn()
     });
+    CapabilitiesContext.useCapabilities.mockReturnValue({
+      ready: true,
+      hasFeature: () => false
+    });
   });
 
   it("hides developer links for standard user", async () => {
@@ -62,6 +88,7 @@ describe("AppShell role-based navigation", () => {
     expect(screen.getAllByText("nav.dashboard").length).toBeGreaterThan(0);
     expect(screen.queryByText("nav.board")).not.toBeInTheDocument();
     expect(screen.queryByText("nav.todo")).not.toBeInTheDocument();
+    expect(screen.queryByText("nav.supportThreads")).not.toBeInTheDocument();
     expect(screen.queryByText("nav.admin")).not.toBeInTheDocument();
   });
 
@@ -72,6 +99,10 @@ describe("AppShell role-based navigation", () => {
       logout: vi.fn(),
       updateProfile: vi.fn()
     });
+    CapabilitiesContext.useCapabilities.mockReturnValue({
+      ready: true,
+      hasFeature: (flag) => flag === "enterprise_support_threads"
+    });
 
     renderShell();
     await waitFor(() => {
@@ -80,6 +111,7 @@ describe("AppShell role-based navigation", () => {
 
     expect(screen.getByText("nav.board")).toBeInTheDocument();
     expect(screen.getByText("nav.todo")).toBeInTheDocument();
+    expect(screen.getByText("nav.supportThreads")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "nav.admin" })).toBeInTheDocument();
   });
 });

@@ -5,3 +5,8 @@ services:
       - EXTENSIONS_ROUTES_FILE=/opt/openarca-enterprise/backend/extensions/routes.js
     volumes:
       - ../OpenArca-Enterprise:/opt/openarca-enterprise:ro
+  frontend:
+    environment:
+      - ENTERPRISE_FRONTEND_MODULE=/opt/openarca-enterprise/frontend/extensions/index.jsx
+    volumes:
+      - ../OpenArca-Enterprise:/opt/openarca-enterprise:ro

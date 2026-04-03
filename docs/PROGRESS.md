@@ -62,6 +62,64 @@
 ### Skills created/updated
 - `docs/skills/enterprise-route-modules.md` (created)
 
+## Step E-ST2A-SupportThreads-BackendFoundation-01
+- Status: Done (approved by user)
+- Description: Pierwszy realny backend modułu `Support Threads` w repo Enterprise: schema SQLite, serwis domenowy, endpointy list/detail/create/message/update oraz testy modułu.
+
+### Implementation Plan
+- Dodać minimalny pakiet Node w repo Enterprise pod testy modułu.
+- Zaimplementować schema `support_threads` i `support_thread_messages`.
+- Zbudować serwis domenowy: `listThreads`, `getThreadDetail`, `createThread`, `addMessage`, `updateThread`.
+- Wymusić ownership i RBAC: user tylko własne wątki, developer globalny inbox i status/przypisanie.
+- Dodać regułę reopen: nowa wiadomość usera otwiera zamknięty wątek.
+- Podpiąć endpointy modułu do `backend/extensions/routes.js`.
+- Dodać testy modułu w repo Enterprise oraz skill dla dalszych kroków.
+- Uruchomić quality gates OpenArca i smoke flow `Support Threads` przez stack Enterprise.
+
+### Files changed
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/package.json`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/package-lock.json`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/.gitignore`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/schema.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/service.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/routes.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.service.test.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/AGENTS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `npm test --prefix /Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (4/4)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (166/166)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (26/26)
+- `docker compose exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml restart backend` -> PASS
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- live smoke `Support Threads` inside backend container -> PASS
+  - user OTP login -> PASS
+  - developer OTP login -> PASS
+  - `POST /api/enterprise/support-threads` -> `201`
+  - `GET /api/enterprise/support-threads` -> `200`
+  - `PATCH /api/enterprise/support-threads/:id` -> `200`
+  - `POST /api/enterprise/support-threads/:id/messages` (developer) -> `201`
+  - `POST /api/enterprise/support-threads/:id/messages` (user reopen) -> `201`
+  - final status after user reply -> `open`
+
+### Result
+- Repo Enterprise ma własny backend foundation dla `Support Threads`.
+- Moduł tworzy własne tabele i działa niezależnie od pełnych ticketów.
+- User może utworzyć wątek, odczytać własny detail i dopisać wiadomość.
+- Developer ma inbox, może zmienić status oraz przypisanie.
+- Zamknięty wątek otwiera się ponownie po nowej wiadomości usera.
+
+### Skills created/updated
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md` (created)
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

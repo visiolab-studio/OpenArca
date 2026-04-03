@@ -365,6 +365,49 @@
 ### Skills created/updated
 - none
 
+## Step E-ST5B-SupportThreads-ConvertUI-01
+- Status: Done (approved by user)
+- Description: Frontend developera dla konwersji `Support Thread -> Ticket`: formularz eskalacji w detailu wątku, stan po sukcesie z linkiem do ticketu oraz blokada dalszych akcji na przekonwertowanym wątku.
+
+### Implementation Plan
+- Dodać klient API dla akcji `convertSupportThreadToTicket`.
+- Rozszerzyć detail developera o sekcję konwersji z formularzem brakujących pól ticketu.
+- Pokazywać po sukcesie link do nowego ticketu oraz status read-only dla wątku.
+- Zablokować reply i workflow edit po konwersji.
+- Zachować istniejące akcje developera bez regresji dla wątków nieprzekonwertowanych.
+- Dodać test frontendu dla submitu konwersji i stanu po sukcesie.
+- Uruchomić pełne quality gates OpenArca oraz smoke stacku Enterprise.
+
+### Files changed
+- `frontend/src/pages/__tests__/SupportThreadsInbox.enterprise.test.jsx`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/api.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/DetailPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/styles.css`
+
+### Tests run
+- `npm test --prefix /Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (`12/12`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`167/167`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`38/38`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Detail developera dla `Support Threads` ma nową sekcję `Konwertuj do zgłoszenia / Convert to ticket`.
+- Developer może uzupełnić brakujące pola ticketu: kategorię, priorytet, assignee, planowaną datę, estymację oraz notatkę wewnętrzną.
+- Po udanej konwersji detail przechodzi w stan read-only i pokazuje link do utworzonego ticketu.
+- Po konwersji nie są już renderowane formularze reply i workflow edit, co wizualnie domyka workflow eskalacji.
+- Test frontendowy sprawdza submit konwersji i oczekiwany stan po sukcesie.
+
+### Skills created/updated
+- none
+
 ## Step E-ST4-SupportThreads-UserFlow-01
 - Status: Done (approved by user)
 - Enterprise commit: `ea28fa1`

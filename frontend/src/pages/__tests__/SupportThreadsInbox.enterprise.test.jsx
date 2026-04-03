@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -309,28 +309,142 @@ describe("SupportThreadsInboxPage", () => {
 
     expect(await screen.findByText("Konwersacja")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Przypisany"), {
+    const workflowCard = screen.getByRole("heading", { name: "Workflow" }).closest(".card");
+    const replyCard = screen.getByRole("heading", { name: "Odpowiedź" }).closest(".card");
+    expect(workflowCard).not.toBeNull();
+    expect(replyCard).not.toBeNull();
+
+    fireEvent.change(within(workflowCard).getByLabelText("Przypisany"), {
       target: { value: "dev-2" }
     });
-    fireEvent.change(screen.getByLabelText("Status"), {
+    fireEvent.change(within(workflowCard).getByLabelText("Status"), {
       target: { value: "pending" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
+    fireEvent.click(within(workflowCard).getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() => {
       expect(screen.getByText("Zmiany zapisane.")).toBeInTheDocument();
       expect(screen.getByText(/liam\.chen@ecommerce-arca\.com/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Odpowiedź"), {
+    fireEvent.change(within(replyCard).getByLabelText("Odpowiedź"), {
       target: { value: "Use 1600x600 px for now." }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+    fireEvent.click(within(replyCard).getByRole("button", { name: "Wyślij odpowiedź" }));
 
     await waitFor(() => {
       expect(screen.getByText("Odpowiedź wysłana.")).toBeInTheDocument();
       expect(screen.getByText("Use 1600x600 px for now.")).toBeInTheDocument();
     });
+  });
+
+  it("converts support thread to ticket and locks detail actions", async () => {
+    global.fetch = vi.fn(async (input, init = {}) => {
+      const url = String(input);
+      const method = String(init.method || "GET").toUpperCase();
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({
+            id: "thread-1",
+            title: "Quick question about hero image size",
+            status: "open",
+            priority: "normal",
+            assignee_id: "dev-2",
+            converted_ticket_id: null,
+            project: { name: "Marketplace Core" },
+            requester: { email: "ava@ecommerce-arca.com" },
+            assignee: { email: "liam.chen@ecommerce-arca.com", name: "Liam Chen" },
+            created_at: "2026-04-03T09:00:00.000Z",
+            updated_at: "2026-04-03T10:00:00.000Z",
+            messages: [
+              {
+                id: "message-1",
+                content: "What exact size should we use?",
+                created_at: "2026-04-03T09:00:00.000Z",
+                author: { email: "ava@ecommerce-arca.com", role: "user" },
+                attachments: []
+              }
+            ]
+          })
+        };
+      }
+
+      if (url.endsWith("/api/users") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => [
+            { id: "dev-1", email: "emma.wright@ecommerce-arca.com", role: "developer", name: "Emma Wright" },
+            { id: "dev-2", email: "liam.chen@ecommerce-arca.com", role: "developer", name: "Liam Chen" }
+          ]
+        };
+      }
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1/convert") && method === "POST") {
+        return {
+          ok: true,
+          json: async () => ({
+            ticket: {
+              id: "ticket-99",
+              number: 99,
+              source_support_thread_id: "thread-1"
+            },
+            thread: {
+              id: "thread-1",
+              title: "Quick question about hero image size",
+              status: "closed",
+              priority: "normal",
+              assignee_id: "dev-2",
+              converted_ticket_id: "ticket-99",
+              project: { name: "Marketplace Core" },
+              requester: { email: "ava@ecommerce-arca.com" },
+              assignee: { email: "liam.chen@ecommerce-arca.com", name: "Liam Chen" },
+              created_at: "2026-04-03T09:00:00.000Z",
+              updated_at: "2026-04-03T10:30:00.000Z",
+              messages: [
+                {
+                  id: "message-1",
+                  content: "What exact size should we use?",
+                  created_at: "2026-04-03T09:00:00.000Z",
+                  author: { email: "ava@ecommerce-arca.com", role: "user" },
+                  attachments: []
+                }
+              ]
+            }
+          })
+        };
+      }
+
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/support-threads/thread-1"]}>
+        <Routes>
+          <Route path="/support-threads/:id" element={<SupportThreadDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Konwersacja")).toBeInTheDocument();
+
+    const convertCard = screen.getByRole("heading", { name: "Konwertuj do zgłoszenia" }).closest(".card");
+    expect(convertCard).not.toBeNull();
+
+    fireEvent.change(within(convertCard).getByLabelText("Kategoria"), {
+      target: { value: "question" }
+    });
+    fireEvent.click(within(convertCard).getByRole("button", { name: "Konwertuj do zgłoszenia" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Wątek supportowy został przekonwertowany do zgłoszenia.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Otwórz zgłoszenie" })).toHaveAttribute("href", "/ticket/ticket-99");
+      expect(screen.getAllByText(/Po konwersji ten wątek jest tylko do odczytu/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByRole("button", { name: "Wyślij odpowiedź" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Zapisz zmiany" })).not.toBeInTheDocument();
   });
 });
 

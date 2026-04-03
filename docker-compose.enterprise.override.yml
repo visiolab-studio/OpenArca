@@ -1,0 +1,7 @@
+services:
+  backend:
+    environment:
+      - EXTENSIONS_OVERRIDES_FILE=/opt/openarca-enterprise/backend/extensions/service-overrides.js
+      - EXTENSIONS_ROUTES_FILE=/opt/openarca-enterprise/backend/extensions/routes.js
+    volumes:
+      - ../OpenArca-Enterprise:/opt/openarca-enterprise:ro

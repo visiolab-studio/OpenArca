@@ -31,6 +31,7 @@ const KNOWN_FEATURE_FLAGS = [
   "core_board",
   "core_devtodo",
   "core_admin",
+  "enterprise_support_threads",
   "enterprise_automation",
   "enterprise_sso_google",
   "enterprise_sso_microsoft",

@@ -1,5 +1,67 @@
 # OpenArca — Progress Log
 
+## Step E-ST1-SupportThreads-EnterpriseBootstrap-01
+- Status: Done (approved by user)
+- Description: Fundament modułu Enterprise `Support Threads`: nowy capability contract, loader prywatnych tras oraz bootstrap pustego repo `OpenArca-Enterprise`.
+
+### Implementation Plan
+- Dodać capability `enterprise_support_threads` do backendu i frontendu OpenArca.
+- Dodać `EXTENSIONS_ROUTES_FILE` oraz loader prywatnych tras Enterprise.
+- Przekazać do route module bezpieczny kontekst (`express`, middleware, `db`, `getService`).
+- Dodać testy backendu dla loadera i endpointu Enterprise feature-gated.
+- Zaktualizować env examples i dokumentację agenta.
+- Przygotować minimalny skeleton `Support Threads` w prywatnym repo Enterprise.
+
+### Files changed
+- `backend/constants.js`
+- `backend/services/capabilities.js`
+- `backend/config.js`
+- `backend/app.js`
+- `backend/core/routes-extension-loader.js`
+- `.env.example`
+- `backend/.env.example`
+- `docker-compose.enterprise.override.yml`
+- `frontend/src/contexts/CapabilitiesContext.jsx`
+- `backend/tests/routes.extension-loader.unit.test.js`
+- `backend/tests/enterprise.support-threads.feature.integration.test.js`
+- `docs/skills/enterprise-route-modules.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/README.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/service-overrides.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/routes.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/support-threads.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (166/166)
+- `docker compose exec -T frontend npm test` -> PASS (26/26)
+- `docker compose exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o dużym chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS (`backend`, `frontend`, `mailpit`)
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `docker compose ... exec -T backend ls /opt/openarca-enterprise/backend/extensions` -> PASS
+- live OTP login + feature-gated endpoint check inside backend container -> PASS
+  - `POST /api/auth/request-otp` -> `200`
+  - `POST /api/auth/verify-otp` -> `200`
+  - `GET /api/enterprise/support-threads/health` -> `200`
+
+### Result
+- OpenArca ma nowy capability contract `enterprise_support_threads`.
+- Publiczny backend potrafi bezpiecznie montować prywatne trasy z osobnego repo przez `EXTENSIONS_ROUTES_FILE`.
+- Prywatne route module dostaje kontrolowany kontekst: `express`, `db`, `getService`, `authRequired`, `requireRole`, `requireFeature`.
+- Powstał pierwszy działający punkt wejścia modułu Enterprise `Support Threads`.
+- Puste repo `OpenArca-Enterprise` zostało zbootstrapowane minimalnym szkieletem pod dalsze etapy implementacji.
+
+### Skills created/updated
+- `docs/skills/enterprise-route-modules.md` (created)
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

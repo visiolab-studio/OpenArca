@@ -15,7 +15,11 @@ const ticketTemplateRoutes = require("./routes/ticketTemplates");
 const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
 const { authRequired } = require("./middleware/auth");
+const { requireRole } = require("./middleware/auth");
+const { requireFeature } = require("./middleware/features");
 const { notFound, errorHandler } = require("./middleware/error-handler");
+const { getService } = require("./core/extension-registry");
+const { registerRoutesExtensions } = require("./core/routes-extension-loader");
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -59,6 +63,19 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/ticket-templates", ticketTemplateRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/settings", settingsRoutes);
+
+registerRoutesExtensions(app, {
+  context: {
+    express,
+    db,
+    getService,
+    middlewares: {
+      authRequired,
+      requireRole,
+      requireFeature
+    }
+  }
+});
 
 app.get("/api/uploads/:filename", authRequired, (req, res) => {
   const filename = String(req.params.filename || "");

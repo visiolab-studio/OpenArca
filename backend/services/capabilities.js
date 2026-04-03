@@ -6,6 +6,7 @@ const OPEN_CORE_DEFAULTS = Object.freeze({
   core_board: true,
   core_devtodo: true,
   core_admin: true,
+  enterprise_support_threads: false,
   enterprise_automation: false,
   enterprise_sso_google: false,
   enterprise_sso_microsoft: false,

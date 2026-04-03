@@ -45,6 +45,10 @@ const EXTENSIONS_OVERRIDES_FILE = toAbsolutePath(
   ROOT_DIR,
   process.env.EXTENSIONS_OVERRIDES_FILE || path.join(EXTENSIONS_DIR, "service-overrides.js")
 );
+const EXTENSIONS_ROUTES_FILE = toAbsolutePath(
+  ROOT_DIR,
+  process.env.EXTENSIONS_ROUTES_FILE || path.join(EXTENSIONS_DIR, "routes.js")
+);
 
 module.exports = {
   port: Number(process.env.PORT || 4000),
@@ -57,6 +61,7 @@ module.exports = {
   sqlitePath: process.env.SQLITE_PATH || path.join(DATA_DIR, "data.sqlite"),
   extensionsDir: toAbsolutePath(ROOT_DIR, EXTENSIONS_DIR),
   extensionsOverridesFile: EXTENSIONS_OVERRIDES_FILE,
+  extensionsRoutesFile: EXTENSIONS_ROUTES_FILE,
   outboxWorkerEnabled: toBoolean(process.env.OUTBOX_WORKER_ENABLED, false),
   outboxWorkerPollMs: toPositiveInt(process.env.OUTBOX_WORKER_POLL_MS, 5000),
   outboxWorkerBatchSize: toPositiveInt(process.env.OUTBOX_WORKER_BATCH_SIZE, 20),

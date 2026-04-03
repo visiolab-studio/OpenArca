@@ -17,6 +17,8 @@ const settingsRoutes = require("./routes/settings");
 const { authRequired } = require("./middleware/auth");
 const { requireRole } = require("./middleware/auth");
 const { requireFeature } = require("./middleware/features");
+const { writeLimiter } = require("./middleware/rate-limiters");
+const { upload } = require("./middleware/uploads");
 const { notFound, errorHandler } = require("./middleware/error-handler");
 const { getService } = require("./core/extension-registry");
 const { registerRoutesExtensions } = require("./core/routes-extension-loader");
@@ -68,11 +70,14 @@ registerRoutesExtensions(app, {
   context: {
     express,
     db,
+    uploadsDir,
     getService,
     middlewares: {
       authRequired,
       requireRole,
-      requireFeature
+      requireFeature,
+      writeLimiter,
+      upload
     }
   }
 });

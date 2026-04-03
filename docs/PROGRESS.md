@@ -120,6 +120,63 @@
 ### Skills created/updated
 - `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md` (created)
 
+## Step E-ST2B1-SupportThreads-Attachments-01
+- Status: Done (approved by user)
+- Enterprise commit: `3bf6418`
+- Description: Dodanie załączników do `Support Threads` na poziomie wiadomości, z bezpiecznym pobieraniem plików i integracją z publicznym backendem OpenArca.
+
+### Implementation Plan
+- Przekazać do prywatnych route modules bezpieczny kontekst uploadów z OpenArca (`uploadsDir`, `writeLimiter`, `upload`).
+- Rozszerzyć schema Enterprise o tabelę `support_thread_attachments`.
+- Zapisać attachmenty przy tworzeniu wątku i przy odpowiedzi, zawsze powiązane z konkretną wiadomością.
+- Zwracać metadata attachmentów w detailu wątku i po create/reply.
+- Dodać endpoint pobrania attachmentu z ownership/RBAC.
+- Ograniczyć payload załączników limitem łącznego rozmiaru oraz walidacją nazw.
+- Dodać testy modułu Enterprise dla create/reply/download/oversize.
+- Uruchomić quality gates OpenArca i live smoke flow na stacku Enterprise.
+
+### Files changed
+- `backend/app.js`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/schema.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/service.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/routes.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.service.test.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md`
+
+### Tests run
+- `npm test --prefix /Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (6/6)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (166/166)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (26/26)
+- `docker compose exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- live smoke `Support Threads attachments` -> PASS
+  - user OTP login -> PASS
+  - developer OTP login -> PASS
+  - `POST /api/enterprise/support-threads` z multipart attachment -> `201`
+  - `GET /api/enterprise/support-threads?status=open` -> `200`
+  - `POST /api/enterprise/support-threads/:id/messages` z multipart attachment -> `201`
+  - `PATCH /api/enterprise/support-threads/:id` -> `200`
+  - `GET /api/enterprise/support-threads/:id` -> `200`
+  - `GET /api/enterprise/support-thread-attachments/:filename` dla attachmentu usera -> `200`
+  - `GET /api/enterprise/support-thread-attachments/:filename` dla attachmentu odpowiedzi developera -> `200`
+
+### Result
+- `Support Threads` obsługuje już załączniki przy tworzeniu wątku i przy odpowiedziach.
+- Attachmenty są przypięte do wiadomości, a nie tylko do całego wątku.
+- Requester i developer mogą pobrać pliki przez dedykowany endpoint Enterprise z ownership checkiem.
+- Publiczny backend OpenArca przekazuje do prywatnych route modules tylko potrzebny kontekst uploadów, bez wycieku szerszej logiki.
+- Limit łącznego rozmiaru attachmentów jest egzekwowany po stronie modułu.
+
+### Skills created/updated
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md` (updated)
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

@@ -24,7 +24,7 @@ import unitedStatesFlag from "../assets/united-states.png";
 import { API_BASE_URL } from "../api/client";
 import { getPublicSettings } from "../api/settings";
 import appPackage from "../../package.json";
-import { enterpriseNavSections } from "virtual:enterprise-frontend";
+import { enterpriseBaseItems, enterpriseNavSections } from "virtual:enterprise-frontend";
 
 const themeStorageKey = "taskflow-theme";
 
@@ -103,8 +103,19 @@ export default function AppShell() {
     };
   }, []);
 
-  const navItems = useMemo(() => {
-    return isDeveloper ? [...baseItems, ...developerItems] : baseItems;
+  const mainNavItems = useMemo(() => {
+    const activeEnterpriseBaseItems = (enterpriseBaseItems || []).filter((item) => {
+      if (item.requiresDeveloper && !isDeveloper) return false;
+      if (item.requiresStandardUser && isDeveloper) return false;
+      if (item.featureKey && !hasFeature(item.featureKey)) return false;
+      return true;
+    });
+
+    return [...baseItems, ...activeEnterpriseBaseItems];
+  }, [hasFeature, isDeveloper]);
+
+  const developerNavItems = useMemo(() => {
+    return isDeveloper ? developerItems : [];
   }, [isDeveloper]);
 
   const activeEnterpriseSections = useMemo(() => {
@@ -122,7 +133,7 @@ export default function AppShell() {
 
   const titleItems = useMemo(() => {
     return [
-      ...navItems,
+      ...mainNavItems,
       ...activeEnterpriseSections.flatMap((section) =>
         section.items.map((item) => ({
           to: item.to,
@@ -130,9 +141,10 @@ export default function AppShell() {
           label: item.label
         }))
       ),
+      ...developerNavItems,
       { to: "/profile", labelKey: "nav.profile" }
     ];
-  }, [activeEnterpriseSections, navItems]);
+  }, [activeEnterpriseSections, developerNavItems, mainNavItems]);
 
   const currentItem = useMemo(() => {
     if (location.pathname === "/") {
@@ -193,9 +205,9 @@ export default function AppShell() {
 
         <div className="sidebar-section">
           <p className="sidebar-section-label">Main</p>
-          {baseItems.map((item) => {
-            const Icon = item.icon;
-            return (
+              {mainNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -215,7 +227,7 @@ export default function AppShell() {
           <>
             <div className="sidebar-section">
               <p className="sidebar-section-label">Developer</p>
-              {developerItems.map((item) => {
+              {developerNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink

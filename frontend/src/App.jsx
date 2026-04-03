@@ -4,6 +4,7 @@ import { useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DeveloperRoute from "./components/DeveloperRoute";
 import FeatureRoute from "./components/FeatureRoute";
+import StandardUserRoute from "./components/StandardUserRoute";
 import LoadingScreen from "./components/LoadingScreen";
 import AppShell from "./components/AppShell";
 import LoginPage from "./pages/Login";
@@ -49,6 +50,8 @@ export default function App() {
 
     const wrapped = route.requiresDeveloper ? (
       <Route element={<DeveloperRoute />}>{withFeature}</Route>
+    ) : route.requiresStandardUser ? (
+      <Route element={<StandardUserRoute />}>{withFeature}</Route>
     ) : (
       withFeature
     );

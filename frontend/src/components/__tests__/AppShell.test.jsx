@@ -30,6 +30,15 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("virtual:enterprise-frontend", () => ({
+  enterpriseBaseItems: [
+    {
+      to: "/quick-support",
+      labelKey: "nav.quickSupport",
+      featureKey: "enterprise_support_threads",
+      requiresStandardUser: true,
+      icon: () => null
+    }
+  ],
   enterpriseNavSections: [
     {
       labelKey: "nav.enterprise",
@@ -68,7 +77,7 @@ describe("AppShell role-based navigation", () => {
     });
     CapabilitiesContext.useCapabilities.mockReturnValue({
       ready: true,
-      hasFeature: () => false
+      hasFeature: (flag) => flag === "enterprise_support_threads"
     });
   });
 
@@ -86,6 +95,7 @@ describe("AppShell role-based navigation", () => {
     });
 
     expect(screen.getAllByText("nav.dashboard").length).toBeGreaterThan(0);
+    expect(screen.getByText("nav.quickSupport")).toBeInTheDocument();
     expect(screen.queryByText("nav.board")).not.toBeInTheDocument();
     expect(screen.queryByText("nav.todo")).not.toBeInTheDocument();
     expect(screen.queryByText("nav.supportThreads")).not.toBeInTheDocument();
@@ -111,6 +121,7 @@ describe("AppShell role-based navigation", () => {
 
     expect(screen.getByText("nav.board")).toBeInTheDocument();
     expect(screen.getByText("nav.todo")).toBeInTheDocument();
+    expect(screen.queryByText("nav.quickSupport")).not.toBeInTheDocument();
     expect(screen.getByText("nav.supportThreads")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "nav.admin" })).toBeInTheDocument();
   });

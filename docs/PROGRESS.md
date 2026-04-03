@@ -365,6 +365,74 @@
 ### Skills created/updated
 - none
 
+## Step E-ST4-SupportThreads-UserFlow-01
+- Status: Done (approved by user)
+- Enterprise commit: `ea28fa1`
+- Description: Pierwszy pełny user flow modułu `Support Threads`: osobne menu `Szybkie wsparcie`, lista własnych wątków, formularz nowego wątku oraz detail z odpowiedzią i załącznikiem.
+
+### Implementation Plan
+- Dodać osobny extension slot w głównym menu dla tras Enterprise widocznych zwykłemu użytkownikowi.
+- Dodać publiczny guard `StandardUserRoute` dla tras user-only.
+- Zarejestrować w prywatnym module trasy `/quick-support`, `/quick-support/new` i `/quick-support/:id`.
+- Rozszerzyć prywatne API o create/reply z `FormData` oraz listę projektów.
+- Zbudować user inbox z filtrami `q/status` i podsumowaniem statusów.
+- Zbudować formularz nowego wątku z polami `title`, `content`, `project`, `priority`, `attachment`.
+- Zbudować detail usera z historią wiadomości, odpowiedzią i attachmentem oraz reopen po nowej wiadomości.
+- Dodać testy publicznego frontendu dla menu, guardów, listy usera, create flow i reply flow.
+
+### Files changed
+- `frontend/src/components/StandardUserRoute.jsx`
+- `frontend/src/enterprise/extensions.stub.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/components/AppShell.jsx`
+- `frontend/src/components/__tests__/AppShell.test.jsx`
+- `frontend/src/components/__tests__/routes.test.jsx`
+- `frontend/src/pages/__tests__/SupportThreadsInbox.enterprise.test.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/extensions/index.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/api.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserInboxPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserNewPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserDetailPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/styles.css`
+
+### Tests run
+- `npm test` in `/Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (10/10)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (37/37)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- backend test `166/166` pozostaje zielony z poprzedniego kroku i nie został naruszony przez ten zakres frontendowy
+  - ostrzeżenia React Router o future flags, bez wpływu na wynik testów
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `curl -sI http://localhost:3330/quick-support` -> PASS (`200 OK`)
+- `curl -sI http://localhost:3330/quick-support/new` -> PASS (`200 OK`)
+- frontend test coverage obejmuje:
+  - render user inbox,
+  - filtrowanie statusu,
+  - create flow `new -> detail`,
+  - reply flow w detailu usera,
+  - menu i guard `StandardUserRoute`.
+
+### Result
+- Zwykły użytkownik widzi w sidebarze pozycję `Szybkie wsparcie` tylko przy aktywnym capability `enterprise_support_threads`.
+- Powstały osobne trasy user-only:
+  - `/quick-support`
+  - `/quick-support/new`
+  - `/quick-support/:id`
+- User może utworzyć nowy wątek z projektem, priorytetem i opcjonalnym załącznikiem.
+- User widzi własną listę wątków, może filtrować ją po statusie i szybko przejść do detailu.
+- Detail działa w formie chatu i pozwala dodać kolejną wiadomość z opcjonalnym attachmentem.
+- Developer inbox `Support Threads` oraz jego detail pozostały bez regresji.
+
+### Skills created/updated
+- none
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

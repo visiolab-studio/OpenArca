@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import ProtectedRoute from "../ProtectedRoute";
 import DeveloperRoute from "../DeveloperRoute";
 import FeatureRoute from "../FeatureRoute";
+import StandardUserRoute from "../StandardUserRoute";
 import * as AuthContext from "../../contexts/AuthContext";
 import * as CapabilitiesContext from "../../contexts/CapabilitiesContext";
 
@@ -51,6 +52,19 @@ function renderFeatureRoute() {
       <Routes>
         <Route element={<FeatureRoute featureKey="enterprise_support_threads" />}>
           <Route path="/support-threads" element={<div>support-threads-page</div>} />
+        </Route>
+        <Route path="/" element={<div>dashboard-home</div>} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+function renderStandardUserRoute() {
+  return render(
+    <MemoryRouter initialEntries={["/quick-support"]}>
+      <Routes>
+        <Route element={<StandardUserRoute />}>
+          <Route path="/quick-support" element={<div>quick-support-page</div>} />
         </Route>
         <Route path="/" element={<div>dashboard-home</div>} />
       </Routes>
@@ -107,6 +121,23 @@ describe("route guards", () => {
     renderDeveloperRoute();
 
     expect(screen.getByText("developer-board")).toBeInTheDocument();
+  });
+
+  it("redirects developer away from standard-user routes", () => {
+    AuthContext.useAuth.mockReturnValue({ ready: true, isAuthenticated: true, isDeveloper: true });
+
+    renderStandardUserRoute();
+
+    expect(screen.getByText("dashboard-home")).toBeInTheDocument();
+    expect(screen.queryByText("quick-support-page")).not.toBeInTheDocument();
+  });
+
+  it("allows standard user to access standard-user routes", () => {
+    AuthContext.useAuth.mockReturnValue({ ready: true, isAuthenticated: true, isDeveloper: false });
+
+    renderStandardUserRoute();
+
+    expect(screen.getByText("quick-support-page")).toBeInTheDocument();
   });
 
   it("redirects when feature flag is disabled", () => {

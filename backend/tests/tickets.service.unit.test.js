@@ -26,6 +26,9 @@ function createDbStub(capture, options = {}) {
           if (typeof options.getFactory === "function") {
             return options.getFactory(sql, params);
           }
+          if (sql.includes("SELECT id FROM users WHERE id = ?")) {
+            return { id: params[0] };
+          }
           return { count: 0 };
         },
         run(...params) {
@@ -208,6 +211,9 @@ test("tickets service appends ticket.created domain event to outbox contract", (
       if (sql.includes("SELECT value FROM settings WHERE key = 'ticket_counter'")) {
         return { value: "12" };
       }
+      if (sql.includes("SELECT id FROM users WHERE id = ?")) {
+        return { id: "user-1" };
+      }
       return undefined;
     },
     runFactory: () => ({ changes: 1 })
@@ -255,6 +261,9 @@ test("tickets service create ticket propagates append-domain-event errors", () =
       getFactory: (sql) => {
         if (sql.includes("SELECT value FROM settings WHERE key = 'ticket_counter'")) {
           return { value: "3" };
+        }
+        if (sql.includes("SELECT id FROM users WHERE id = ?")) {
+          return { id: "user-1" };
         }
         return undefined;
       },
@@ -307,6 +316,72 @@ test("tickets service create ticket validates project reference", () => {
       files: []
     });
   }, (error) => error.code === "project_not_found" && error.status === 400);
+});
+
+test("tickets service create ticket supports reporter, actor and source thread overrides", () => {
+  const runCalls = [];
+  const appendedEvents = [];
+  const service = createTicketsService({
+    db: createDbStub(
+      {},
+      {
+        getFactory: (sql, params) => {
+          if (sql.includes("SELECT id FROM users WHERE id = ?")) {
+            assert.deepEqual(params, ["user-reporter"]);
+            return { id: "user-reporter" };
+          }
+          if (sql.includes("SELECT value FROM settings WHERE key = 'ticket_counter'")) {
+            return { value: "41" };
+          }
+          return undefined;
+        },
+        runFactory: (sql, params) => {
+          runCalls.push({ sql, params });
+          return { changes: 1 };
+        }
+      }
+    ),
+    appendDomainEventToOutbox: (input) => {
+      appendedEvents.push(input);
+      return { event_id: "event-ctx", outbox_id: "outbox-ctx", status: "pending" };
+    }
+  });
+
+  const result = service.createTicket({
+    user: { id: "dev-actor", role: "developer" },
+    payload: {
+      title: "Converted ticket title long enough",
+      description: "A".repeat(140),
+      urgency_reporter: "high",
+      category: "feature"
+    },
+    files: [
+      {
+        filename: "ctx-att-1",
+        originalname: "context.txt",
+        mimetype: "text/plain",
+        size: 12
+      }
+    ],
+    context: {
+      reporterId: "user-reporter",
+      actorUserId: "dev-actor",
+      sourceSupportThreadId: "thread-123"
+    }
+  });
+
+  assert.equal(result.shouldTrackTicketCreated, true);
+  const ticketInsertCall = runCalls.find((entry) => entry.sql.includes("INSERT INTO tickets"));
+  assert.ok(ticketInsertCall);
+  assert.equal(ticketInsertCall.params[11], "user-reporter");
+  assert.equal(ticketInsertCall.params[12], "thread-123");
+
+  const attachmentInsertCall = runCalls.find((entry) => entry.sql.includes("INSERT INTO attachments"));
+  assert.ok(attachmentInsertCall);
+  assert.equal(attachmentInsertCall.params[6], "dev-actor");
+
+  assert.equal(appendedEvents.length, 1);
+  assert.equal(appendedEvents[0].actorUserId, "dev-actor");
 });
 
 test("tickets service update ticket blocks non-developer when ticket is locked", () => {

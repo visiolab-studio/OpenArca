@@ -3891,3 +3891,61 @@
 
 ### Skills created/updated
 - `docs/skills/ticket-templates-intake-prefill.md` (new)
+
+## Step E-ST5A-SupportThreads-ConvertBackend-01
+- Status: Done (approved by user)
+- Description: Backendowa konwersja `Support Thread -> Ticket` w Enterprise, z kopiowaniem historii wiadomości i załączników do pełnego zgłoszenia.
+
+### Implementation Plan
+- Rozszerzyć model `tickets` o backlink do źródłowego `support_thread`.
+- Udostępnić w OpenArca realny `ticketService` dla modułów Enterprise zamiast pustego stubu.
+- Dodać w repo Enterprise operację `convertThreadToTicket`.
+- Tworzyć ticket z reporterem requestera i aktorem będącym developerem konwertującym wątek.
+- Przepisać wiadomości wątku do `comments` ticketu i załączniki do `attachments`.
+- Zamknąć wątek po konwersji i zapisać `converted_ticket_id`.
+- Zablokować kolejne wiadomości i ponowną konwersję po eskalacji.
+- Pokryć całość testami unitowymi/integracyjnymi i zweryfikować na świeżym stacku po `up --build`.
+
+### Files changed
+- `backend/db.js`
+- `backend/services/tickets.js`
+- `backend/core/services/ticketService.js`
+- `backend/tests/extension.registry.unit.test.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/service.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/routes.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.service.test.js`
+
+### Tests run
+- `npm test --prefix /Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (`12/12`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`167/167`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`37/37`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `curl -sI http://localhost:8026` -> PASS (`405 Method Not Allowed`, endpoint reachable)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Publiczny backend OpenArca przekazuje modułom Enterprise rzeczywisty `ticketService`, dzięki czemu prywatne moduły mogą bezpiecznie tworzyć i aktualizować pełne zgłoszenia bez duplikowania logiki ticketów.
+- `tickets` mają nowe pole `source_support_thread_id`, które pozwala śledzić pochodzenie zgłoszenia z lekkiego wątku supportowego.
+- Repo Enterprise ma nową operację `convertThreadToTicket`, która:
+  - tworzy ticket na requestera wątku,
+  - ustawia developera konwertującego jako aktora,
+  - zamyka wątek i zapisuje `converted_ticket_id`,
+  - kopiuje wiadomości jako komentarze ticketu,
+  - kopiuje załączniki do ticketu.
+- Po konwersji nie da się ponownie konwertować tego samego wątku ani dopisywać do niego nowych wiadomości.
+- Endpoint `POST /api/enterprise/support-threads/:id/convert` jest gotowy pod kolejny krok UI.
+
+### Skills created/updated
+- none

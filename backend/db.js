@@ -75,6 +75,7 @@ const schemaStatements = [
     project_id TEXT REFERENCES projects(id),
     reporter_id TEXT NOT NULL REFERENCES users(id),
     assignee_id TEXT REFERENCES users(id),
+    source_support_thread_id TEXT,
     estimated_hours REAL,
     planned_date TEXT,
     order_index INTEGER NOT NULL DEFAULT 0,
@@ -257,6 +258,15 @@ function initDb() {
     if (!projectColumnNames.has("icon_updated_at")) {
       db.prepare("ALTER TABLE projects ADD COLUMN icon_updated_at TEXT").run();
     }
+
+    const ticketColumns = db.prepare("PRAGMA table_info(tickets)").all();
+    const ticketColumnNames = new Set(ticketColumns.map((column) => String(column.name)));
+
+    if (!ticketColumnNames.has("source_support_thread_id")) {
+      db.prepare("ALTER TABLE tickets ADD COLUMN source_support_thread_id TEXT").run();
+    }
+
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_tickets_source_support_thread ON tickets(source_support_thread_id)").run();
 
     const templateColumns = db.prepare("PRAGMA table_info(ticket_templates)").all();
     const templateColumnNames = new Set(templateColumns.map((column) => String(column.name)));

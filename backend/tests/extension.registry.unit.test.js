@@ -10,8 +10,12 @@ test("extension registry exposes known service names", () => {
 test("extension registry returns core services by default", () => {
   const registry = createServiceRegistry({ overrides: {} });
   const workflowService = registry.getService("workflowService");
+  const ticketService = registry.getService("ticketService");
 
   assert.equal(workflowService.provider, "core");
+  assert.equal(ticketService.provider, "core");
+  assert.equal(typeof ticketService.createTicketForExtension, "function");
+  assert.equal(typeof ticketService.updateTicketForExtension, "function");
   const payload = workflowService.buildEnterpriseCheckPayload("enterprise_automation");
   assert.equal(payload.ok, true);
   assert.equal(payload.checked_feature, "enterprise_automation");

@@ -434,8 +434,19 @@ function createTicketsService(options = {}) {
         .get(ticketId);
     },
 
-    createTicket({ user, payload, files }) {
+    createTicket({ user, payload, files, context = {} }) {
       assertUserContext(user);
+
+      const reporterId = context.reporterId || user.id;
+      const actorUserId = context.actorUserId || user.id;
+      const sourceSupportThreadId = context.sourceSupportThreadId || null;
+
+      const reporter = database
+        .prepare("SELECT id FROM users WHERE id = ?")
+        .get(reporterId);
+      if (!reporter) {
+        throw createServiceError("reporter_not_found", 400);
+      }
 
       if (Object.prototype.hasOwnProperty.call(payload, "project_id") && payload.project_id) {
         const project = database
@@ -463,10 +474,10 @@ function createTicketsService(options = {}) {
               id, number, title, description, steps_to_reproduce,
               expected_result, actual_result, environment,
               urgency_reporter, priority, status, category,
-              project_id, reporter_id, assignee_id,
+              project_id, reporter_id, assignee_id, source_support_thread_id,
               estimated_hours, planned_date, order_index,
               internal_note, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'normal', 'submitted', ?, ?, ?, NULL, NULL, NULL, 0, NULL, datetime('now'), datetime('now'))`
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'normal', 'submitted', ?, ?, ?, NULL, ?, NULL, NULL, 0, NULL, datetime('now'), datetime('now'))`
           )
           .run(
             ticketId,
@@ -480,7 +491,8 @@ function createTicketsService(options = {}) {
             payload.urgency_reporter,
             payload.category,
             payload.project_id || null,
-            user.id
+            reporterId,
+            sourceSupportThreadId
           );
 
         if (Array.isArray(files) && files.length) {
@@ -499,7 +511,7 @@ function createTicketsService(options = {}) {
               file.originalname,
               file.mimetype,
               file.size,
-              user.id
+              actorUserId
             );
           }
         }
@@ -509,7 +521,7 @@ function createTicketsService(options = {}) {
           eventName: "ticket.created",
           aggregateType: "ticket",
           aggregateId: ticketId,
-          actorUserId: user.id,
+          actorUserId,
           payload: {
             status: "submitted",
             category: payload.category || "other",

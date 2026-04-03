@@ -177,6 +177,73 @@
 ### Skills created/updated
 - `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md` (updated)
 
+## Step E-ST2B2-SupportThreads-NotificationsAndInbox-01
+- Status: Done (approved by user)
+- Enterprise commit: `4d5efed`
+- Description: Dodanie prostych powiadomień mailowych `create/reply/status change` oraz rozszerzenie inbox summary/query modelu dla `Support Threads`.
+
+### Implementation Plan
+- Rozszerzyć publiczny extension context OpenArca o `sendEmail` i `appUrl`.
+- Dodać w repo Enterprise notifier mailowy dla `Support Threads`.
+- Wysyłać powiadomienia dla:
+  - nowego wątku do developerów,
+  - odpowiedzi developera do requestera,
+  - odpowiedzi usera do assignee lub inboxu developerów,
+  - zmiany statusu do requestera.
+- Traktować email jako side effect, który nie blokuje głównego requestu.
+- Rozszerzyć summary listy wątków o pola potrzebne pod przyszłe UI.
+- Dodać filtrowanie `q` i `assignee_id` do inboxu developera.
+- Pokryć notifier i query model testami modułu Enterprise.
+- Uruchomić quality gates OpenArca oraz live smoke z realnym SMTP na Mailpit.
+
+### Files changed
+- `backend/app.js`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/service.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/notifier.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/routes.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.service.test.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.notifier.test.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md`
+
+### Tests run
+- `npm test --prefix /Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (10/10)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (166/166)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (26/26)
+- `docker compose exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d backend` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- live smoke `Support Threads notifications + inbox query` -> PASS
+  - developer patch settings -> SMTP `mailpit:1025`
+  - user OTP login -> PASS
+  - developer OTP login -> PASS
+  - `POST /api/enterprise/support-threads` -> `201`
+  - `GET /api/enterprise/support-threads?q=author%20profile&status=open` -> `200`
+  - `POST /api/enterprise/support-threads/:id/messages` -> `201`
+  - `PATCH /api/enterprise/support-threads/:id` -> `200`
+  - Mailpit subjects potwierdzone:
+    - `New support thread: ...` / `Nowy wątek supportowy: ...`
+    - `New message: ...` / `Nowa wiadomość: ...`
+    - `Support thread status updated: ...` / `Zmieniono status wątku: ...`
+
+### Result
+- `Support Threads` wysyła maile dla nowego wątku, odpowiedzi i zmiany statusu.
+- Powiadomienia działają na istniejącym providerze OpenArca i nie blokują requestu.
+- Inbox summary zwraca pola pod przyszłe UI:
+  - `message_count`
+  - `latest_message_preview`
+  - `latest_message_author_role`
+  - `has_attachments`
+- Inbox developera wspiera już filtrowanie po `q` i `assignee_id`.
+
+### Skills created/updated
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-backend.md` (updated)
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

@@ -5,7 +5,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const { frontendOrigin, uploadsDir, dataDir, sqlitePath } = require("./config");
+const { frontendOrigin, uploadsDir, dataDir, sqlitePath, appUrl } = require("./config");
 const db = require("./db");
 const authRoutes = require("./routes/auth");
 const ticketRoutes = require("./routes/tickets");
@@ -20,6 +20,7 @@ const { requireFeature } = require("./middleware/features");
 const { writeLimiter } = require("./middleware/rate-limiters");
 const { upload } = require("./middleware/uploads");
 const { notFound, errorHandler } = require("./middleware/error-handler");
+const { sendEmail } = require("./services/email");
 const { getService } = require("./core/extension-registry");
 const { registerRoutesExtensions } = require("./core/routes-extension-loader");
 
@@ -70,8 +71,10 @@ registerRoutesExtensions(app, {
   context: {
     express,
     db,
+    appUrl,
     uploadsDir,
     getService,
+    sendEmail,
     middlewares: {
       authRequired,
       requireRole,

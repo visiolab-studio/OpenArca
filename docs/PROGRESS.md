@@ -314,6 +314,57 @@
 - `docs/skills/enterprise-frontend-modules.md` (created)
 - `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-frontend.md` (created)
 
+## Step E-ST3B-SupportThreads-DeveloperActions-01
+- Status: Done (approved by user)
+- Enterprise commit: `d498a76`
+- Description: Rozszerzenie detailu `Support Threads` o akcje developera: odpowiedź z UI, zmiana statusu i przypisanie osoby odpowiedzialnej.
+
+### Implementation Plan
+- Rozszerzyć prywatne API frontendu o listę developerów, `PATCH` wątku i `POST` odpowiedzi.
+- Przebudować detail wątku na układ `conversation + action panel`.
+- Dodać formularz workflow z polami `assignee` i `status`.
+- Dodać formularz odpowiedzi developera z walidacją pustej wiadomości.
+- Po zapisie odświeżać lokalny stan detailu bez pełnego przeładowania aplikacji.
+- Zachować read-only listę i routing z poprzedniego kroku.
+- Rozszerzyć testy aliasu Enterprise o scenariusz `save workflow + reply`.
+- Uruchomić pełne quality gates i smoke dla stacku Enterprise.
+
+### Files changed
+- `frontend/src/pages/__tests__/SupportThreadsInbox.enterprise.test.jsx`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/api.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/DetailPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/styles.css`
+
+### Tests run
+- `docker compose exec -T backend npm test` -> PASS (166/166)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (32/32)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+- `npm test` in `/Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (10/10)
+  - ostrzeżenie React Router o future flags, bez wpływu na wynik testów
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- `curl -sI http://localhost:3330/support-threads` -> PASS (`200 OK`)
+- `curl -sI http://localhost:3330/support-threads/14f8fcc4-25a3-46ef-a5df-3ab0b1cd98cb` -> PASS (`200 OK`)
+- frontend fallback:
+  - detail otwiera się z klikalnego tytułu wątku,
+  - test `SupportThreadsInbox.enterprise.test.jsx` pokrywa `save workflow + send reply`,
+  - routing detailu działa pod aktywnym module Enterprise.
+
+### Result
+- Developer może wejść w detail wątku z listy przez klikalny tytuł.
+- Detail ma teraz panel workflow z możliwością zmiany `statusu` i `assignee`.
+- Developer może wysłać odpowiedź bezpośrednio z poziomu detailu.
+- Po zapisie formularza i po odpowiedzi detail odświeża dane lokalnie i pokazuje komunikat sukcesu/błędu.
+- Toolbar listy został dopracowany pod desktop: jedna linia filtrów i wyraźny odstęp od listy.
+
+### Skills created/updated
+- none
+
 ## Step OPEN-O1-SavedViews-MyTickets-01
 - Status: Done (approved by user)
 - Description: Saved views i szybkie presety filtrów dla `My Tickets` jako pierwszy etap odświeżenia Open Core UX.

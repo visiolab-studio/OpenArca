@@ -110,49 +110,66 @@ describe("SupportThreadsInboxPage", () => {
   });
 
   it("opens thread detail from clickable title", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          {
+    global.fetch = vi.fn(async (input, init = {}) => {
+      const url = String(input);
+      const method = String(init.method || "GET").toUpperCase();
+
+      if (url.includes("/api/enterprise/support-threads") && !url.endsWith("/thread-1") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              id: "thread-1",
+              title: "Quick question about hero image size",
+              status: "open",
+              priority: "normal",
+              assignee_id: null,
+              requester: { email: "ava@ecommerce-arca.com" },
+              assignee: null,
+              message_count: 1,
+              updated_at: "2026-04-03T10:00:00.000Z",
+              latest_message_preview: "What exact size should we use?",
+              has_attachments: false
+            }
+          ]
+        };
+      }
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({
             id: "thread-1",
             title: "Quick question about hero image size",
             status: "open",
             priority: "normal",
-            assignee_id: null,
+            project: { name: "Marketplace Core" },
             requester: { email: "ava@ecommerce-arca.com" },
             assignee: null,
-            message_count: 1,
+            created_at: "2026-04-03T09:00:00.000Z",
             updated_at: "2026-04-03T10:00:00.000Z",
-            latest_message_preview: "What exact size should we use?",
-            has_attachments: false
-          }
-        ]
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: "thread-1",
-          title: "Quick question about hero image size",
-          status: "open",
-          priority: "normal",
-          project: { name: "Marketplace Core" },
-          requester: { email: "ava@ecommerce-arca.com" },
-          assignee: null,
-          created_at: "2026-04-03T09:00:00.000Z",
-          updated_at: "2026-04-03T10:00:00.000Z",
-          messages: [
-            {
-              id: "message-1",
-              content: "What exact size should we use?",
-              created_at: "2026-04-03T09:00:00.000Z",
-              author: { email: "ava@ecommerce-arca.com", role: "user" },
-              attachments: []
-            }
-          ]
-        })
-      });
+            messages: [
+              {
+                id: "message-1",
+                content: "What exact size should we use?",
+                created_at: "2026-04-03T09:00:00.000Z",
+                author: { email: "ava@ecommerce-arca.com", role: "user" },
+                attachments: []
+              }
+            ]
+          })
+        };
+      }
+
+      if (url.endsWith("/api/users") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => [{ id: "dev-1", email: "emma.wright@ecommerce-arca.com", role: "developer", name: "Emma Wright" }]
+        };
+      }
+
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    });
 
     render(
       <MemoryRouter initialEntries={["/support-threads"]}>
@@ -168,5 +185,145 @@ describe("SupportThreadsInboxPage", () => {
     expect(await screen.findByText("Konwersacja")).toBeInTheDocument();
     expect(screen.getByText("Marketplace Core", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("What exact size should we use?")).toBeInTheDocument();
+  });
+
+  it("updates workflow and sends reply from detail view", async () => {
+    global.fetch = vi.fn(async (input, init = {}) => {
+      const url = String(input);
+      const method = String(init.method || "GET").toUpperCase();
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({
+            id: "thread-1",
+            title: "Quick question about hero image size",
+            status: "open",
+            priority: "normal",
+            assignee_id: null,
+            project: { name: "Marketplace Core" },
+            requester: { email: "ava@ecommerce-arca.com" },
+            assignee: null,
+            created_at: "2026-04-03T09:00:00.000Z",
+            updated_at: "2026-04-03T10:00:00.000Z",
+            messages: [
+              {
+                id: "message-1",
+                content: "What exact size should we use?",
+                created_at: "2026-04-03T09:00:00.000Z",
+                author: { email: "ava@ecommerce-arca.com", role: "user" },
+                attachments: []
+              }
+            ]
+          })
+        };
+      }
+
+      if (url.endsWith("/api/users") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => [
+            { id: "dev-1", email: "emma.wright@ecommerce-arca.com", role: "developer", name: "Emma Wright" },
+            { id: "dev-2", email: "liam.chen@ecommerce-arca.com", role: "developer", name: "Liam Chen" }
+          ]
+        };
+      }
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1") && method === "PATCH") {
+        return {
+          ok: true,
+          json: async () => ({
+            id: "thread-1",
+            title: "Quick question about hero image size",
+            status: "pending",
+            priority: "normal",
+            assignee_id: "dev-2",
+            project: { name: "Marketplace Core" },
+            requester: { email: "ava@ecommerce-arca.com" },
+            assignee: { email: "liam.chen@ecommerce-arca.com", name: "Liam Chen" },
+            created_at: "2026-04-03T09:00:00.000Z",
+            updated_at: "2026-04-03T10:30:00.000Z",
+            messages: [
+              {
+                id: "message-1",
+                content: "What exact size should we use?",
+                created_at: "2026-04-03T09:00:00.000Z",
+                author: { email: "ava@ecommerce-arca.com", role: "user" },
+                attachments: []
+              }
+            ]
+          })
+        };
+      }
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1/messages") && method === "POST") {
+        return {
+          ok: true,
+          json: async () => ({
+            id: "thread-1",
+            title: "Quick question about hero image size",
+            status: "pending",
+            priority: "normal",
+            assignee_id: "dev-2",
+            project: { name: "Marketplace Core" },
+            requester: { email: "ava@ecommerce-arca.com" },
+            assignee: { email: "liam.chen@ecommerce-arca.com", name: "Liam Chen" },
+            created_at: "2026-04-03T09:00:00.000Z",
+            updated_at: "2026-04-03T11:00:00.000Z",
+            messages: [
+              {
+                id: "message-1",
+                content: "What exact size should we use?",
+                created_at: "2026-04-03T09:00:00.000Z",
+                author: { email: "ava@ecommerce-arca.com", role: "user" },
+                attachments: []
+              },
+              {
+                id: "message-2",
+                content: "Use 1600x600 px for now.",
+                created_at: "2026-04-03T11:00:00.000Z",
+                author: { email: "liam.chen@ecommerce-arca.com", role: "developer", name: "Liam Chen" },
+                attachments: []
+              }
+            ]
+          })
+        };
+      }
+
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/support-threads/thread-1"]}>
+        <Routes>
+          <Route path="/support-threads/:id" element={<SupportThreadDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Konwersacja")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Przypisany"), {
+      target: { value: "dev-2" }
+    });
+    fireEvent.change(screen.getByLabelText("Status"), {
+      target: { value: "pending" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Zmiany zapisane.")).toBeInTheDocument();
+      expect(screen.getByText(/liam\.chen@ecommerce-arca\.com/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Odpowiedź"), {
+      target: { value: "Use 1600x600 px for now." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Odpowiedź wysłana.")).toBeInTheDocument();
+      expect(screen.getByText("Use 1600x600 px for now.")).toBeInTheDocument();
+    });
   });
 });

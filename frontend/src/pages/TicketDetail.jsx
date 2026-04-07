@@ -71,6 +71,11 @@ export default function TicketDetailPage() {
     return assigneeMap.get(ticket.assignee_id) || ticket.assignee_id;
   }, [ticket?.assignee_id, assigneeMap, t]);
 
+  const supportThreadLink = useMemo(() => {
+    if (!ticket?.source_support_thread_id) return null;
+    return `/support-threads/${ticket.source_support_thread_id}`;
+  }, [ticket?.source_support_thread_id]);
+
   async function loadTicket() {
     setLoading(true);
     setError("");
@@ -710,6 +715,14 @@ export default function TicketDetailPage() {
                 showEmpty
               />
             </div>
+            {supportThreadLink ? (
+              <div className="ticket-meta-row">
+                <span className="ticket-meta-label">{t("tickets.sourceSupportThread")}</span>
+                <Link className="ticket-meta-link" to={supportThreadLink}>
+                  {t("tickets.openSourceSupportThread")}
+                </Link>
+              </div>
+            ) : null}
             <div className="ticket-meta-row">
               <span className="ticket-meta-label">{t("tickets.status")}</span>
               <StatusBadge status={ticket.status} />

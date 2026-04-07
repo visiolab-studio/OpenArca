@@ -3992,3 +3992,53 @@
 
 ### Skills created/updated
 - none
+
+## Step E-ST5C-SupportThreads-Backlinks-01
+- Status: Done (approved by user)
+- Description: Domknięcie backlinków po eskalacji `Support Thread -> Ticket`: link w `TicketDetail` do źródłowego wątku oraz read-only state z linkiem do ticketu w detailu użytkownika `Quick Support`.
+
+### Implementation Plan
+- Dodać brakujące tłumaczenia publicznego `TicketDetail` dla linku do źródłowego wątku supportowego.
+- Dodać test publicznego `TicketDetail` sprawdzający render linku do `/support-threads/:id`.
+- Rozszerzyć detail użytkownika w repo Enterprise o read-only stan po konwersji i link do nowego ticketu.
+- Ukryć formularz odpowiedzi użytkownika po eskalacji, aby zachować spójność z blokadami backendu.
+- Rozszerzyć istniejący test Enterprise o scenariusz przekonwertowanego wątku użytkownika.
+- Uruchomić pełne quality gates OpenArca i testy modułu Enterprise.
+- Zweryfikować live flow `ticket -> support thread -> linked ticket`.
+
+### Files changed
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/styles.css`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/pages/__tests__/TicketDetail.supportThreadLink.test.jsx`
+- `frontend/src/pages/__tests__/SupportThreadsInbox.enterprise.test.jsx`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserDetailPage.jsx`
+
+### Tests run
+- `npm test --prefix /Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (`12/12`)
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`167/167`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`40/40`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- `TicketDetail` pokazuje teraz jawny link do źródłowego wątku supportowego, jeśli zgłoszenie powstało z eskalacji `Support Thread -> Ticket`.
+- Publiczny frontend ma test zabezpieczający render tego backlinku i trasę `/support-threads/:id`.
+- Detail użytkownika `Quick Support` rozpoznaje przekonwertowany wątek i przechodzi w stan tylko do odczytu.
+- Użytkownik widzi link do pełnego zgłoszenia i nie może już wysyłać kolejnych wiadomości do przekonwertowanego wątku.
+- Linkowanie działa teraz w obu kierunkach: `thread -> ticket` oraz `ticket -> source thread`.
+
+### Skills created/updated
+- none

@@ -677,4 +677,55 @@ describe("SupportThreads user pages", () => {
       expect(screen.getByText("Otwarte")).toBeInTheDocument();
     });
   });
+
+  it("shows read-only converted state in user detail and links to ticket", async () => {
+    global.fetch = vi.fn(async (input, init = {}) => {
+      const url = String(input);
+      const method = String(init.method || "GET").toUpperCase();
+
+      if (url.endsWith("/api/enterprise/support-threads/thread-1") && method === "GET") {
+        return {
+          ok: true,
+          json: async () => ({
+            id: "thread-1",
+            title: "Need hero image dimensions",
+            status: "closed",
+            priority: "normal",
+            converted_ticket_id: "ticket-77",
+            project: { name: "Marketplace Core" },
+            assignee: { email: "emma.wright@ecommerce-arca.com" },
+            created_at: "2026-04-03T09:00:00.000Z",
+            updated_at: "2026-04-03T09:10:00.000Z",
+            messages: [
+              {
+                id: "message-1",
+                content: "What size should we use for the hero image?",
+                created_at: "2026-04-03T09:00:00.000Z",
+                author: { email: "ethan.price@ecommerce-arca.com", role: "user" },
+                attachments: []
+              }
+            ]
+          })
+        };
+      }
+
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/quick-support/thread-1"]}>
+        <Routes>
+          <Route path="/quick-support/:id" element={<SupportThreadUserDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Przekonwertowany wątek")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otwórz zgłoszenie" })).toHaveAttribute(
+      "href",
+      "/ticket/ticket-77"
+    );
+    expect(screen.getByText(/Po konwersji ten wątek jest tylko do odczytu/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /wyślij wiadomość/i })).not.toBeInTheDocument();
+  });
 });

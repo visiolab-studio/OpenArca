@@ -134,6 +134,8 @@
     "category": "Kategoria",
     "project": "Projekt",
     "projectNone": "Bez projektu",
+    "sourceSupportThread": "Źródłowy wątek supportowy",
+    "openSourceSupportThread": "Otwórz wątek supportowy",
     "quickFilters": "Szybkie widoki",
     "quickViewCritical": "Moje krytyczne",
     "quickViewWaiting": "Oczekujące",

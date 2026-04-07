@@ -134,6 +134,8 @@
     "category": "Category",
     "project": "Project",
     "projectNone": "No project",
+    "sourceSupportThread": "Source support thread",
+    "openSourceSupportThread": "Open support thread",
     "quickFilters": "Quick views",
     "quickViewCritical": "My critical",
     "quickViewWaiting": "Waiting",

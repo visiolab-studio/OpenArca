@@ -2508,6 +2508,16 @@ table th {
   margin-left: auto;
 }
 
+.ticket-meta-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ticket-meta-link:hover {
+  text-decoration: underline;
+}
+
 .admin-projects-list {
   gap: 12px;
 }

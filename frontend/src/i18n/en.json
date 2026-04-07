@@ -121,6 +121,7 @@
     "quickViewCritical": "Critical",
     "quickViewWaiting": "Waiting",
     "quickViewBlocked": "Blocked",
+    "quickViewQuickSupport": "Quick Support",
     "quickViewThisWeek": "This week"
   },
   "tickets": {
@@ -134,6 +135,9 @@
     "category": "Category",
     "project": "Project",
     "projectNone": "No project",
+    "origin": "Origin",
+    "originSupportThread": "Quick Support",
+    "originStandard": "Standard ticket",
     "sourceSupportThread": "Source support thread",
     "openSourceSupportThread": "Open support thread",
     "quickSupportOrigin": "Quick Support",
@@ -142,6 +146,7 @@
     "quickViewCritical": "My critical",
     "quickViewWaiting": "Waiting",
     "quickViewBlocked": "Blocked",
+    "quickViewQuickSupport": "Quick Support",
     "quickViewThisWeek": "This week",
     "savedViews": "Saved views",
     "savedViewsHint": "Quick presets for daily work and your own saved filter combinations.",
@@ -276,6 +281,7 @@
     "quickViewInProgress": "In progress",
     "quickViewWaiting": "Waiting",
     "quickViewBlocked": "Blocked",
+    "quickViewQuickSupport": "Quick Support",
     "applyAutoSort": "Apply auto sort",
     "active": "Active",
     "done": "Done",

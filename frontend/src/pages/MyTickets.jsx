@@ -7,7 +7,7 @@ import { getProjects } from "../api/projects";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
-import SupportThreadOriginBadge from "../components/SupportThreadOriginBadge";
+import SupportThreadOriginBadge, { matchesSupportThreadOrigin } from "../components/SupportThreadOriginBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import { formatDateShort } from "../utils/format";
@@ -26,6 +26,7 @@ const DEFAULT_FILTERS = {
   priority: "",
   category: "",
   projectId: "",
+  origin: "",
   dateFrom: "",
   dateTo: "",
   sortBy: "updated_at"
@@ -86,6 +87,11 @@ export default function MyTicketsPage() {
         key: "this_week",
         label: t("tickets.quickViewThisWeek"),
         filters: { ...DEFAULT_FILTERS, ...thisWeek, sortBy: "created_at" }
+      },
+      {
+        key: "quick_support",
+        label: t("tickets.quickViewQuickSupport"),
+        filters: { ...DEFAULT_FILTERS, origin: "support_thread", sortBy: "updated_at" }
       }
     ];
   }, [t]);
@@ -187,6 +193,9 @@ export default function MyTicketsPage() {
     if (filters.priority) rows = rows.filter((ticket) => ticket.priority === filters.priority);
     if (filters.category) rows = rows.filter((ticket) => ticket.category === filters.category);
     if (filters.projectId) rows = rows.filter((ticket) => ticket.project_id === filters.projectId);
+    if (filters.origin) {
+      rows = rows.filter((ticket) => matchesSupportThreadOrigin(filters.origin, ticket.source_support_thread_id));
+    }
 
     if (filters.dateFrom) {
       rows = rows.filter((ticket) => String(ticket.created_at).slice(0, 10) >= filters.dateFrom);
@@ -326,6 +335,15 @@ export default function MyTicketsPage() {
                 {project.name}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label>
+          {t("tickets.origin")}
+          <select value={filters.origin} onChange={(event) => updateFilters({ origin: event.target.value })}>
+            <option value="">-</option>
+            <option value="support_thread">{t("tickets.originSupportThread")}</option>
+            <option value="standard">{t("tickets.originStandard")}</option>
           </select>
         </label>
 

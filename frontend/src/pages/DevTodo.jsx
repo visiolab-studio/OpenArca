@@ -34,7 +34,7 @@ import { addComment, getTickets, patchTicket } from "../api/tickets";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
-import SupportThreadOriginBadge from "../components/SupportThreadOriginBadge";
+import SupportThreadOriginBadge, { matchesSupportThreadOrigin } from "../components/SupportThreadOriginBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { PRIORITY_OPTIONS } from "../utils/constants";
 import {
@@ -51,6 +51,7 @@ const DEFAULT_FILTERS = {
   taskStatus: "",
   priority: "",
   ticketStatus: "",
+  origin: "",
   activeProjectId: "",
   queueProjectId: ""
 };
@@ -442,6 +443,11 @@ export default function DevTodoPage() {
         key: "blocked",
         label: t("dev.quickViewBlocked"),
         filters: { ...DEFAULT_FILTERS, ticketStatus: "blocked" }
+      },
+      {
+        key: "quick_support",
+        label: t("dev.quickViewQuickSupport"),
+        filters: { ...DEFAULT_FILTERS, origin: "support_thread" }
       }
     ],
     [t]
@@ -538,6 +544,7 @@ export default function DevTodoPage() {
       if (filters.taskStatus && task.status !== filters.taskStatus) return false;
       const taskTicket = task.ticket_id ? ticketsMap[task.ticket_id] : null;
       if (filters.ticketStatus && taskTicket?.status !== filters.ticketStatus) return false;
+      if (!matchesSupportThreadOrigin(filters.origin, taskTicket?.source_support_thread_id)) return false;
       if (!matchProjectFilter(taskTicket, filters.activeProjectId)) return false;
       return true;
     });
@@ -547,12 +554,13 @@ export default function DevTodoPage() {
     return doneTasks.filter((task) => {
       const taskTicket = task.ticket_id ? ticketsMap[task.ticket_id] : null;
       if (filters.ticketStatus && taskTicket?.status !== filters.ticketStatus) return false;
+      if (!matchesSupportThreadOrigin(filters.origin, taskTicket?.source_support_thread_id)) return false;
       return matchProjectFilter(taskTicket, filters.activeProjectId);
     });
   }, [doneTasks, filters, matchProjectFilter, ticketsMap]);
 
   const hasActiveFilters = Boolean(
-    filters.taskStatus || filters.priority || filters.ticketStatus || filters.activeProjectId || filters.queueProjectId
+    filters.taskStatus || filters.priority || filters.ticketStatus || filters.origin || filters.activeProjectId || filters.queueProjectId
   );
 
   const queuedTickets = useMemo(() => {
@@ -581,6 +589,7 @@ export default function DevTodoPage() {
       if (filters.priority && ticket.priority !== filters.priority) return false;
       if (filters.taskStatus === "in_progress") return false;
       if (filters.ticketStatus && ticket.status !== filters.ticketStatus) return false;
+      if (!matchesSupportThreadOrigin(filters.origin, ticket.source_support_thread_id)) return false;
       if (!matchProjectFilter(ticket, filters.queueProjectId)) return false;
       return true;
     });
@@ -651,7 +660,7 @@ export default function DevTodoPage() {
     };
   }, [activeTasks, hasActiveFilters, queuedTickets, ticketsMap, user?.id, visibleActiveTasks, visibleQueueTickets]);
 
-  const canReorder = !filters.priority && !filters.taskStatus && !filters.ticketStatus && !filters.activeProjectId;
+  const canReorder = !filters.priority && !filters.taskStatus && !filters.ticketStatus && !filters.origin && !filters.activeProjectId;
   const allTasks = useMemo(() => [...activeTasks, ...doneTasks], [activeTasks, doneTasks]);
   const previewTask = useMemo(
     () => allTasks.find((task) => task.id === previewTaskId) || null,
@@ -1553,6 +1562,17 @@ export default function DevTodoPage() {
 
               <select
                 className="form-select"
+                aria-label={t("tickets.origin")}
+                value={filters.origin}
+                onChange={(event) => updateFilters({ origin: event.target.value })}
+              >
+                <option value="">{t("tickets.origin")}</option>
+                <option value="support_thread">{t("tickets.originSupportThread")}</option>
+                <option value="standard">{t("tickets.originStandard")}</option>
+              </select>
+
+              <select
+                className="form-select"
                 aria-label={t("dev.projectFilterTodo")}
                 value={filters.activeProjectId}
                 onChange={(event) => updateFilters({ activeProjectId: event.target.value })}
@@ -1566,7 +1586,7 @@ export default function DevTodoPage() {
                 ))}
               </select>
 
-              {(filters.taskStatus || filters.priority || filters.ticketStatus || filters.activeProjectId) ? (
+              {(filters.taskStatus || filters.priority || filters.ticketStatus || filters.origin || filters.activeProjectId) ? (
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -1575,6 +1595,7 @@ export default function DevTodoPage() {
                       taskStatus: "",
                       priority: "",
                       ticketStatus: "",
+                      origin: "",
                       activeProjectId: ""
                     });
                   }}

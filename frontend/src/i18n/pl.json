@@ -121,6 +121,7 @@
     "quickViewCritical": "Krytyczne",
     "quickViewWaiting": "Oczekujące",
     "quickViewBlocked": "Zablokowane",
+    "quickViewQuickSupport": "Szybkie wsparcie",
     "quickViewThisWeek": "Ten tydzień"
   },
   "tickets": {
@@ -134,6 +135,9 @@
     "category": "Kategoria",
     "project": "Projekt",
     "projectNone": "Bez projektu",
+    "origin": "Pochodzenie",
+    "originSupportThread": "Szybkie wsparcie",
+    "originStandard": "Zwykłe zgłoszenie",
     "sourceSupportThread": "Źródłowy wątek supportowy",
     "openSourceSupportThread": "Otwórz wątek supportowy",
     "quickSupportOrigin": "Szybkie wsparcie",
@@ -142,6 +146,7 @@
     "quickViewCritical": "Moje krytyczne",
     "quickViewWaiting": "Oczekujące",
     "quickViewBlocked": "Zablokowane",
+    "quickViewQuickSupport": "Szybkie wsparcie",
     "quickViewThisWeek": "Ten tydzień",
     "savedViews": "Zapisane widoki",
     "savedViewsHint": "Szybkie presety do codziennej pracy i własne zapisane kombinacje filtrów.",
@@ -276,6 +281,7 @@
     "quickViewInProgress": "W realizacji",
     "quickViewWaiting": "Oczekujące",
     "quickViewBlocked": "Zablokowane",
+    "quickViewQuickSupport": "Szybkie wsparcie",
     "applyAutoSort": "Zastosuj automatyczne sortowanie",
     "active": "Aktywne",
     "done": "Ukończone",

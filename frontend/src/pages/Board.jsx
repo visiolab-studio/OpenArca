@@ -17,7 +17,7 @@ import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/con
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
-import SupportThreadOriginBadge from "../components/SupportThreadOriginBadge";
+import SupportThreadOriginBadge, { matchesSupportThreadOrigin } from "../components/SupportThreadOriginBadge";
 import { useAuth } from "../contexts/AuthContext";
 import {
   areFiltersEqual,
@@ -41,6 +41,7 @@ const DEFAULT_FILTERS = {
   projectId: "",
   category: "",
   priority: "",
+  origin: "",
   statusScope: "",
   plannedWindow: ""
 };
@@ -295,6 +296,11 @@ export default function BoardPage() {
         key: "this_week",
         label: t("board.quickViewThisWeek"),
         filters: { ...DEFAULT_FILTERS, plannedWindow: "this_week" }
+      },
+      {
+        key: "quick_support",
+        label: t("board.quickViewQuickSupport"),
+        filters: { ...DEFAULT_FILTERS, origin: "support_thread" }
       }
     ];
   }, [t]);
@@ -371,6 +377,7 @@ export default function BoardPage() {
       if (filters.projectId && ticket.project_id !== filters.projectId) return false;
       if (filters.category && ticket.category !== filters.category) return false;
       if (filters.priority && ticket.priority !== filters.priority) return false;
+      if (!matchesSupportThreadOrigin(filters.origin, ticket.source_support_thread_id)) return false;
       if (filters.statusScope && ticket.status !== filters.statusScope) return false;
       if (filters.plannedWindow === "this_week") {
         const plannedDate = String(ticket.planned_date || "").slice(0, 10);
@@ -611,6 +618,15 @@ export default function BoardPage() {
                 {t(`priority.${value}`)}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="form-group">
+          <span className="form-label">{t("tickets.origin")}</span>
+          <select className="form-select" value={filters.origin} onChange={(event) => updateFilters({ origin: event.target.value })}>
+            <option value="">-</option>
+            <option value="support_thread">{t("tickets.originSupportThread")}</option>
+            <option value="standard">{t("tickets.originStandard")}</option>
           </select>
         </label>
       </article>

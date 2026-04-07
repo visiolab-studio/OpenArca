@@ -4098,3 +4098,54 @@
 
 ### Skills created/updated
 - none
+
+## Step E-ST6B-SupportThreads-OriginFilters-01
+- Status: Done (approved by user)
+- Description: Dodanie filtrowania ticketów po pochodzeniu `Quick Support` w `My Tickets`, `Board` i `DevTodo`, razem z szybkim presetem i persystencją w zapisanych widokach.
+
+### Implementation Plan
+- Dodać wspólny helper do rozpoznawania pochodzenia `support_thread` vs standardowy ticket.
+- Rozszerzyć domyślne filtry i saved views w `My Tickets`, `Board` i `DevTodo` o pole `origin`.
+- Dodać preset `Szybkie wsparcie / Quick Support` w trzech widokach.
+- Dodać select `Pochodzenie / Origin` do formularzy filtrów bez naruszania obecnego UX.
+- Upewnić się, że `DevTodo` nie filtruje sekcji `Do weryfikacji` nowym polem.
+- Zablokować reorder aktywnej listy `DevTodo`, gdy filtr pochodzenia jest aktywny.
+- Dodać testy frontendu dla presetów i przywracania zapisanych widoków z filtrem `origin`.
+- Uruchomić pełne quality gates oraz smoke flow.
+
+### Files changed
+- `frontend/src/components/SupportThreadOriginBadge.jsx`
+- `frontend/src/pages/MyTickets.jsx`
+- `frontend/src/pages/Board.jsx`
+- `frontend/src/pages/DevTodo.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/pages/__tests__/MyTickets.savedViews.test.jsx`
+- `frontend/src/pages/__tests__/Board.savedViews.test.jsx`
+- `frontend/src/pages/__tests__/DevTodo.savedViews.test.jsx`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`168/168`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`44/44`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- `My Tickets`, `Board` i `DevTodo` mają nowy filtr `Pochodzenie / Origin`, który rozróżnia zgłoszenia pochodzące z `Quick Support` od zwykłych ticketów.
+- Każdy z tych ekranów ma szybki preset `Szybkie wsparcie / Quick Support` i poprawnie zapisuje ten stan w `saved views`.
+- `DevTodo` filtruje pochodzenie tylko na aktywnej liście i kolejce, bez naruszania sekcji `Do weryfikacji`.
+- Aktywna lista `DevTodo` blokuje reorder także wtedy, gdy aktywny jest filtr pochodzenia, co utrzymuje spójność UX z wcześniejszym kontraktem.
+- Helper pochodzenia jest współdzielony z istniejącym badge, więc UI opiera się na jednej definicji źródła ticketu.
+
+### Skills created/updated
+- none

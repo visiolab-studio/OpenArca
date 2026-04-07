@@ -131,4 +131,41 @@ describe("MyTickets saved views", () => {
       expect(screen.queryByText("Normal reporting request")).not.toBeInTheDocument();
     });
   });
+
+  it("applies quick support view and restores saved origin filter", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Critical checkout issue")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "tickets.quickViewQuickSupport" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Critical checkout issue")).toBeInTheDocument();
+      expect(screen.queryByText("Normal reporting request")).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("tickets.savedViewNamePlaceholder"), {
+      target: { value: "Quick support only" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "tickets.saveView" }));
+
+    const persisted = JSON.parse(window.localStorage.getItem("openarca.myTickets.savedViews.v1"));
+    expect(persisted.views[0].filters.origin).toBe("support_thread");
+
+    fireEvent.click(screen.getByRole("button", { name: "tickets.resetFilters" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Critical checkout issue")).toBeInTheDocument();
+      expect(screen.getByText("Normal reporting request")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("tickets.savedViews"), {
+      target: { value: persisted.views[0].id }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Critical checkout issue")).toBeInTheDocument();
+      expect(screen.queryByText("Normal reporting request")).not.toBeInTheDocument();
+    });
+  });
 });

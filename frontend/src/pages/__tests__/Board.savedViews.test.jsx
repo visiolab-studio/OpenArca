@@ -138,4 +138,17 @@ describe("Board saved views", () => {
       "/support-threads/thread-1"
     );
   });
+
+  it("applies quick support preset to board columns", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Critical checkout issue")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "board.quickViewQuickSupport" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Critical checkout issue")).toBeInTheDocument();
+      expect(screen.queryByText("Waiting marketplace sync")).not.toBeInTheDocument();
+    });
+  });
 });

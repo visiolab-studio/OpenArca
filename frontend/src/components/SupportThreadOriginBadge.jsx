@@ -7,6 +7,13 @@ export function getSupportThreadPath(threadId, isDeveloper) {
   return isDeveloper ? `/support-threads/${threadId}` : `/quick-support/${threadId}`;
 }
 
+export function matchesSupportThreadOrigin(filterValue, threadId) {
+  if (!filterValue) return true;
+  if (filterValue === "support_thread") return Boolean(threadId);
+  if (filterValue === "standard") return !threadId;
+  return true;
+}
+
 export default function SupportThreadOriginBadge({
   threadId,
   isDeveloper,

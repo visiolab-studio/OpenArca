@@ -181,4 +181,18 @@ describe("DevTodo saved views", () => {
       expect(screen.getByText(/Waiting affiliate payout export/)).toBeInTheDocument();
     });
   });
+
+  it("applies quick support preset to active tasks and queue", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Blocked payment gateway follow-up")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "dev.quickViewQuickSupport" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Blocked payment gateway follow-up")).toBeInTheDocument();
+      expect(screen.queryByText("In progress warehouse sync")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Waiting affiliate payout export/)).not.toBeInTheDocument();
+    });
+  });
 });

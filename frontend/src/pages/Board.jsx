@@ -17,6 +17,8 @@ import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/con
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
+import SupportThreadOriginBadge from "../components/SupportThreadOriginBadge";
+import { useAuth } from "../contexts/AuthContext";
 import {
   areFiltersEqual,
   createSavedView,
@@ -90,7 +92,7 @@ function toPreviewDraft(ticket) {
   };
 }
 
-function TicketCard({ ticket, muted = false, onOpenPreview }) {
+function TicketCard({ ticket, muted = false, onOpenPreview, isDeveloper }) {
   return (
     <article
       className={`kanban-card${muted ? " dragging" : ""}`}
@@ -111,6 +113,12 @@ function TicketCard({ ticket, muted = false, onOpenPreview }) {
       ) : (
         <p className="kanban-card-title">{ticket.title}</p>
       )}
+      <SupportThreadOriginBadge
+        threadId={ticket.source_support_thread_id}
+        isDeveloper={isDeveloper}
+        interactive={false}
+        className="kanban-support-origin"
+      />
       <ProjectBadge
         name={ticket.project_name}
         color={ticket.project_color}
@@ -129,7 +137,7 @@ function TicketCard({ ticket, muted = false, onOpenPreview }) {
   );
 }
 
-function SortableTicketCard({ ticket, onOpenPreview }) {
+function SortableTicketCard({ ticket, onOpenPreview, isDeveloper }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id
   });
@@ -142,12 +150,12 @@ function SortableTicketCard({ ticket, onOpenPreview }) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TicketCard ticket={ticket} onOpenPreview={onOpenPreview} />
+      <TicketCard ticket={ticket} onOpenPreview={onOpenPreview} isDeveloper={isDeveloper} />
     </div>
   );
 }
 
-function KanbanColumn({ title, status, tickets, collapsed, onToggle, onOpenPreview }) {
+function KanbanColumn({ title, status, tickets, collapsed, onToggle, onOpenPreview, isDeveloper }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
@@ -172,7 +180,12 @@ function KanbanColumn({ title, status, tickets, collapsed, onToggle, onOpenPrevi
           <div ref={setNodeRef} className="kanban-cards" id={status}>
             {isOver ? <div className="kanban-drop-zone active">Drop</div> : null}
             {tickets.map((ticket) => (
-              <SortableTicketCard key={ticket.id} ticket={ticket} onOpenPreview={onOpenPreview} />
+              <SortableTicketCard
+                key={ticket.id}
+                ticket={ticket}
+                onOpenPreview={onOpenPreview}
+                isDeveloper={isDeveloper}
+              />
             ))}
           </div>
         </SortableContext>
@@ -183,6 +196,7 @@ function KanbanColumn({ title, status, tickets, collapsed, onToggle, onOpenPrevi
 
 export default function BoardPage() {
   const { t } = useTranslation();
+  const { isDeveloper } = useAuth();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const initialSavedViewsState = loadSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS);
 
@@ -625,6 +639,10 @@ export default function BoardPage() {
                 <span className="ticket-number">#{String(previewTicket.number).padStart(3, "0")}</span>
                 <PriorityBadge priority={previewTicket.priority || "normal"} />
                 <StatusBadge status={previewTicket.status} />
+                <SupportThreadOriginBadge
+                  threadId={previewTicket.source_support_thread_id}
+                  isDeveloper={isDeveloper}
+                />
                 <ProjectBadge
                   name={previewTicket.project_name}
                   color={previewTicket.project_color}
@@ -722,11 +740,14 @@ export default function BoardPage() {
                 collapsed={status === "closed" ? collapsedClosed : false}
                 onToggle={status === "closed" ? () => setCollapsedClosed((current) => !current) : undefined}
                 onOpenPreview={openTicketPreview}
+                isDeveloper={isDeveloper}
               />
             ))}
           </div>
 
-          <DragOverlay>{activeTicket ? <TicketCard ticket={activeTicket} muted /> : null}</DragOverlay>
+          <DragOverlay>
+            {activeTicket ? <TicketCard ticket={activeTicket} muted isDeveloper={isDeveloper} /> : null}
+          </DragOverlay>
         </DndContext>
       ) : null}
     </section>

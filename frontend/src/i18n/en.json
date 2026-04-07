@@ -136,6 +136,8 @@
     "projectNone": "No project",
     "sourceSupportThread": "Source support thread",
     "openSourceSupportThread": "Open support thread",
+    "quickSupportOrigin": "Quick Support",
+    "quickSupportOriginLong": "Escalated from Quick Support",
     "quickFilters": "Quick views",
     "quickViewCritical": "My critical",
     "quickViewWaiting": "Waiting",

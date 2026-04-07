@@ -77,7 +77,7 @@ describe("TicketDetailPage support thread backlink", () => {
 
     expect(await screen.findByRole("link", { name: "tickets.openSourceSupportThread" })).toHaveAttribute(
       "href",
-      "/support-threads/thread-123"
+      "/quick-support/thread-123"
     );
     expect(screen.getByText("tickets.sourceSupportThread")).toBeInTheDocument();
     expect(screen.getByText("Converted support thread ticket")).toBeInTheDocument();

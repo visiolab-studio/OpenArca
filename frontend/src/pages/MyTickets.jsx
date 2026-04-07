@@ -7,6 +7,8 @@ import { getProjects } from "../api/projects";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
+import SupportThreadOriginBadge from "../components/SupportThreadOriginBadge";
+import { useAuth } from "../contexts/AuthContext";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import { formatDateShort } from "../utils/format";
 import {
@@ -52,6 +54,7 @@ function getThisWeekRange() {
 
 export default function MyTicketsPage() {
   const { t } = useTranslation();
+  const { isDeveloper } = useAuth();
   const initialSavedViewState = loadSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS);
   const [projects, setProjects] = useState([]);
   const [tickets, setTickets] = useState([]);
@@ -372,7 +375,13 @@ export default function MyTicketsPage() {
                 <tr key={ticket.id}>
                   <td>#{String(ticket.number).padStart(3, "0")}</td>
                   <td>
-                    <Link to={`/ticket/${ticket.id}`}>{ticket.title}</Link>
+                    <div className="ticket-title-cell">
+                      <Link to={`/ticket/${ticket.id}`}>{ticket.title}</Link>
+                      <SupportThreadOriginBadge
+                        threadId={ticket.source_support_thread_id}
+                        isDeveloper={isDeveloper}
+                      />
+                    </div>
                   </td>
                   <td>
                     <ProjectBadge

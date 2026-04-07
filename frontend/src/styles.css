@@ -681,6 +681,41 @@ button {
   box-shadow: var(--shadow-sm);
 }
 
+.ticket-title-cell {
+  display: grid;
+  gap: 8px;
+}
+
+.support-thread-origin-link,
+.support-thread-origin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.support-thread-origin-link:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.support-thread-origin-badge {
+  pointer-events: none;
+}
+
+.kanban-support-origin {
+  margin-top: 8px;
+}
+
 .workload-row {
   gap: 10px;
 }

@@ -34,6 +34,7 @@ import { addComment, getTickets, patchTicket } from "../api/tickets";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
+import SupportThreadOriginBadge from "../components/SupportThreadOriginBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { PRIORITY_OPTIONS } from "../utils/constants";
 import {
@@ -107,6 +108,7 @@ function TaskRow({
   task,
   ticket,
   currentUserId,
+  isDeveloper,
   draft,
   isEditing,
   onOpenPreview,
@@ -213,6 +215,10 @@ function TaskRow({
                 color={ticket?.project_color}
                 iconUrl={ticket?.project_icon_url}
                 showEmpty
+              />
+              <SupportThreadOriginBadge
+                threadId={ticket?.source_support_thread_id}
+                isDeveloper={isDeveloper}
               />
             </div>
           </>
@@ -1222,6 +1228,10 @@ export default function DevTodoPage() {
               <div className="row-actions">
                 <StatusBadge status={previewTask.status} />
                 <PriorityBadge priority={previewTask.priority} />
+                <SupportThreadOriginBadge
+                  threadId={previewTaskTicket?.source_support_thread_id}
+                  isDeveloper={user?.role === "developer"}
+                />
                 <ProjectBadge
                   name={previewTaskTicket?.project_name}
                   color={previewTaskTicket?.project_color}
@@ -1610,6 +1620,7 @@ export default function DevTodoPage() {
                           task={task}
                           ticket={task.ticket_id ? ticketsMap[task.ticket_id] : null}
                           currentUserId={user?.id}
+                          isDeveloper={user?.role === "developer"}
                           draft={drafts[task.id]}
                           isEditing={Boolean(drafts[task.id])}
                           onOpenPreview={openTaskPreview}
@@ -1639,6 +1650,7 @@ export default function DevTodoPage() {
                         task={task}
                         ticket={task.ticket_id ? ticketsMap[task.ticket_id] : null}
                         currentUserId={user?.id}
+                        isDeveloper={user?.role === "developer"}
                         draft={drafts[task.id]}
                         isEditing={Boolean(drafts[task.id])}
                         onOpenPreview={openTaskPreview}
@@ -1701,6 +1713,10 @@ export default function DevTodoPage() {
                           #{String(ticket.number).padStart(3, "0")} · {ticket.title}
                         </span>
                         <div className="row-actions">
+                          <SupportThreadOriginBadge
+                            threadId={ticket.source_support_thread_id}
+                            isDeveloper={user?.role === "developer"}
+                          />
                           <ProjectBadge
                             name={ticket.project_name}
                             color={ticket.project_color}
@@ -1759,6 +1775,10 @@ export default function DevTodoPage() {
                         #{String(ticket.number).padStart(3, "0")} · {ticket.title}
                       </span>
                       <div className="row-actions">
+                        <SupportThreadOriginBadge
+                          threadId={ticket.source_support_thread_id}
+                          isDeveloper={user?.role === "developer"}
+                        />
                         <ProjectBadge
                           name={ticket.project_name}
                           color={ticket.project_color}

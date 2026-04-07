@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import MyTicketsPage from "../MyTickets";
 import * as TicketsApi from "../../api/tickets";
 import * as ProjectsApi from "../../api/projects";
+import * as AuthContext from "../../contexts/AuthContext";
 
 vi.mock("../../api/tickets", () => ({
   getTickets: vi.fn()
@@ -11,6 +12,10 @@ vi.mock("../../api/tickets", () => ({
 
 vi.mock("../../api/projects", () => ({
   getProjects: vi.fn()
+}));
+
+vi.mock("../../contexts/AuthContext", () => ({
+  useAuth: vi.fn()
 }));
 
 vi.mock("react-i18next", () => ({
@@ -31,6 +36,9 @@ describe("MyTickets saved views", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    AuthContext.useAuth.mockReturnValue({
+      isDeveloper: false
+    });
 
     ProjectsApi.getProjects.mockResolvedValue([
       { id: "project-1", name: "Core Platform", color: "#0f766e", icon_url: null }
@@ -45,6 +53,7 @@ describe("MyTickets saved views", () => {
         project_name: "Core Platform",
         project_color: "#0f766e",
         project_icon_url: null,
+        source_support_thread_id: "thread-1",
         category: "bug",
         priority: "critical",
         status: "waiting",
@@ -75,6 +84,10 @@ describe("MyTickets saved views", () => {
 
     expect(await screen.findByText("Critical checkout issue")).toBeInTheDocument();
     expect(screen.getByText("Normal reporting request")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "tickets.quickSupportOrigin" })).toHaveAttribute(
+      "href",
+      "/quick-support/thread-1"
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "tickets.quickViewCritical" }));
 

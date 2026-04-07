@@ -4042,3 +4042,59 @@
 
 ### Skills created/updated
 - none
+
+## Step E-ST6A-SupportThreads-OriginSurfacing-01
+- Status: Done (approved by user)
+- Description: Ujednolicenie linków do `Support Threads` względem roli użytkownika oraz pokazanie pochodzenia `Quick Support` w głównych widokach ticketów (`My Tickets`, `Board`, `DevTodo`).
+
+### Implementation Plan
+- Uzupełnić payloady ticketów w backendzie o `source_support_thread_id` tam, gdzie brakuje go w listach i boardzie.
+- Dodać współdzielony komponent badge dla pochodzenia `Quick Support`.
+- Naprawić `TicketDetail`, aby link do źródłowego wątku był zależny od roli (`/quick-support` dla usera, `/support-threads` dla developera).
+- Pokazać badge pochodzenia na listach `My Tickets`, `Board` i `DevTodo` bez naruszania istniejącego flow DnD i preview.
+- Dodać testy backendu dla nowych pól w payloadach.
+- Dodać testy frontendu dla badge i linków zależnych od roli.
+- Uruchomić pełne quality gates oraz smoke flow po zmianach.
+
+### Files changed
+- `backend/services/tickets.js`
+- `backend/tests/tickets.service.unit.test.js`
+- `frontend/src/components/SupportThreadOriginBadge.jsx`
+- `frontend/src/i18n/en.json`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/pages/TicketDetail.jsx`
+- `frontend/src/pages/MyTickets.jsx`
+- `frontend/src/pages/Board.jsx`
+- `frontend/src/pages/DevTodo.jsx`
+- `frontend/src/pages/__tests__/TicketDetail.supportThreadLink.test.jsx`
+- `frontend/src/pages/__tests__/MyTickets.savedViews.test.jsx`
+- `frontend/src/pages/__tests__/Board.savedViews.test.jsx`
+- `frontend/src/pages/__tests__/DevTodo.savedViews.test.jsx`
+- `frontend/src/styles.css`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`168/168`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`41/41`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Główne payloady ticketów (`list`, `board`, `workload`) przenoszą teraz `source_support_thread_id`, więc publiczny frontend może rozpoznać zgłoszenia pochodzące z `Quick Support`.
+- `TicketDetail` nie linkuje już w ciemno do `/support-threads/:id`; ścieżka jest dobierana poprawnie do roli użytkownika.
+- `My Tickets`, `Board` i `DevTodo` pokazują badge `Szybkie wsparcie / Quick Support` dla ticketów pochodzących z lekkich wątków supportowych.
+- Preview ticketu na boardzie i detail tasku w `DevTodo` pokazują już spójne linki do źródłowego wątku.
+- Testy zabezpieczają zarówno payload backendu, jak i zachowanie UI zależne od roli użytkownika.
+
+### Skills created/updated
+- none

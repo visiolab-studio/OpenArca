@@ -89,6 +89,7 @@ describe("DevTodo saved views", () => {
         project_name: "Checkout Core",
         project_color: "#0f766e",
         project_icon_url: null,
+        source_support_thread_id: "thread-1",
         priority: "critical",
         status: "blocked",
         assignee_id: "dev-1"
@@ -126,6 +127,10 @@ describe("DevTodo saved views", () => {
     expect(await screen.findByText("Blocked payment gateway follow-up")).toBeInTheDocument();
     expect(screen.getByText("In progress warehouse sync")).toBeInTheDocument();
     expect(screen.getByText(/Waiting affiliate payout export/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "tickets.quickSupportOrigin" })).toHaveAttribute(
+      "href",
+      "/support-threads/thread-1"
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "dev.quickViewBlocked" }));
 

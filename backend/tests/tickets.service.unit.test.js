@@ -96,6 +96,42 @@ test("tickets service includes query filters in params order", () => {
   assert.deepEqual(capture.params, ["verified", "high", "bug", "project-1"]);
 });
 
+test("tickets service preserves source support thread id in ticket list payload", () => {
+  const capture = { sql: "", params: [] };
+  const service = createTicketsService({
+    db: createDbStub(capture, {
+      rowsFactory: () => [
+        {
+          id: "ticket-1",
+          number: 1,
+          title: "Escalated support thread ticket",
+          category: "question",
+          priority: "normal",
+          status: "verified",
+          project_id: null,
+          reporter_id: "user-1",
+          assignee_id: "dev-1",
+          source_support_thread_id: "thread-123",
+          planned_date: null,
+          created_at: "2026-04-01T10:00:00.000Z",
+          updated_at: "2026-04-01T12:00:00.000Z",
+          project_name: null,
+          project_color: null,
+          project_icon_filename: null,
+          project_icon_updated_at: null
+        }
+      ]
+    })
+  });
+
+  const rows = service.listTickets({
+    user: { id: "dev-1", role: "developer" },
+    query: {}
+  });
+
+  assert.equal(rows[0].source_support_thread_id, "thread-123");
+});
+
 test("tickets service validates user context", () => {
   const capture = { sql: "", params: [] };
   const service = createTicketsService({ db: createDbStub(capture) });
@@ -2080,7 +2116,7 @@ test("tickets service returns board grouped by known statuses with _stats", () =
   const rows = [
     { id: "t-1", status: "submitted" },
     { id: "t-2", status: "submitted" },
-    { id: "t-3", status: "verified" },
+    { id: "t-3", status: "verified", source_support_thread_id: "thread-123" },
     { id: "t-4", status: "in_progress" },
     { id: "t-5", status: "closed" },
     { id: "t-x", status: "unknown_status" }
@@ -2097,6 +2133,7 @@ test("tickets service returns board grouped by known statuses with _stats", () =
   }
   assert.equal(payload.submitted.length, 2);
   assert.equal(payload.verified.length, 1);
+  assert.equal(payload.verified[0].source_support_thread_id, "thread-123");
   assert.equal(payload.in_progress.length, 1);
   assert.equal(payload.closed.length, 1);
   assert.equal(payload.blocked.length, 0);

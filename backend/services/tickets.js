@@ -379,7 +379,7 @@ function buildBoardPayload(database) {
     .prepare(
       `SELECT
         t.id, t.number, t.title, t.description, t.status, t.priority, t.category, t.project_id,
-        t.reporter_id, t.assignee_id, t.planned_date,
+        t.reporter_id, t.assignee_id, t.source_support_thread_id, t.planned_date,
         p.name AS project_name, p.color AS project_color,
         p.icon_filename AS project_icon_filename,
         p.icon_updated_at AS project_icon_updated_at,
@@ -1166,6 +1166,7 @@ function createTicketsService(options = {}) {
             t.project_id,
             t.reporter_id,
             t.assignee_id,
+            t.source_support_thread_id,
             t.planned_date,
             t.created_at,
             t.updated_at,
@@ -1207,6 +1208,7 @@ function createTicketsService(options = {}) {
             t.category,
             t.reporter_id,
             t.assignee_id,
+            t.source_support_thread_id,
             t.planned_date,
             t.created_at,
             t.updated_at,

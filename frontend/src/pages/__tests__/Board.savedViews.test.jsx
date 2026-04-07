@@ -3,10 +3,15 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BoardPage from "../Board";
 import * as TicketsApi from "../../api/tickets";
+import * as AuthContext from "../../contexts/AuthContext";
 
 vi.mock("../../api/tickets", () => ({
   getBoard: vi.fn(),
   patchTicket: vi.fn()
+}));
+
+vi.mock("../../contexts/AuthContext", () => ({
+  useAuth: vi.fn()
 }));
 
 vi.mock("react-i18next", () => ({
@@ -27,6 +32,9 @@ describe("Board saved views", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    AuthContext.useAuth.mockReturnValue({
+      isDeveloper: true
+    });
 
     TicketsApi.getBoard.mockResolvedValue({
       submitted: [],
@@ -39,6 +47,7 @@ describe("Board saved views", () => {
           project_name: "Core Platform",
           project_color: "#0f766e",
           project_icon_url: null,
+          source_support_thread_id: "thread-1",
           category: "bug",
           priority: "critical",
           status: "verified",
@@ -73,6 +82,7 @@ describe("Board saved views", () => {
 
     expect(await screen.findByText("Critical checkout issue")).toBeInTheDocument();
     expect(screen.getByText("Waiting marketplace sync")).toBeInTheDocument();
+    expect(screen.getByText("tickets.quickSupportOrigin")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "board.quickViewCritical" }));
 
@@ -115,5 +125,17 @@ describe("Board saved views", () => {
       expect(screen.queryByText("Critical checkout issue")).not.toBeInTheDocument();
       expect(screen.getByText("Waiting marketplace sync")).toBeInTheDocument();
     });
+  });
+
+  it("shows developer support thread link in preview", async () => {
+    renderPage();
+
+    const titleButtons = await screen.findAllByRole("button", { name: /critical checkout issue/i });
+    fireEvent.click(titleButtons.find((element) => element.tagName === "BUTTON"));
+
+    expect(await screen.findByRole("link", { name: "tickets.quickSupportOrigin" })).toHaveAttribute(
+      "href",
+      "/support-threads/thread-1"
+    );
   });
 });

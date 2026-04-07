@@ -17,6 +17,7 @@ import { useAuth } from "../contexts/AuthContext";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
+import { getSupportThreadPath } from "../components/SupportThreadOriginBadge";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import { formatDate, formatDateShort } from "../utils/format";
 
@@ -72,9 +73,8 @@ export default function TicketDetailPage() {
   }, [ticket?.assignee_id, assigneeMap, t]);
 
   const supportThreadLink = useMemo(() => {
-    if (!ticket?.source_support_thread_id) return null;
-    return `/support-threads/${ticket.source_support_thread_id}`;
-  }, [ticket?.source_support_thread_id]);
+    return getSupportThreadPath(ticket?.source_support_thread_id, isDeveloper);
+  }, [ticket?.source_support_thread_id, isDeveloper]);
 
   async function loadTicket() {
     setLoading(true);

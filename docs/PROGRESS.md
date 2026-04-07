@@ -4149,3 +4149,49 @@
 
 ### Skills created/updated
 - none
+
+## Step E-ST6C-SupportThreads-UIPolish-01
+- Status: Done (approved by user)
+- Enterprise Commit: `0663df9`
+- Description: Ostatni polish UI modułu `Support Threads` przed domknięciem tematu: mocniejsze oznaczenie przekonwertowanych wątków, projektów i bezpośrednich przejść do ticketu oraz czytelniejsze rozróżnienie wiadomości user/support.
+
+### Implementation Plan
+- Dodać badge i link do ticketu już na listach inboxu developera i użytkownika dla przekonwertowanych wątków.
+- Pokazać projekt w wierszu wątku bez wchodzenia w detail.
+- W detailu dodać mocniejszy banner stanu po konwersji.
+- Rozróżnić wizualnie wiadomości requestera i supportu w widoku chatu.
+- Rozszerzyć testy Enterprise o nowy kontrakt UI listy i detailu.
+- Uruchomić pełne quality gates frontendu i smoke stacku Enterprise.
+
+### Files changed
+- `frontend/src/pages/__tests__/SupportThreadsInbox.enterprise.test.jsx`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/InboxPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserInboxPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/DetailPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserDetailPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/styles.css`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`168/168`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`44/44`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Inbox developera i użytkownika pokazuje teraz od razu projekt, stan przekonwertowania oraz bezpośredni link `Otwórz zgłoszenie` dla wątków eskalowanych do ticketu.
+- Detail przekonwertowanego wątku ma mocniejszy banner informacyjny jeszcze przed sekcją konwersacji.
+- Karty wiadomości w chacie są wizualnie rozdzielone na requestera i support, co poprawia czytelność historii bez zmiany modelu danych.
+- Testy zabezpieczają nowy kontrakt UI zarówno dla inboxu, jak i detailu użytkownika.
+
+### Skills created/updated
+- none

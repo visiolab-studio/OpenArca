@@ -32,6 +32,8 @@ describe("SupportThreadsInboxPage", () => {
           status: "open",
           priority: "normal",
           assignee_id: null,
+          converted_ticket_id: null,
+          project: { name: "Marketplace Core" },
           requester: { email: "ava@ecommerce-arca.com" },
           assignee: null,
           message_count: 1,
@@ -45,6 +47,8 @@ describe("SupportThreadsInboxPage", () => {
           status: "pending",
           priority: "high",
           assignee_id: "dev-1",
+          converted_ticket_id: "ticket-22",
+          project: { name: "Finance Ops" },
           requester: { email: "ethan@ecommerce-arca.com" },
           assignee: { email: "emma.wright@ecommerce-arca.com" },
           message_count: 3,
@@ -77,6 +81,8 @@ describe("SupportThreadsInboxPage", () => {
     expect(await screen.findByText("Quick question about hero image size")).toBeInTheDocument();
     expect(screen.getByText("Order export clarification")).toBeInTheDocument();
     expect(screen.getByText("Widoczne wątki")).toBeInTheDocument();
+    expect(screen.getByText(/Marketplace Core/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otwórz zgłoszenie" })).toHaveAttribute("href", "/ticket/ticket-22");
 
     fireEvent.change(screen.getByLabelText("Status"), {
       target: { value: "pending" }
@@ -439,7 +445,11 @@ describe("SupportThreadsInboxPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Wątek supportowy został przekonwertowany do zgłoszenia.")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Otwórz zgłoszenie" })).toHaveAttribute("href", "/ticket/ticket-99");
+      expect(
+        screen.getAllByRole("link", { name: "Otwórz zgłoszenie" }).every((element) =>
+          element.getAttribute("href") === "/ticket/ticket-99"
+        )
+      ).toBe(true);
       expect(screen.getAllByText(/Po konwersji ten wątek jest tylko do odczytu/i).length).toBeGreaterThan(0);
     });
 
@@ -465,6 +475,8 @@ describe("SupportThreads user pages", () => {
           title: "Author profile background image",
           status: "open",
           priority: "normal",
+          converted_ticket_id: null,
+          project: { name: "Marketplace Core" },
           message_count: 1,
           updated_at: "2026-04-03T11:00:00.000Z",
           latest_message_preview: "What size should we use?",
@@ -475,6 +487,8 @@ describe("SupportThreads user pages", () => {
           title: "Export clarification",
           status: "closed",
           priority: "low",
+          converted_ticket_id: "ticket-88",
+          project: { name: "Finance Ops" },
           message_count: 2,
           updated_at: "2026-04-03T10:00:00.000Z",
           latest_message_preview: "Resolved, thank you.",
@@ -499,6 +513,7 @@ describe("SupportThreads user pages", () => {
 
     expect(await screen.findByText("Author profile background image")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /nowy wątek/i })).toBeInTheDocument();
+    expect(screen.getByText(/Marketplace Core/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Status"), {
       target: { value: "closed" }
@@ -507,6 +522,7 @@ describe("SupportThreads user pages", () => {
     await waitFor(() => {
       expect(screen.queryByText("Author profile background image")).not.toBeInTheDocument();
       expect(screen.getByText("Export clarification")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Otwórz zgłoszenie" })).toHaveAttribute("href", "/ticket/ticket-88");
     });
   });
 
@@ -720,11 +736,12 @@ describe("SupportThreads user pages", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Przekonwertowany wątek")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Otwórz zgłoszenie" })).toHaveAttribute(
-      "href",
-      "/ticket/ticket-77"
-    );
+    expect(await screen.findAllByText("Przekonwertowany wątek")).toHaveLength(2);
+    expect(
+      screen.getAllByRole("link", { name: "Otwórz zgłoszenie" }).every((element) =>
+        element.getAttribute("href") === "/ticket/ticket-77"
+      )
+    ).toBe(true);
     expect(screen.getByText(/Po konwersji ten wątek jest tylko do odczytu/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /wyślij wiadomość/i })).not.toBeInTheDocument();
   });

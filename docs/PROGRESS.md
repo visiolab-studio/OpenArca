@@ -4195,3 +4195,49 @@
 
 ### Skills created/updated
 - none
+
+## Step E-ST6D-ReleaseAndCleanup-01
+- Status: Done
+- Description: Oczyszczenie lokalnego stanu publicznego repo przed releasem, podbicie wersji do `0.2.5-rc1`, aktualizacja changeloga oraz ustalenie wspólnego wersjonowania `OpenArca` i `OpenArca-Enterprise`.
+
+### Implementation Plan
+- Odłożyć niepowiązane lokalne pliki z publicznego repo do bezpiecznego stash przed releasem.
+- Podbić wersję `OpenArca` w backendzie i frontendzie do nowego RC.
+- Ustawić tę samą bazową wersję w repo `OpenArca-Enterprise` dla spójnego compatibility point.
+- Uzupełnić `CHANGELOG.md` o zakres modułu `Support Threads / Quick Support`.
+- Uruchomić pełne quality gates i smoke flow po zmianach release.
+- Wypchnąć commity i tagi release do obu repo.
+
+### Files changed
+- `CHANGELOG.md`
+- `backend/package.json`
+- `backend/package-lock.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/package.json`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/package-lock.json`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (`168/168`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (`44/44`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+- `npm test` in `/Users/piotrektomczak/dev/OpenArca-Enterprise` -> PASS (`12/12`)
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `curl -sI http://localhost:3330` -> PASS (`200 OK`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200 OK`)
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+- Repo nadal nie zawiera Playwright/Cypress; utrzymany fallback smoke/manual baseline.
+
+### Result
+- Publiczne repo zostało oczyszczone przed releasem przez stash `local-shelf-pre-release-2026-04-07`, bez kasowania Twoich lokalnych assetów i draftów.
+- `OpenArca` został podniesiony do `0.2.5-rc1` i dostał changelog dla scope `Support Threads / Quick Support`.
+- `OpenArca-Enterprise` przyjmuje tę samą wersję bazową `0.2.5-rc1`, co upraszcza kompatybilność i tagowanie obu repo.
+- Release jest gotowy do finalnego commit/tag/push.
+
+### Skills created/updated
+- none

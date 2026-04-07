@@ -13,6 +13,33 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.2.5-rc1] - 2026-04-07
+
+### Added
+- Enterprise module foundation for `Support Threads / Quick Support` with isolated backend and frontend extension points.
+- Lightweight support thread flow for standard users:
+  - inbox,
+  - create thread,
+  - detail chat view,
+  - attachments,
+  - email notifications.
+- Developer support inbox with:
+  - filters,
+  - summary cards,
+  - reply workflow,
+  - assignee and status handling.
+- Conversion flow from `Support Thread` to full `Ticket`, including backlinks and history transfer.
+
+### Changed
+- `TicketDetail`, `My Tickets`, `Board` and `DevTodo` now surface tickets originating from `Quick Support`.
+- Added origin filters and presets for tickets escalated from quick support threads.
+- Support thread inbox and detail views now expose project context, converted state and direct ticket links more clearly.
+- Public and private release streams are now aligned on version `0.2.5-rc1` for this compatibility point.
+
+### Notes
+- `OpenArca` and `OpenArca-Enterprise` are version-aligned for this release candidate.
+- Public repo cleanup before release was done via named stash: `local-shelf-pre-release-2026-04-07`.
+
 ## [0.2.4-rc2] - 2026-03-21
 
 ### Added

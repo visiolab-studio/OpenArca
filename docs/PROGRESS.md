@@ -1,5 +1,65 @@
 # OpenArca — Progress Log
 
+## Step E-NOTIFY-01-EnterpriseSupportThreads-Preferences
+- Status: Done (approved by user)
+- Enterprise commit: `7c1f24f`
+- Description: Enterprise — foundation preferencji powiadomień email dla modułu Support Threads (model + API `me` + egzekwowanie w notifierze).
+
+### Implementation Plan
+- Dodać osobny model danych preferencji dla Support Threads w repo Enterprise.
+- Udostępnić endpointy:
+  - `GET /api/enterprise/support-threads/notification-preferences/me`
+  - `PATCH /api/enterprise/support-threads/notification-preferences/me`
+- Dodać walidację payloadu `PATCH` (boolean only + no empty patch).
+- Wpiąć preferencje w notifierze dla zdarzeń `thread created / message / status`.
+- Dodać testy modułu dla preferencji i rozszerzyć testy notifiera.
+- Uzupełnić skill i AGENTS docs w repo Enterprise.
+- Uruchomić pełne quality gates OpenArca + testy Enterprise.
+- Wykonać smoke/E2E i przygotować checkpoint ręcznej weryfikacji.
+
+### Files changed
+- `docs/PROGRESS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/extensions/routes.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/notifier.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/backend/support-threads/preferences.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.notifier.test.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/tests/support-threads.preferences.test.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/AGENTS.md`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-notification-preferences.md`
+
+### Tests run
+- Enterprise module:
+  - `npm test` (repo `OpenArca-Enterprise`) -> PASS (17/17)
+- OpenArca backend/frontend:
+  - `docker compose exec -T backend npm run lint` -> PASS
+  - `docker compose exec -T backend npm test` -> PASS (169/169)
+  - `docker compose exec -T frontend npm run lint` -> PASS
+  - `docker compose exec -T frontend npm test` -> PASS (45/45)
+  - `docker compose exec -T frontend npm run build` -> PASS
+    - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up --build -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml ps` -> PASS
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - user OTP login -> PASS
+  - create ticket -> PASS
+  - open ticket detail -> PASS
+  - developer OTP login -> PASS
+  - status update + comment flow -> PASS
+
+### Result
+- Dodano model preferencji powiadomień email dla modułu `Support Threads` (per user, domyślnie wszystko ON).
+- Udostępniono endpointy `GET/PATCH /api/enterprise/support-threads/notification-preferences/me`.
+- Notifier Enterprise respektuje preferencje odbiorców dla zdarzeń:
+  - utworzenie wątku,
+  - nowa wiadomość,
+  - zmiana statusu.
+- Walidacja `PATCH` odrzuca puste payloady i wartości nie-boolean.
+
+### Skills created/updated
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-notification-preferences.md` (created)
+
 ## Step OC-NOTIFY-02-ProfileUI-And-Delivery
 - Status: Done (approved by user)
 - Commit: `9ada4a7`

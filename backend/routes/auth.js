@@ -33,7 +33,9 @@ const verifyOtpSchema = z
 const patchMeSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
-    language: z.enum(["pl", "en"]).optional()
+    language: z.enum(["pl", "en"]).optional(),
+    email_notify_ticket_status: z.boolean().optional(),
+    email_notify_developer_comment: z.boolean().optional()
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -46,14 +48,26 @@ const avatarFilenameSchema = z.object({
 const ALLOWED_AVATAR_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function getPublicUser(id) {
-  return db
+  const user = db
     .prepare(
       `SELECT
-        id, email, name, role, language, avatar_filename, avatar_updated_at, created_at, last_login
+        id, email, name, role, language,
+        email_notify_ticket_status, email_notify_developer_comment,
+        avatar_filename, avatar_updated_at, created_at, last_login
        FROM users
        WHERE id = ?`
     )
     .get(id);
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    ...user,
+    email_notify_ticket_status: Boolean(user.email_notify_ticket_status),
+    email_notify_developer_comment: Boolean(user.email_notify_developer_comment)
+  };
 }
 
 function removeFileIfExists(filePath) {
@@ -205,6 +219,16 @@ router.patch("/me", authRequired, validate({ body: patchMeSchema }), (req, res) 
   if (typeof req.body.language === "string") {
     updates.push("language = ?");
     values.push(req.body.language);
+  }
+
+  if (typeof req.body.email_notify_ticket_status === "boolean") {
+    updates.push("email_notify_ticket_status = ?");
+    values.push(req.body.email_notify_ticket_status ? 1 : 0);
+  }
+
+  if (typeof req.body.email_notify_developer_comment === "boolean") {
+    updates.push("email_notify_developer_comment = ?");
+    values.push(req.body.email_notify_developer_comment ? 1 : 0);
   }
 
   if (updates.length === 0) {

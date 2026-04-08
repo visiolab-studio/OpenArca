@@ -1,5 +1,57 @@
 # OpenArca — Progress Log
 
+## Step OC-NOTIFY-01-UserEmailPrefs-API
+- Status: Needs review
+- Description: Open Core — krok 1: preferencje powiadomień email per user (bez OTP toggle), model + API + egzekwowanie flag w backendzie.
+
+### Implementation Plan
+- Dodać kolumny preferencji email do `users` z domyślnym `1`.
+- Dodać migrację `ALTER TABLE` dla istniejących baz.
+- Rozszerzyć publiczny model usera (`GET /api/auth/me`) o nowe flagi.
+- Rozszerzyć `PATCH /api/auth/me` o walidację i zapis flag.
+- Mapować flagi do `boolean` w odpowiedzi API.
+- Egzekwować flagi w `notifyReporterStatusChange` i `notifyReporterDeveloperComment`.
+- Dodać test integracyjny backendu dla odczytu/zapisu preferencji.
+- Uzupełnić skill i agent docs.
+
+### Files changed
+- `backend/db.js`
+- `backend/routes/auth.js`
+- `backend/services/notifications.js`
+- `backend/tests/api.integration.test.js`
+- `docs/skills/email-notification-preferences.md`
+- `docs/AGENTS.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (169/169)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (44/44)
+- `docker compose exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (`backend`, `frontend`, `mailpit`)
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - user OTP login -> PASS
+  - create ticket -> PASS
+  - open ticket detail -> PASS
+  - developer OTP login -> PASS
+  - update status + developer comment -> PASS
+
+### Result
+- Backend zwraca i zapisuje preferencje email per user:
+  - `email_notify_ticket_status`
+  - `email_notify_developer_comment`
+- OTP/login pozostał poza zakresem preferencji (zawsze aktywny).
+- Wysyłka maili status/comment respektuje nowe flagi użytkownika.
+- Krok gotowy do ręcznej weryfikacji API przed przejściem do UI.
+
+### Skills created/updated
+- `docs/skills/email-notification-preferences.md` (created)
+
 ## Step E-ST1-SupportThreads-EnterpriseBootstrap-01
 - Status: Done (approved by user)
 - Description: Fundament modułu Enterprise `Support Threads`: nowy capability contract, loader prywatnych tras oraz bootstrap pustego repo `OpenArca-Enterprise`.

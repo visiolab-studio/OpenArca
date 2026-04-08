@@ -23,6 +23,8 @@ const schemaStatements = [
     name TEXT,
     role TEXT NOT NULL DEFAULT 'user',
     language TEXT NOT NULL DEFAULT 'pl',
+    email_notify_ticket_status INTEGER NOT NULL DEFAULT 1,
+    email_notify_developer_comment INTEGER NOT NULL DEFAULT 1,
     avatar_filename TEXT,
     avatar_updated_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -239,6 +241,18 @@ function initDb() {
 
     if (!userColumnNames.has("avatar_updated_at")) {
       db.prepare("ALTER TABLE users ADD COLUMN avatar_updated_at TEXT").run();
+    }
+
+    if (!userColumnNames.has("email_notify_ticket_status")) {
+      db.prepare(
+        "ALTER TABLE users ADD COLUMN email_notify_ticket_status INTEGER NOT NULL DEFAULT 1"
+      ).run();
+    }
+
+    if (!userColumnNames.has("email_notify_developer_comment")) {
+      db.prepare(
+        "ALTER TABLE users ADD COLUMN email_notify_developer_comment INTEGER NOT NULL DEFAULT 1"
+      ).run();
     }
 
     const commentColumns = db.prepare("PRAGMA table_info(comments)").all();

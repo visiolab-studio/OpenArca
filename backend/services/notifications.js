@@ -5,7 +5,13 @@ const { getSetting } = require("./settings");
 
 function getUser(userId) {
   return db
-    .prepare("SELECT id, email, name, role, language FROM users WHERE id = ?")
+    .prepare(
+      `SELECT
+        id, email, name, role, language,
+        email_notify_ticket_status, email_notify_developer_comment
+       FROM users
+       WHERE id = ?`
+    )
     .get(userId);
 }
 
@@ -45,6 +51,10 @@ async function notifyReporterStatusChange({ ticketId, actorUserId, oldStatus, ne
   const reporter = getUser(ticket.reporter_id);
   if (!reporter || !reporter.email) {
     return { sent: false, reason: "reporter_not_found" };
+  }
+
+  if (!reporter.email_notify_ticket_status) {
+    return { sent: false, reason: "ticket_status_disabled_by_user" };
   }
 
   const labels = {
@@ -94,6 +104,10 @@ async function notifyReporterDeveloperComment({ ticketId, actorUserId, commentCo
   const reporter = getUser(ticket.reporter_id);
   if (!reporter || !reporter.email) {
     return { sent: false, reason: "reporter_not_found" };
+  }
+
+  if (!reporter.email_notify_developer_comment) {
+    return { sent: false, reason: "developer_comment_disabled_by_user" };
   }
 
   const lang = reporter.language === "en" ? "en" : "pl";

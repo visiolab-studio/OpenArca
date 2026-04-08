@@ -71,9 +71,35 @@ test.after(() => {
 test("auth flow assigns proper roles and returns token", async () => {
   assert.ok(userAuth.token);
   assert.equal(userAuth.user.role, "user");
+  assert.equal(userAuth.user.email_notify_ticket_status, true);
+  assert.equal(userAuth.user.email_notify_developer_comment, true);
 
   assert.ok(devAuth.token);
   assert.equal(devAuth.user.role, "developer");
+  assert.equal(devAuth.user.email_notify_ticket_status, true);
+  assert.equal(devAuth.user.email_notify_developer_comment, true);
+});
+
+test("user can update notification preferences in /api/auth/me", async () => {
+  const patchMe = await request
+    .patch("/api/auth/me")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .send({
+      email_notify_ticket_status: false,
+      email_notify_developer_comment: true
+    });
+
+  assert.equal(patchMe.statusCode, 200);
+  assert.equal(patchMe.body.email_notify_ticket_status, false);
+  assert.equal(patchMe.body.email_notify_developer_comment, true);
+
+  const me = await request
+    .get("/api/auth/me")
+    .set("Authorization", `Bearer ${userAuth.token}`);
+
+  assert.equal(me.statusCode, 200);
+  assert.equal(me.body.email_notify_ticket_status, false);
+  assert.equal(me.body.email_notify_developer_comment, true);
 });
 
 test("rbac blocks user from developer-only endpoint", async () => {

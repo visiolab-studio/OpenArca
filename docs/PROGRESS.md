@@ -1,7 +1,8 @@
 # OpenArca — Progress Log
 
 ## Step OC-NOTIFY-02-ProfileUI-And-Delivery
-- Status: Needs review
+- Status: Done (approved by user)
+- Commit: `9ada4a7`
 - Description: Open Core — krok 2: UI preferencji email w profilu + linkowanie stopki maila do `/profile#notifications`.
 
 ### Implementation Plan

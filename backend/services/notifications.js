@@ -77,7 +77,7 @@ async function notifyReporterStatusChange({ ticketId, actorUserId, oldStatus, ne
     `The status of ticket ${formatTicketNumber(ticket.number)} (${ticket.title}) changed to: ${statusLabel}.\n${getTicketUrl(ticket.id)}`
   );
 
-  await sendEmail({ to: reporter.email, subject, text });
+  await sendEmail({ to: reporter.email, subject, text, lang });
   return { sent: true };
 }
 
@@ -108,7 +108,7 @@ async function notifyReporterDeveloperComment({ ticketId, actorUserId, commentCo
     `A developer posted a comment on ticket ${formatTicketNumber(ticket.number)} (${ticket.title}).\n\n${commentContent}\n\n${getTicketUrl(ticket.id)}`
   );
 
-  await sendEmail({ to: reporter.email, subject, text });
+  await sendEmail({ to: reporter.email, subject, text, lang });
   return { sent: true };
 }
 

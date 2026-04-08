@@ -133,7 +133,7 @@ router.post(
           ? `Your OTP code is: ${code}. It expires in 10 minutes.`
           : `Twój kod OTP to: ${code}. Kod wygasa za 10 minut.`;
 
-      await sendEmail({ to: email, subject, text });
+      await sendEmail({ to: email, subject, text, lang });
 
       return res.json({ success: true });
     } catch (error) {

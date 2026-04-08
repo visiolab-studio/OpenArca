@@ -324,10 +324,12 @@ async function handleTestEmail(req, res, next) {
   try {
     const subject = "OpenArca email provider test";
     const text = "Email provider test message from OpenArca admin panel.";
+    const lang = req.user?.language === "en" ? "en" : "pl";
     const result = await sendEmail({
       to: req.body.to,
       subject,
-      text
+      text,
+      lang
     });
     return res.json({ success: true, ...result });
   } catch (error) {

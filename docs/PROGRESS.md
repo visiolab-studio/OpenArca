@@ -1,5 +1,103 @@
 # OpenArca — Progress Log
 
+## Step E-NOTIFY-03-EnterpriseSupportThreads-ProfilePlacement
+- Status: Done (approved by user)
+- Enterprise commit: `ef2c9b7`
+- Description: Enterprise — przeniesienie preferencji powiadomień Support Threads z `Quick Support` do `Profil > Powiadomienia` oraz podział na sekcje.
+
+### Implementation Plan
+- Dodać w OpenArca slot rozszerzeń Enterprise dla sekcji powiadomień w `Profile`.
+- Rozszerzyć stub `virtual:enterprise-frontend` o eksport sekcji profilu.
+- Utworzyć komponent Enterprise dla preferencji Support Threads osadzany w profilu.
+- Podpiąć komponent przez `enterpriseProfileNotificationSections` w rozszerzeniu Enterprise.
+- Usunąć formularz preferencji z `Quick Support` (brak duplikacji ustawień).
+- Zachować regułę OTP always-on (informacyjnie, bez toggle).
+- Uruchomić pełne quality gates + smoke.
+- Zaktualizować skill i progres kroku.
+
+### Files changed
+- `frontend/src/pages/Profile.jsx`
+- `frontend/src/enterprise/extensions.stub.jsx`
+- `frontend/src/styles.css`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/extensions/index.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserInboxPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/ProfileNotificationsSection.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-notification-preferences.md`
+- `docs/PROGRESS.md`
+
+### Tests run
+- Enterprise:
+  - `npm test` (repo `OpenArca-Enterprise`) -> PASS (17/17)
+- OpenArca quality gates (Enterprise stack):
+  - `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend npm run lint` -> PASS
+  - `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend npm test` -> PASS (169/169)
+  - `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run lint` -> PASS
+  - `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm test` -> PASS (45/45)
+  - `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T frontend npm run build` -> PASS
+
+### E2E run
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml up -d` -> PASS
+- `docker compose -f docker-compose.yml -f docker-compose.enterprise.override.yml exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - OTP login (user/developer), create/open ticket, update flow -> PASS
+
+### Result
+- Sekcja konfiguracji Enterprise `Support Threads` jest dostępna w `Profil > Powiadomienia`.
+- Widok `Quick Support` nie zawiera już zduplikowanego formularza preferencji.
+- Zachowany podział ustawień: Open Core + sekcje Enterprise w jednym miejscu.
+
+### Skills created/updated
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-notification-preferences.md` (updated)
+
+## Step E-NOTIFY-02-EnterpriseSupportThreads-ProfileUI
+- Status: Needs review
+- Description: Enterprise — UI preferencji powiadomień email dla modułu Support Threads w widoku użytkownika (`/quick-support`).
+
+### Implementation Plan
+- Dodać klienta API do odczytu/zapisu preferencji `.../notification-preferences/me`.
+- Dodać kartę „Powiadomienia email” do strony inbox użytkownika.
+- Dodać 3 checkboxy zgodne z flagami backendu.
+- Dodać obsługę stanów `loading/saving/success/error`.
+- Zachować twardą regułę: OTP poza konfiguracją użytkownika (tylko hint informacyjny).
+- Dodać style karty powiadomień zgodne z aktualnym UI.
+- Uruchomić testy Enterprise + quality gates OpenArca.
+- Przygotować checkpoint ręcznej weryfikacji UI.
+
+### Files changed
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/api.js`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/UserInboxPage.jsx`
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/frontend/support-threads/styles.css`
+- `docs/PROGRESS.md`
+
+### Tests run
+- Enterprise:
+  - `npm test` (repo `OpenArca-Enterprise`) -> PASS (17/17)
+- OpenArca quality gates (w kontenerach Node 20):
+  - `docker compose exec -T backend npm run lint` -> PASS
+  - `docker compose exec -T backend npm test` -> PASS (169/169)
+  - `docker compose exec -T frontend npm test` -> PASS (45/45)
+  - `docker compose exec -T frontend npm run build` -> PASS
+- Dodatkowe uwagi środowiskowe:
+  - hostowy Node `25.x` powoduje lokalny błąd kompilacji `better-sqlite3` (brak wsparcia; projekt docelowo `Node 20 LTS`).
+  - `docker compose up --build -d` z domyślnym `mailpit:1025` zgłasza konflikt portu, ale `backend` i `frontend` startują poprawnie i przechodzą smoke.
+
+### E2E run
+- `docker compose up --build -d` -> PARTIAL (konflikt portu `1025` dla `mailpit`)
+- `docker compose ps` -> PASS (`backend`, `frontend` healthy)
+- `curl -sI http://localhost:3330` -> PASS (`200`)
+- `curl -sI http://localhost:4000/health` -> PASS (`200`)
+- Przepływ API dla kroku:
+  - `PATCH /api/enterprise/support-threads/notification-preferences/me` -> `200`
+  - `GET /api/enterprise/support-threads/notification-preferences/me` -> `200` i zwrot zapisanych flag
+
+### Result
+- Użytkownik ma w `/quick-support` sekcję konfiguracji powiadomień email dla Support Threads.
+- UI pobiera aktualne flagi, pozwala je zmienić i zapisać.
+- Komunikaty sukcesu/błędu i stany ładowania/zapisu są obsłużone.
+- OTP pozostaje poza konfiguracją użytkownika (zgodnie z wymaganiem).
+
+### Skills created/updated
+- `/Users/piotrektomczak/dev/OpenArca-Enterprise/docs/skills/support-threads-notification-preferences.md` (used)
+
 ## Step E-NOTIFY-01-EnterpriseSupportThreads-Preferences
 - Status: Done (approved by user)
 - Enterprise commit: `7c1f24f`

@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../api/client";
 import { getEnterpriseCheck } from "../api/settings";
 import { useAuth } from "../contexts/AuthContext";
 import { useCapabilities } from "../contexts/CapabilitiesContext";
+import { enterpriseProfileNotificationSections } from "virtual:enterprise-frontend";
 
 function normalizeError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";
@@ -146,6 +147,28 @@ export default function ProfilePage() {
     return entries;
   }, [capabilities]);
 
+  const activeEnterpriseNotificationSections = useMemo(() => {
+    return (enterpriseProfileNotificationSections || []).filter((section) => {
+      if (!section || typeof section !== "object") {
+        return false;
+      }
+
+      if (section.featureKey && !capabilities?.[section.featureKey]) {
+        return false;
+      }
+
+      if (section.requiresDeveloper && user?.role !== "developer") {
+        return false;
+      }
+
+      if (section.requiresStandardUser && user?.role !== "user") {
+        return false;
+      }
+
+      return typeof section.component === "function";
+    });
+  }, [capabilities, user?.role]);
+
   return (
     <section className="page-content profile-page">
       <header className="page-header">
@@ -241,6 +264,19 @@ export default function ProfilePage() {
             </button>
           </div>
         </form>
+
+        {activeEnterpriseNotificationSections.length > 0 ? (
+          <div className="profile-notification-sections">
+            {activeEnterpriseNotificationSections.map((section) => {
+              const SectionComponent = section.component;
+              return (
+                <section key={section.key} className="profile-notification-section">
+                  <SectionComponent />
+                </section>
+              );
+            })}
+          </div>
+        ) : null}
       </article>
 
       {showCapabilitiesModal ? (

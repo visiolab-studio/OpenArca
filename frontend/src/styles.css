@@ -472,6 +472,21 @@ button {
   gap: 8px;
 }
 
+.profile-notification-sections {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 16px;
+}
+
+.profile-notification-section {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--bg-secondary);
+}
+
 .main-content {
   flex: 1;
   overflow: hidden;

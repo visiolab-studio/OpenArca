@@ -14,6 +14,14 @@
 - Jeden commit na jeden zamknięty krok.
 - W treści/zakresie commita dodawaj referencję kroku, np. `P5-telemetry-01`.
 
+## Release journal (CHANGELOG)
+- Plik źródłowy: `CHANGELOG.md` (format Keep a Changelog + SemVer).
+- Każdy krok produktowy/techniczny, który zmienia zachowanie systemu, musi dodać wpis do sekcji `Unreleased`.
+- Przed utworzeniem taga/release:
+  - przenieś `Unreleased` do nowej sekcji wersji z datą,
+  - pogrupuj zmiany minimum na: `Added`, `Changed`, `Fixed`, `Security` (gdy dotyczy),
+  - upewnij się, że wpis odpowiada rzeczywistym commitom i scope release.
+
 ## Standard testów
 - Backend:
   - `docker compose exec -T backend npm run lint`

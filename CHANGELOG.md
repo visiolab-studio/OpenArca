@@ -10,8 +10,32 @@ All notable changes to this project are documented in this file.
 ### Changed
 - -
 
+### Fixed
+- -
+
 ### Notes
 - -
+
+## [0.2.6-rc1] - 2026-04-08
+
+### Added
+- User-level email notification preferences in Open Core:
+  - `email_notify_ticket_status`
+  - `email_notify_developer_comment`
+- Profile UI section `Email notifications` / `Powiadomienia email` with independent save action.
+- Backend skill documentation for this flow:
+  - `docs/skills/email-notification-preferences.md`
+
+### Changed
+- `GET /api/auth/me` and `PATCH /api/auth/me` now expose and persist email preference flags.
+- Notification delivery now respects per-user preferences for:
+  - ticket status updates,
+  - developer comments.
+- Email footer notification settings link now points directly to `.../profile#notifications`.
+- Email template/footer flow is now aligned with profile-based notification management.
+
+### Notes
+- OTP login remains mandatory and always enabled (no user/admin toggle).
 
 ## [0.2.5-rc1] - 2026-04-07
 

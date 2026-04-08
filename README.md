@@ -72,39 +72,9 @@ That means:
 - Mail providers: SMTP or AWS SES.
 - Projects and user/role management.
 
-### Latest Release: v0.2.5-rc1
-This release candidate closes the Enterprise module **Support Threads / Quick Support** and connects it with the full ticket execution flow.
-
-Highlights:
-- Added Enterprise module foundation (backend + frontend extension points).
-- Added full **Quick Support** flow for standard users:
-  - own threads inbox,
-  - create thread,
-  - chat-like thread detail,
-  - attachments,
-  - email notifications.
-- Added developer support inbox:
-  - filters,
-  - summary cards,
-  - reply workflow,
-  - assignee and status handling.
-- Added conversion flow **Support Thread -> Ticket**:
-  - transcript transfer,
-  - bidirectional links (`thread <-> ticket`),
-  - read-only state after conversion.
-- Added quick-support origin surfacing for tickets:
-  - badges and links in `TicketDetail`, `My Tickets`, `Board`, `DevTodo`,
-  - origin filters and quick presets.
-
-Quality status:
-- Backend tests: `168/168` PASS
-- Frontend tests: `44/44` PASS
-- Enterprise tests: `12/12` PASS
-- Lint/build/smoke: PASS
-
-Technical note:
-- After tag `v0.2.5-rc1`, CI stabilization fix was shipped in commit `7423bcc`:
-  - `test(frontend): isolate support threads contract from enterprise repo`
+### Latest Release
+- Latest tag: `v0.2.6-rc1`
+- Release notes and full change history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ### Screenshots
 Add screenshots to `docs/assets/` and reference them from README, for example:
@@ -275,39 +245,9 @@ To znaczy:
 - Dostawcy maili: SMTP lub AWS SES.
 - Zarządzanie projektami i użytkownikami.
 
-### Ostatnie Wydanie: v0.2.5-rc1
-To wydanie RC domyka moduł Enterprise **Support Threads / Szybkie wsparcie** i łączy go z pełnym flow realizacji zgłoszeń.
-
-Najważniejsze zmiany:
-- Dodano fundament modułów Enterprise (backend + frontend extension points).
-- Dodano pełny przepływ **Szybkie wsparcie** dla użytkownika:
-  - lista własnych wątków,
-  - tworzenie nowego wątku,
-  - szczegóły w formie chatu,
-  - załączniki,
-  - powiadomienia email.
-- Dodano inbox supportu dla developera:
-  - filtry,
-  - karty podsumowań,
-  - reply workflow,
-  - przypisanie i status.
-- Dodano konwersję **Support Thread -> Ticket**:
-  - przeniesienie historii,
-  - linkowanie dwukierunkowe (`thread <-> ticket`),
-  - stan tylko do odczytu po konwersji.
-- Dodano oznaczanie pochodzenia ticketów z Szybkiego wsparcia:
-  - badge i linki w `TicketDetail`, `My Tickets`, `Board`, `DevTodo`,
-  - filtry pochodzenia i szybkie presety.
-
-Status jakości:
-- Testy backend: `168/168` PASS
-- Testy frontend: `44/44` PASS
-- Testy enterprise: `12/12` PASS
-- Lint/build/smoke: PASS
-
-Nota techniczna:
-- Po tagu `v0.2.5-rc1` dowieziono poprawkę stabilizującą CI w commicie `7423bcc`:
-  - `test(frontend): isolate support threads contract from enterprise repo`
+### Ostatnie wydanie
+- Najnowszy tag: `v0.2.6-rc1`
+- Pełna historia zmian i release notes: [`CHANGELOG.md`](CHANGELOG.md)
 
 ### Screenshots
 Dodaj zrzuty do `docs/assets/` i podlinkuj je w README, np.:

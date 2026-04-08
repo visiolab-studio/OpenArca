@@ -51,6 +51,11 @@
     "editionLabel": "Edition",
     "flagsCount": "Flags: {{count}}",
     "enterpriseCheckBtn": "Check Enterprise endpoint",
+    "notificationsTitle": "Email notifications",
+    "notificationsHint": "OTP sign in is always enabled. You can manage only non-OTP email notifications here.",
+    "notifyTicketStatus": "Status changes for my ticket",
+    "notifyDeveloperComment": "New developer comment on my ticket",
+    "saveNotifications": "Save notifications",
     "enabled": "Enabled",
     "disabled": "Disabled"
   },

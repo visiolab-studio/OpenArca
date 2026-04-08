@@ -51,6 +51,11 @@
     "editionLabel": "Edycja",
     "flagsCount": "Flagi: {{count}}",
     "enterpriseCheckBtn": "Sprawdź endpoint Enterprise",
+    "notificationsTitle": "Powiadomienia email",
+    "notificationsHint": "Logowanie OTP jest zawsze aktywne. Tutaj zarządzasz tylko pozostałymi powiadomieniami email.",
+    "notifyTicketStatus": "Zmiana statusu mojego zgłoszenia",
+    "notifyDeveloperComment": "Nowy komentarz developera do mojego zgłoszenia",
+    "saveNotifications": "Zapisz powiadomienia",
     "enabled": "Włączone",
     "disabled": "Wyłączone"
   },

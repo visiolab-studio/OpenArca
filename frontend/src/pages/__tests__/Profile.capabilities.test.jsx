@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "../Profile";
 import * as SettingsApi from "../../api/settings";
@@ -28,13 +28,20 @@ vi.mock("react-i18next", () => ({
 
 describe("Profile capabilities modal", () => {
   let refreshCapabilitiesMock;
+  let updateProfileMock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     refreshCapabilitiesMock = vi.fn().mockResolvedValue(undefined);
+    updateProfileMock = vi.fn().mockResolvedValue(undefined);
     AuthContext.useAuth.mockReturnValue({
-      user: { email: "user@example.com", name: "User Name" },
-      updateProfile: vi.fn().mockResolvedValue(undefined),
+      user: {
+        email: "user@example.com",
+        name: "User Name",
+        email_notify_ticket_status: true,
+        email_notify_developer_comment: true
+      },
+      updateProfile: updateProfileMock,
       uploadAvatar: vi.fn().mockResolvedValue(undefined)
     });
     SettingsApi.getEnterpriseCheck.mockResolvedValue({
@@ -73,5 +80,19 @@ describe("Profile capabilities modal", () => {
 
     expect(await screen.findByText("OK · enterprise_automation")).toBeInTheDocument();
     expect(SettingsApi.getEnterpriseCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves email notification preferences from profile section", async () => {
+    render(<ProfilePage />);
+
+    fireEvent.click(screen.getByLabelText("profile.notifyTicketStatus"));
+    fireEvent.click(screen.getByRole("button", { name: "profile.saveNotifications" }));
+
+    await waitFor(() => {
+      expect(updateProfileMock).toHaveBeenCalledWith({
+        email_notify_ticket_status: false,
+        email_notify_developer_comment: true
+      });
+    });
   });
 });

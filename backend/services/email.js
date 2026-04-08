@@ -57,12 +57,13 @@ function getLogoUrl(settings, appUrl) {
 function buildEmailHtml({ subject, text, html, settings, lang }) {
   const appName = String(settings.app_name || "OpenArca").trim() || "OpenArca";
   const appUrl = String(settings.app_url || "http://localhost:3330").replace(/\/$/, "");
+  const notificationsUrl = `${appUrl}/profile#notifications`;
   const logoUrl = getLogoUrl(settings, appUrl);
   const safeSubject = escapeHtml(subject || appName);
   const contentHtml = html || renderTextContentHtml(text);
   const footer = lang === "en"
-    ? `This message was sent by the ${escapeHtml(appName)} system at <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. You can manage notifications in your account settings.`
-    : `Ta wiadomość została wysłana z systemu ${escapeHtml(appName)} pod adresem <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. Powiadomieniami możesz zarządzać w ustawieniach konta.`;
+    ? `This message was sent by the ${escapeHtml(appName)} system at <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. You can manage notifications in <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">Profile settings</a>.`
+    : `Ta wiadomość została wysłana z systemu ${escapeHtml(appName)} pod adresem <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. Powiadomieniami możesz zarządzać w <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">ustawieniach profilu</a>.`;
 
   return `<!doctype html>
 <html lang="${lang === "en" ? "en" : "pl"}">

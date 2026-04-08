@@ -24,10 +24,13 @@ export default function ProfilePage() {
   const { user, updateProfile, uploadAvatar } = useAuth();
   const { ready: capabilitiesReady, edition, capabilities, refreshCapabilities } = useCapabilities();
   const [name, setName] = useState("");
+  const [emailNotifyTicketStatus, setEmailNotifyTicketStatus] = useState(true);
+  const [emailNotifyDeveloperComment, setEmailNotifyDeveloperComment] = useState(true);
   const [avatarFile, setAvatarFile] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showCapabilitiesModal, setShowCapabilitiesModal] = useState(false);
   const [capabilitiesError, setCapabilitiesError] = useState("");
@@ -38,6 +41,11 @@ export default function ProfilePage() {
   useEffect(() => {
     setName(user?.name || "");
   }, [user?.name]);
+
+  useEffect(() => {
+    setEmailNotifyTicketStatus(Boolean(user?.email_notify_ticket_status ?? true));
+    setEmailNotifyDeveloperComment(Boolean(user?.email_notify_developer_comment ?? true));
+  }, [user?.email_notify_ticket_status, user?.email_notify_developer_comment]);
 
   const avatarSrc = useMemo(() => {
     if (!user?.avatar_filename) return null;
@@ -82,6 +90,25 @@ export default function ProfilePage() {
       setError(normalizeError(uploadError));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleSaveNotifications(event) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    setSavingNotifications(true);
+
+    try {
+      await updateProfile({
+        email_notify_ticket_status: Boolean(emailNotifyTicketStatus),
+        email_notify_developer_comment: Boolean(emailNotifyDeveloperComment)
+      });
+      setNotice("saved");
+    } catch (saveError) {
+      setError(normalizeError(saveError));
+    } finally {
+      setSavingNotifications(false);
     }
   }
 
@@ -181,6 +208,36 @@ export default function ProfilePage() {
             </button>
             <button type="button" className="btn btn-secondary" onClick={handleOpenCapabilitiesModal}>
               {t("profile.showCapabilities")}
+            </button>
+          </div>
+        </form>
+      </article>
+
+      <article className="card" id="notifications">
+        <h2 className="card-title">{t("profile.notificationsTitle")}</h2>
+        <p className="muted">{t("profile.notificationsHint")}</p>
+        <form className="form-grid" onSubmit={handleSaveNotifications}>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={emailNotifyTicketStatus}
+              onChange={(event) => setEmailNotifyTicketStatus(event.target.checked)}
+            />
+            <span>{t("profile.notifyTicketStatus")}</span>
+          </label>
+
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={emailNotifyDeveloperComment}
+              onChange={(event) => setEmailNotifyDeveloperComment(event.target.checked)}
+            />
+            <span>{t("profile.notifyDeveloperComment")}</span>
+          </label>
+
+          <div className="row-actions">
+            <button type="submit" className="btn" disabled={savingNotifications}>
+              {savingNotifications ? t("app.loading") : t("profile.saveNotifications")}
             </button>
           </div>
         </form>

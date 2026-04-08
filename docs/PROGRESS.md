@@ -1,7 +1,57 @@
 # OpenArca — Progress Log
 
-## Step OC-NOTIFY-01-UserEmailPrefs-API
+## Step OC-NOTIFY-02-ProfileUI-And-Delivery
 - Status: Needs review
+- Description: Open Core — krok 2: UI preferencji email w profilu + linkowanie stopki maila do `/profile#notifications`.
+
+### Implementation Plan
+- Dodać sekcję `Powiadomienia email` na stronie profilu.
+- Dodać 2 checkboxy zgodne z polami API (`ticket_status`, `developer_comment`).
+- Dodać osobny submit dla sekcji powiadomień.
+- Rozszerzyć tłumaczenia EN/PL o nowe etykiety.
+- Utrzymać OTP poza zakresem ustawień (zawsze ON).
+- Zmienić stopkę maila na link `.../profile#notifications`.
+- Dodać test frontendowy zapisu preferencji.
+- Uruchomić quality gates i smoke flow.
+
+### Files changed
+- `frontend/src/pages/Profile.jsx`
+- `frontend/src/pages/__tests__/Profile.capabilities.test.jsx`
+- `frontend/src/i18n/pl.json`
+- `frontend/src/i18n/en.json`
+- `backend/services/email.js`
+- `docs/PROGRESS.md`
+
+### Tests run
+- `docker compose exec -T backend npm run lint` -> PASS
+- `docker compose exec -T backend npm test` -> PASS (169/169)
+- `docker compose exec -T frontend npm run lint` -> PASS
+- `docker compose exec -T frontend npm test` -> PASS (45/45)
+- `docker compose exec -T frontend npm run build` -> PASS
+  - ostrzeżenie Vite o chunku `>500 kB`, bez regresji builda
+
+### E2E run
+- `MAILPIT_SMTP_PORT=1026 MAILPIT_UI_PORT=8026 docker compose up --build -d` -> PASS
+- `docker compose ps` -> PASS (`backend`, `frontend`, `mailpit`)
+- `docker compose exec -T backend node --test --test-concurrency=1 tests/smoke.flow.test.js` -> PASS
+  - user OTP login -> PASS
+  - create ticket -> PASS
+  - open ticket detail -> PASS
+  - developer OTP login -> PASS
+  - status update + comment flow -> PASS
+
+### Result
+- `/profile` ma osobną sekcję `Powiadomienia email` z dwoma checkboxami i osobnym zapisem.
+- Opcja OTP nie została dodana do konfiguracji i pozostaje zawsze aktywna.
+- API preference flags są edytowane z UI i wracają przez `GET /api/auth/me`.
+- Stopka maili linkuje do `.../profile#notifications`, zgodnie z nowym flow ustawień użytkownika.
+
+### Skills created/updated
+- `docs/skills/email-notification-preferences.md` (used)
+
+## Step OC-NOTIFY-01-UserEmailPrefs-API
+- Status: Done (approved by user)
+- Commit: `efff9ae`
 - Description: Open Core — krok 1: preferencje powiadomień email per user (bez OTP toggle), model + API + egzekwowanie flag w backendzie.
 
 ### Implementation Plan

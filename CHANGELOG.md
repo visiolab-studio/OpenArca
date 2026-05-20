@@ -16,6 +16,17 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.2.6-rc2] - 2026-05-20
+
+### Changed
+- Profile page can now render Enterprise-provided notification preference sections through the frontend extension slot.
+
+### Fixed
+- Completed English translations on the `New Ticket` screen so title guidance, good/bad examples, category descriptions and description hints no longer fall back to Polish when English is selected.
+
+### Notes
+- This release addresses GitHub issue #3: incomplete English translations.
+
 ## [0.2.6-rc1] - 2026-04-08
 
 ### Added

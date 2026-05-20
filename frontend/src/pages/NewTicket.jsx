@@ -279,27 +279,17 @@ export default function NewTicketPage() {
           <>
             <div className="form-instruction-box">
               <div className="form-instruction-box-title">{t("tickets.titleField")}</div>
-              <p>
-                {t(
-                  "newTicket.titleHint",
-                  "Napisz precyzyjny tytuł. Unikaj ogólników typu 'nie działa'."
-                )}
-              </p>
+              <p>{t("newTicket.titleHint")}</p>
             </div>
 
             <div className="form-examples">
               <div className="form-example form-example-bad">
-                <div className="form-example-label">{t("newTicket.badExample", "Zły przykład")}</div>
-                <div>{t("newTicket.badTitle", "Nie działa formularz")}</div>
+                <div className="form-example-label">{t("newTicket.badExample")}</div>
+                <div>{t("newTicket.badTitle")}</div>
               </div>
               <div className="form-example form-example-good">
-                <div className="form-example-label">{t("newTicket.goodExample", "Dobry przykład")}</div>
-                <div>
-                  {t(
-                    "newTicket.goodTitle",
-                    "Błąd zapisu formularza zamówienia po kliknięciu Zatwierdź"
-                  )}
-                </div>
+                <div className="form-example-label">{t("newTicket.goodExample")}</div>
+                <div>{t("newTicket.goodTitle")}</div>
               </div>
             </div>
 
@@ -399,14 +389,8 @@ export default function NewTicketPage() {
               <div className="form-instruction-box-title">{t("tickets.description")}</div>
               <p>
                 {form.category === "bug"
-                  ? t(
-                      "newTicket.bugHint",
-                      "Opisz dokładnie kiedy i jak często problem występuje oraz jak go odtworzyć."
-                    )
-                  : t(
-                      "newTicket.generalHint",
-                      "Opisz szczegółowo kontekst i oczekiwany efekt biznesowy."
-                    )}
+                  ? t("newTicket.bugHint")
+                  : t("newTicket.generalHint")}
               </p>
             </div>
 

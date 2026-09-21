@@ -214,7 +214,35 @@ const schemaStatements = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  // Machine identity for local coding agents. Every account has a human
+  // owner (owner_user_id) — a service account never acts on its own
+  // authority, only on behalf of the developer it is bound to.
+  `CREATE TABLE IF NOT EXISTS service_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    owner_user_id TEXT NOT NULL REFERENCES users(id),
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    disabled_at TEXT
+  )`,
+  // token_hash is NOT NULL and is the only place a token's value lives here —
+  // the clear token is never persisted, only its hash.
+  `CREATE TABLE IF NOT EXISTS service_tokens (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES service_accounts(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    scopes_json TEXT NOT NULL DEFAULT '[]',
+    expires_at TEXT,
+    last_used_at TEXT,
+    revoked_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_categories_key ON project_categories(project_id, category_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_service_accounts_owner ON service_accounts(owner_user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_service_tokens_account ON service_tokens(account_id)`,
+  // Weryfikacja szuka tokenu WYLACZNIE po haszu — bez tego indeksu kazde
+  // sprawdzenie tokenu to skan calej tabeli.
+  `CREATE INDEX IF NOT EXISTS idx_service_tokens_hash ON service_tokens(token_hash)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_custom_fields_key ON project_custom_fields(project_id, field_key)`,
   `CREATE INDEX IF NOT EXISTS idx_project_custom_fields_project ON project_custom_fields(project_id, archived_at, position)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_custom_values_unique ON ticket_custom_field_values(ticket_id, field_id)`,

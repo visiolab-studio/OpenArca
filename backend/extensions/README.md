@@ -2,6 +2,12 @@
 
 Ten katalog jest punktem integracji prywatnych modułów Enterprise lub custom override.
 
+> **Wiele warstw naraz:** konfiguracja opisana niżej obsługuje **jedną** warstwę rozszerzeń.
+> Stackowanie kilku warstw (np. Enterprise + warstwa wdrożeniowa) opisuje
+> [`docs/extensions/layer-contract.md`](../../docs/extensions/layer-contract.md):
+> zmienna `EXTENSIONS_LAYERS`, manifest `layer.json` i reguły kolejności osobno dla
+> każdego szwu. Zmienne poniżej pozostają wspierane jako pojedyncza, domyślna warstwa.
+
 ## Konfiguracja ścieżki z ENV
 Możesz wskazać override z zewnętrznego repo (np. `OpenArca-Enterprise`):
 

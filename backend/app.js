@@ -5,7 +5,8 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const { frontendOrigin, uploadsDir, dataDir, sqlitePath, appUrl } = require("./config");
+const { frontendOrigin, uploadsDir, dataDir, sqlitePath, appUrl, allowedOrigins, canonicalOrigin } = require("./config");
+const { resolveRequestOrigin } = require("./core/hosts");
 const db = require("./db");
 const authRoutes = require("./routes/auth");
 const ticketRoutes = require("./routes/tickets");
@@ -14,6 +15,7 @@ const projectRoutes = require("./routes/projects");
 const ticketTemplateRoutes = require("./routes/ticketTemplates");
 const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
+const publicRoutes = require("./routes/public");
 const { authRequired } = require("./middleware/auth");
 const { requireRole } = require("./middleware/auth");
 const { requireFeature } = require("./middleware/features");
@@ -23,9 +25,16 @@ const { notFound, errorHandler } = require("./middleware/error-handler");
 const { sendEmail } = require("./services/email");
 const { getService } = require("./core/extension-registry");
 const { registerRoutesExtensions } = require("./core/routes-extension-loader");
+const { installLayerSchemas } = require("./core/schema-installer");
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(uploadsDir, { recursive: true });
+
+// Core tables exist by now (require("./db") ran the core migration). Layer
+// schemas install lowest-first, and before any route registrar: registrars run
+// in reverse layer order, so a higher layer's routes can execute first and must
+// still find the lower layer's tables in place.
+installLayerSchemas(db);
 
 const app = express();
 
@@ -40,12 +49,21 @@ app.use(
 
 app.use(
   cors({
-    origin: frontendOrigin,
+    // Every allowed host, and nothing else. A single-host install resolves to a
+    // one-entry list, so this is unchanged for them.
+    origin: allowedOrigins.length > 0 ? allowedOrigins : frontendOrigin,
     credentials: false,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
+
+// Resolved once per request from the allowlist. Handlers must use this rather
+// than reading Host themselves, which is what makes the rule enforceable.
+app.use((req, _res, next) => {
+  req.resolvedOrigin = resolveRequestOrigin(req, allowedOrigins, { canonical: canonicalOrigin });
+  next();
+});
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
@@ -59,14 +77,10 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/tickets", ticketRoutes);
-app.use("/api/dev-tasks", devTaskRoutes);
-app.use("/api/projects", projectRoutes);
-app.use("/api/ticket-templates", ticketTemplateRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/settings", settingsRoutes);
-
+// BEFORE core's own routes, so the layer ordering means what the contract says:
+// registrars run topmost-layer-first, then core, and Express matches
+// first-registered-wins. Mounting core first would have made a layer unable to
+// override any core route — only to add new ones.
 registerRoutesExtensions(app, {
   context: {
     express,
@@ -84,6 +98,20 @@ registerRoutesExtensions(app, {
     }
   }
 });
+
+app.use("/api/auth", authRoutes);
+app.use("/api/tickets", ticketRoutes);
+app.use("/api/dev-tasks", devTaskRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/ticket-templates", ticketTemplateRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/settings", settingsRoutes);
+
+// Unauthenticated by design. Mounted last among core routes so nothing above it
+// can be reached without a session by accident.
+app.use("/api/public", publicRoutes);
+
+
 
 app.get("/api/uploads/:filename", authRequired, (req, res) => {
   const filename = String(req.params.filename || "");

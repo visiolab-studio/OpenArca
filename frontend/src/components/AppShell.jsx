@@ -21,11 +21,20 @@ import appLogo from "../assets/logo-openarca.png";
 import openArcaLogoGrey from "../assets/logo-openarca-grey.png";
 import polandFlag from "../assets/poland.png";
 import unitedStatesFlag from "../assets/united-states.png";
+import italyFlag from "../assets/italy.svg";
+
+// Flags live here rather than in the dictionaries: a language option must render
+// identically whichever language is currently active.
+const LANGUAGE_OPTIONS = [
+  { code: "pl", label: "PL", flag: polandFlag },
+  { code: "en", label: "EN", flag: unitedStatesFlag },
+  { code: "it", label: "IT", flag: italyFlag }
+];
 import { API_BASE_URL } from "../api/client";
 import { getPublicSettings } from "../api/settings";
 import { getStoredValue, setStoredValue } from "../utils/storage";
 import appPackage from "../../package.json";
-import { enterpriseBaseItems, enterpriseNavSections } from "virtual:enterprise-frontend";
+import { enterpriseBaseItems, enterpriseNavSections } from "virtual:openarca-extensions";
 
 const themeStorageKey = "taskflow-theme";
 
@@ -351,22 +360,18 @@ export default function AppShell() {
 
           <div className="topbar-actions">
             <div className="lang-switch" role="group" aria-label="Language switch">
-              <button
-                type="button"
-                className={language === "pl" ? "lang-option active" : "lang-option"}
-                onClick={() => handleLanguageChange("pl")}
-              >
-                <img src={polandFlag} alt="" className="lang-flag" aria-hidden="true" />
-                <span>PL</span>
-              </button>
-              <button
-                type="button"
-                className={language === "en" ? "lang-option active" : "lang-option"}
-                onClick={() => handleLanguageChange("en")}
-              >
-                <img src={unitedStatesFlag} alt="" className="lang-flag" aria-hidden="true" />
-                <span>EN</span>
-              </button>
+              {LANGUAGE_OPTIONS.map((option) => (
+                <button
+                  key={option.code}
+                  type="button"
+                  className={language === option.code ? "lang-option active" : "lang-option"}
+                  onClick={() => handleLanguageChange(option.code)}
+                  aria-pressed={language === option.code}
+                >
+                  <img src={option.flag} alt="" className="lang-flag" aria-hidden="true" />
+                  <span>{option.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </header>

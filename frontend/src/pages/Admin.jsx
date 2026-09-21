@@ -262,6 +262,12 @@ export default function AdminPage() {
   }, [templates]);
   const appLogoPreviewUrl = settings?.app_logo_url ? `${API_BASE_URL}${settings.app_logo_url}` : appLogo;
   const readinessChecks = Array.isArray(readiness?.checks) ? readiness.checks : [];
+  const readinessLayers = Array.isArray(readiness?.extensions?.layers)
+    ? readiness.extensions.layers
+    : [];
+  const readinessLayerWarnings = Array.isArray(readiness?.extensions?.warnings)
+    ? readiness.extensions.warnings
+    : [];
   const readinessReadyCount = readinessChecks.filter((check) => check.status === "ready").length;
 
   async function handleSaveAppSettings(event) {
@@ -736,6 +742,50 @@ export default function AdminPage() {
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="admin-readiness-layers">
+                <div className="admin-readiness-layers-header">
+                  <h3>{t("admin.extensionLayers")}</h3>
+                  <p className="muted">{t("admin.extensionLayersHint")}</p>
+                </div>
+
+                <ol className="admin-layer-stack">
+                  {readinessLayers.map((layer) => (
+                    <li key={`${layer.name}-${layer.path}`} className="admin-layer">
+                      <div className="admin-layer-head">
+                        <strong>{layer.name}</strong>
+                        {layer.path ? <code>{layer.path}</code> : null}
+                      </div>
+                      {layer.status === "contributes_nothing" ? (
+                        <p className="admin-layer-warning">
+                          <AlertTriangle size={12} />
+                          <span>{t("admin.layerNoSeams")}</span>
+                        </p>
+                      ) : (
+                        <p className="muted">
+                          {t("admin.layerSeams")}: {layer.seams.join(", ")}
+                        </p>
+                      )}
+                      {layer.requires?.length ? (
+                        <p className="muted">
+                          {t("admin.layerRequires")}: {layer.requires.join(", ")}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+
+                {readinessLayerWarnings.length ? (
+                  <div className="admin-layer-warnings">
+                    <span className="form-label">{t("admin.layerWarnings")}</span>
+                    <ul>
+                      {readinessLayerWarnings.map((warning) => (
+                        <li key={warning} className="muted">{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
 
               <div className="admin-readiness-details">

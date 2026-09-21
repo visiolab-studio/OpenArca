@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
 const { getSettingsMap } = require("./settings");
+const { normalizeLanguage, translate } = require("../core/languages");
 
 function escapeHtml(value) {
   return String(value || "")
@@ -54,19 +55,23 @@ function getLogoUrl(settings, appUrl) {
   return getDefaultLogoDataUri();
 }
 
-function buildEmailHtml({ subject, text, html, settings, lang }) {
+function buildEmailHtml({ subject, text, html, settings, lang, origin }) {
   const appName = String(settings.app_name || "OpenArca").trim() || "OpenArca";
-  const appUrl = String(settings.app_url || "http://localhost:3330").replace(/\/$/, "");
+  // The host the recipient actually used, when we know it.
+  const appUrl = String(origin || settings.app_url || "http://localhost:3330").replace(/\/$/, "");
   const notificationsUrl = `${appUrl}/profile#notifications`;
   const logoUrl = getLogoUrl(settings, appUrl);
   const safeSubject = escapeHtml(subject || appName);
   const contentHtml = html || renderTextContentHtml(text);
-  const footer = lang === "en"
-    ? `This message was sent by the ${escapeHtml(appName)} system at <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. You can manage notifications in <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">Profile settings</a>.`
-    : `Ta wiadomość została wysłana z systemu ${escapeHtml(appName)} pod adresem <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. Powiadomieniami możesz zarządzać w <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">ustawieniach profilu</a>.`;
+  const normalizedLang = normalizeLanguage(lang);
+  const footer = translate(normalizedLang, {
+    pl: `Ta wiadomość została wysłana z systemu ${escapeHtml(appName)} pod adresem <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. Powiadomieniami możesz zarządzać w <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">ustawieniach profilu</a>.`,
+    en: `This message was sent by the ${escapeHtml(appName)} system at <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. You can manage notifications in <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">Profile settings</a>.`,
+    it: `Questo messaggio è stato inviato dal sistema ${escapeHtml(appName)} all'indirizzo <a href="${escapeHtml(appUrl)}" style="color:#6b7280;">${escapeHtml(appUrl)}</a>. Puoi gestire le notifiche nelle <a href="${escapeHtml(notificationsUrl)}" style="color:#6b7280;">impostazioni del profilo</a>.`
+  });
 
   return `<!doctype html>
-<html lang="${lang === "en" ? "en" : "pl"}">
+<html lang="${normalizedLang}">
   <body style="margin:0;padding:0;background:#eef1f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef1f4;padding:32px 16px;">
       <tr>
@@ -201,7 +206,7 @@ async function sendWithSes(settings, { to, subject, text, html }) {
   return { delivered: true, mode: "ses" };
 }
 
-async function sendEmail({ to, subject, text, html, lang }) {
+async function sendEmail({ to, subject, text, html, lang, origin }) {
   const settings = getSettingsMap([
     "app_name",
     "app_url",
@@ -220,13 +225,14 @@ async function sendEmail({ to, subject, text, html, lang }) {
     "ses_from",
     "ses_endpoint"
   ]);
-  const normalizedLang = lang === "en" ? "en" : "pl";
+  const normalizedLang = normalizeLanguage(lang);
   const normalizedHtml = buildEmailHtml({
     subject,
     text,
     html,
     settings,
-    lang: normalizedLang
+    lang: normalizedLang,
+    origin
   });
 
   const provider = getEmailProvider(settings);
@@ -243,5 +249,6 @@ async function sendEmail({ to, subject, text, html, lang }) {
 }
 
 module.exports = {
-  sendEmail
+  sendEmail,
+  buildEmailHtml
 };

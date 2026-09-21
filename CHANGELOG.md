@@ -16,6 +16,40 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.3.0] - 2026-09-21
+
+### Added
+- Layered extension system: `EXTENSIONS_LAYERS` loads an ordered stack of extensions instead of a single one, with a `layer.json` manifest whose `requires` field is validated against the layers below the declaring one.
+- Shared layer resolver, layer-aware schema installation, chained route registrars and keyed merging of frontend slots, plus an optional `registerMiddleware` export for cross-cutting concerns.
+- `ticketDetailSections` UI slot, so a layer can contribute context to the ticket page.
+- Layer diagnostics in the admin readiness view: resolved stack, declared prerequisites, which seams each layer contributes and configuration warnings.
+- Build-your-own-layer guide, layer contract specification and a runnable `examples/example-layer/` with its own compose override.
+- Italian translation, complete and at parity with English; language switcher covers PL/EN/IT.
+- Project-scoped custom ticket fields (`text`, `number`, `select`, `url`, `date`) with server-side validation, archiving instead of deletion, UI in the ticket form and detail, and list filtering.
+- Multi-host support via `ALLOWED_HOSTS`, with host-aware OTP links and `docs/multi-host.md`.
+- Public ticket intake, opt-in per project and off by default, with a standalone submission form in all three languages.
+- `customFieldsService` and `personalDataService` exposed to layers through `getService`.
+- Personal-data seam: a layer declares its export/erase surface and core aggregates across core and every layer.
+
+### Changed
+- Route registrars now run **before** core mounts its own routes, so a layer can intercept a core route and hand the request on with `next()` rather than only adding new paths.
+- The i18n guard is driven by `src/i18n/languages.json` instead of a hardcoded language pair, with per-language foreign-character rules.
+- Backup readiness reports a capability (`script` or `runtime`) instead of checking for a repository-relative file.
+- `virtual:enterprise-frontend` renamed to `virtual:openarca-extensions`; the old specifier remains a working alias.
+
+### Fixed
+- Stored `javascript:` URLs could be rendered as links when an archived text field was revived as a `url` field. Reviving now preserves the original field type, and the ticket detail validates the scheme before using a stored value as an `href`.
+- Backup and restore were reported as unavailable in every containerized deployment, because `scripts/` sits outside the backend container's mount.
+- A third language was silently collapsed to Polish in six places, including the OTP email, which is the only way into the product.
+- Enterprise-style layers created their tables inside a route registrar, which only worked while exactly one layer was loaded.
+
+### Notes
+- Single-host and core-only installs need no configuration change. `EXTENSIONS_DIR`, `EXTENSIONS_OVERRIDES_FILE`, `EXTENSIONS_ROUTES_FILE` and `ENTERPRISE_FRONTEND_MODULE` keep working as one implicit layer; setting them alongside `EXTENSIONS_LAYERS` warns and the latter wins.
+- Relative `EXTENSIONS_LAYERS` entries resolve against the repository root. Containers mount only `backend/` and `frontend/`, so containerized deployments mount each layer and use its absolute in-container path.
+- Layers may use Node built-ins and their own files only; core's `node_modules` cannot be resolved from a mounted layer.
+- Multi-host deployments require `X-Forwarded-Proto` from the reverse proxy.
+- Full release notes: [`docs/releases/v0.3.0.md`](docs/releases/v0.3.0.md).
+
 ## [0.2.8-rc1] - 2026-05-21
 
 ### Added

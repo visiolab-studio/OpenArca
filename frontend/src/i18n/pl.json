@@ -219,7 +219,14 @@
       "environment": "Środowisko: minimum 10 znaków",
       "businessGoal": "Cel biznesowy: minimum 30 znaków",
       "questionContext": "Kontekst pytania: minimum 30 znaków"
-    }
+    },
+    "customFields": "Dodatkowe informacje",
+    "customFieldsHint": "Kontekst specyficzny dla tego projektu.",
+    "customFieldChoose": "Wybierz...",
+    "customFieldsEmpty": "Brak dodatkowych informacji.",
+    "customFieldArchived": "Już nie zbierane",
+    "customFieldFilter": "Dodatkowa informacja",
+    "customFieldFilterValue": "Wartość"
   },
   "newTicket": {
     "step1": "Krok 1: Podstawowe",
@@ -334,7 +341,8 @@
       "developer_emails": "Dostęp developerów",
       "email_provider": "Dostawca email",
       "sqlite": "Baza SQLite",
-      "backup_restore": "Skrypty backup i restore"
+      "backup_restore": "Skrypty backup i restore",
+      "extension_layers": "Warstwy rozszerzeń"
     },
     "appName": "Nazwa aplikacji",
     "appLogo": "Logo aplikacji",
@@ -395,7 +403,13 @@
     "role": "Rola",
     "created": "Utworzono",
     "lastLogin": "Ostatnie logowanie",
-    "action": "Akcja"
+    "action": "Akcja",
+    "extensionLayers": "Warstwy rozszerzeń",
+    "extensionLayersHint": "Warstwy ładują się od dołu do góry. Każda nadbudowuje te pod sobą.",
+    "layerSeams": "Wnosi",
+    "layerRequires": "Wymaga",
+    "layerNoSeams": "Wczytana, ale nic nie wnosi — sprawdź ścieżki plików wejściowych.",
+    "layerWarnings": "Ostrzeżenia konfiguracji"
   },
   "status": {
     "submitted": "Zgłoszone",
@@ -434,5 +448,23 @@
     "email_test_failed": "Test emaila nie powiódł się. Sprawdź diagnostykę providera poniżej.",
     "internal_error": "Wystąpił błąd serwera",
     "no_changes": "Brak zmian do zapisania"
+  },
+  "public": {
+    "title": "Zgłoś problem",
+    "email": "Twój adres e-mail",
+    "name": "Imię i nazwisko (opcjonalnie)",
+    "subject": "Temat",
+    "description": "Co się stało?",
+    "descriptionHint": "Opisz, co robiłaś lub robiłeś, czego oczekiwałaś lub oczekiwałeś i co stało się zamiast tego.",
+    "submit": "Wyślij zgłoszenie",
+    "successTitle": "Zgłoszenie przyjęte",
+    "successHint": "Zachowaj ten numer. Odpowiemy na podany adres.",
+    "unavailableTitle": "Ten formularz jest niedostępny",
+    "unavailableHint": "Link może być nieaktualny. Sprawdź go u osoby, która Ci go przekazała.",
+    "errorEmail": "Podaj poprawny adres e-mail.",
+    "errorTitle": "Temat jest za krótki.",
+    "errorDescription": "Opisz problem nieco dokładniej.",
+    "errorTooMany": "Zbyt wiele zgłoszeń z tego miejsca. Spróbuj później.",
+    "errorGeneric": "Nie udało się wysłać zgłoszenia. Spróbuj ponownie."
   }
 }

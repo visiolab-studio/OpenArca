@@ -181,10 +181,33 @@ const schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS project_custom_fields (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    field_key TEXT NOT NULL,
+    label TEXT NOT NULL,
+    field_type TEXT NOT NULL DEFAULT 'text',
+    required INTEGER NOT NULL DEFAULT 0,
+    options TEXT,
+    position INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS ticket_custom_field_values (
+    id TEXT PRIMARY KEY,
+    ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    field_id TEXT NOT NULL REFERENCES project_custom_fields(id) ON DELETE CASCADE,
+    value TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_custom_fields_key ON project_custom_fields(project_id, field_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_project_custom_fields_project ON project_custom_fields(project_id, archived_at, position)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_custom_values_unique ON ticket_custom_field_values(ticket_id, field_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_ticket_custom_values_field ON ticket_custom_field_values(field_id)`,
   `CREATE INDEX IF NOT EXISTS idx_otp_codes_email_created ON otp_codes(email, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_otp_codes_email_used ON otp_codes(email, used)`,
   `CREATE INDEX IF NOT EXISTS idx_tickets_reporter_status ON tickets(reporter_id, status)`,
@@ -255,6 +278,7 @@ function initDb() {
       ).run();
     }
 
+
     const commentColumns = db.prepare("PRAGMA table_info(comments)").all();
     const commentColumnNames = new Set(commentColumns.map((column) => String(column.name)));
 
@@ -264,6 +288,15 @@ function initDb() {
 
     const projectColumns = db.prepare("PRAGMA table_info(projects)").all();
     const projectColumnNames = new Set(projectColumns.map((column) => String(column.name)));
+
+    // Public intake is opt-in PER PROJECT and off by default. Anonymous writes
+    // are a different threat model from the rest of the product, so no existing
+    // deployment gains them by upgrading.
+    if (!projectColumnNames.has("public_intake_enabled")) {
+      db.prepare(
+        "ALTER TABLE projects ADD COLUMN public_intake_enabled INTEGER NOT NULL DEFAULT 0"
+      ).run();
+    }
 
     if (!projectColumnNames.has("icon_filename")) {
       db.prepare("ALTER TABLE projects ADD COLUMN icon_filename TEXT").run();

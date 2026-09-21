@@ -4,7 +4,7 @@ import { API_BASE_URL } from "../api/client";
 import { getEnterpriseCheck } from "../api/settings";
 import { useAuth } from "../contexts/AuthContext";
 import { useCapabilities } from "../contexts/CapabilitiesContext";
-import { enterpriseProfileNotificationSections } from "virtual:enterprise-frontend";
+import { enterpriseProfileNotificationSections } from "virtual:openarca-extensions";
 
 function normalizeError(error) {
   return error?.response?.data?.error || error?.message || "internal_error";

@@ -219,7 +219,14 @@
       "environment": "Environment: minimum 10 characters",
       "businessGoal": "Business goal: minimum 30 characters",
       "questionContext": "Question context: minimum 30 characters"
-    }
+    },
+    "customFields": "Additional details",
+    "customFieldsHint": "Context specific to this project.",
+    "customFieldChoose": "Choose...",
+    "customFieldsEmpty": "No additional details.",
+    "customFieldArchived": "No longer collected",
+    "customFieldFilter": "Additional detail",
+    "customFieldFilterValue": "Value"
   },
   "newTicket": {
     "step1": "Step 1: Basics",
@@ -334,7 +341,8 @@
       "developer_emails": "Developer access",
       "email_provider": "Email provider",
       "sqlite": "SQLite database",
-      "backup_restore": "Backup and restore scripts"
+      "backup_restore": "Backup and restore scripts",
+      "extension_layers": "Extension layers"
     },
     "appName": "App name",
     "appLogo": "Application logo",
@@ -395,7 +403,13 @@
     "role": "Role",
     "created": "Created",
     "lastLogin": "Last login",
-    "action": "Action"
+    "action": "Action",
+    "extensionLayers": "Extension layers",
+    "extensionLayersHint": "Layers load bottom to top. Each one builds on the layers below it.",
+    "layerSeams": "Contributes",
+    "layerRequires": "Requires",
+    "layerNoSeams": "Loaded, but contributes nothing — check the entry file paths.",
+    "layerWarnings": "Configuration warnings"
   },
   "status": {
     "submitted": "Submitted",
@@ -434,5 +448,23 @@
     "email_test_failed": "Email test failed. Check provider diagnostics below.",
     "internal_error": "Internal server error",
     "no_changes": "No changes to save"
+  },
+  "public": {
+    "title": "Report a problem",
+    "email": "Your email address",
+    "name": "Your name (optional)",
+    "subject": "Subject",
+    "description": "What happened?",
+    "descriptionHint": "Describe what you did, what you expected and what happened instead.",
+    "submit": "Send report",
+    "successTitle": "Report received",
+    "successHint": "Keep this reference. We will reply to the address you gave.",
+    "unavailableTitle": "This form is not available",
+    "unavailableHint": "The link may be out of date. Please check it with whoever gave it to you.",
+    "errorEmail": "Enter a valid email address.",
+    "errorTitle": "The subject is too short.",
+    "errorDescription": "Please describe the problem in a little more detail.",
+    "errorTooMany": "Too many reports from here. Please try again later.",
+    "errorGeneric": "The report could not be sent. Please try again."
   }
 }

@@ -29,7 +29,7 @@ vi.mock("react-i18next", () => ({
   })
 }));
 
-vi.mock("virtual:enterprise-frontend", () => ({
+vi.mock("virtual:openarca-extensions", () => ({
   enterpriseBaseItems: [
     {
       to: "/quick-support",
@@ -124,5 +124,64 @@ describe("AppShell role-based navigation", () => {
     expect(screen.queryByText("nav.quickSupport")).not.toBeInTheDocument();
     expect(screen.getByText("nav.supportThreads")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "nav.admin" })).toBeInTheDocument();
+  });
+});
+
+describe("AppShell language switcher", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    SettingsApi.getPublicSettings.mockResolvedValue({});
+    CapabilitiesContext.useCapabilities.mockReturnValue({
+      ready: true,
+      hasFeature: () => false
+    });
+    AuthContext.useAuth.mockReturnValue({
+      user: { email: "user@example.com", language: "pl", role: "user" },
+      isDeveloper: false,
+      logout: vi.fn(),
+      updateProfile: vi.fn()
+    });
+  });
+
+  it("offers all three languages", async () => {
+    LanguageContext.useLanguage.mockReturnValue({ language: "pl", setLanguage: vi.fn() });
+
+    renderShell();
+    await waitFor(() => {
+      expect(SettingsApi.getPublicSettings).toHaveBeenCalledTimes(1);
+    });
+
+    const group = screen.getByRole("group", { name: "Language switch" });
+    expect(group).toBeInTheDocument();
+    for (const label of ["PL", "EN", "IT"]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it("marks the active language, including Italian", async () => {
+    LanguageContext.useLanguage.mockReturnValue({ language: "it", setLanguage: vi.fn() });
+
+    renderShell();
+    await waitFor(() => {
+      expect(SettingsApi.getPublicSettings).toHaveBeenCalledTimes(1);
+    });
+
+    // Italian must be selectable as a first-class option, not a fallback that
+    // silently renders as Polish.
+    expect(screen.getByRole("button", { name: "IT" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "PL" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("switching to Italian reports Italian, not the default", async () => {
+    const setLanguage = vi.fn();
+    LanguageContext.useLanguage.mockReturnValue({ language: "pl", setLanguage });
+
+    renderShell();
+    await waitFor(() => {
+      expect(SettingsApi.getPublicSettings).toHaveBeenCalledTimes(1);
+    });
+
+    screen.getByRole("button", { name: "IT" }).click();
+    expect(setLanguage).toHaveBeenCalledWith("it");
   });
 });

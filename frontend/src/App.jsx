@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PublicIntakePage from "./pages/PublicIntake";
 import DeveloperRoute from "./components/DeveloperRoute";
 import FeatureRoute from "./components/FeatureRoute";
 import StandardUserRoute from "./components/StandardUserRoute";
@@ -18,7 +19,7 @@ import BoardPage from "./pages/Board";
 import DevTodoPage from "./pages/DevTodo";
 import AdminPage from "./pages/Admin";
 import NotFoundPage from "./pages/NotFound";
-import { enterpriseRoutes } from "virtual:enterprise-frontend";
+import { enterpriseRoutes } from "virtual:openarca-extensions";
 
 function LoginRoute() {
   const { ready, isAuthenticated } = useAuth();
@@ -62,6 +63,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+
+      {/* Outside ProtectedRoute and outside AppShell: the visitor has no
+          account and may never get one. */}
+      <Route path="/report/:projectId" element={<PublicIntakePage />} />
+      <Route path="/report" element={<PublicIntakePage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>

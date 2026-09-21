@@ -2,6 +2,8 @@ const db = require("../db");
 const { sendEmail } = require("./email");
 const { STATUS_NOTIFICATION_KEYS } = require("../constants");
 const { getSetting } = require("./settings");
+const { canonicalOrigin } = require("../config");
+const { normalizeLanguage, translate } = require("../core/languages");
 
 function getUser(userId) {
   return db
@@ -25,13 +27,16 @@ function formatTicketNumber(number) {
   return `#${String(number).padStart(3, "0")}`;
 }
 
+// Deliberately canonical, not request-derived. A notification is triggered by
+// one person and delivered to another, and we do not record which host the
+// RECIPIENT uses — so the actor's host would be a guess about someone else.
 function getTicketUrl(ticketId) {
-  const appUrl = getSetting("app_url", "http://localhost:3330");
+  const appUrl = getSetting("app_url", canonicalOrigin);
   return `${appUrl.replace(/\/$/, "")}/ticket/${ticketId}`;
 }
 
-function t(lang, pl, en) {
-  return lang === "en" ? en : pl;
+function t(lang, translations) {
+  return translate(lang, translations);
 }
 
 async function notifyReporterStatusChange({ ticketId, actorUserId, oldStatus, newStatus }) {
@@ -71,21 +76,28 @@ async function notifyReporterStatusChange({ ticketId, actorUserId, oldStatus, ne
       waiting: "Waiting",
       blocked: "Blocked",
       closed: "Closed"
+    },
+    it: {
+      verified: "Verificato",
+      in_progress: "In corso",
+      waiting: "In attesa",
+      blocked: "Bloccato",
+      closed: "Chiuso"
     }
   };
 
-  const lang = reporter.language === "en" ? "en" : "pl";
-  const subject = t(
-    lang,
-    `Aktualizacja zgłoszenia ${formatTicketNumber(ticket.number)}`,
-    `Ticket update ${formatTicketNumber(ticket.number)}`
-  );
+  const lang = normalizeLanguage(reporter.language);
+  const subject = t(lang, {
+    pl: `Aktualizacja zgłoszenia ${formatTicketNumber(ticket.number)}`,
+    en: `Ticket update ${formatTicketNumber(ticket.number)}`,
+    it: `Aggiornamento del ticket ${formatTicketNumber(ticket.number)}`
+  });
   const statusLabel = labels[lang][newStatus] || newStatus;
-  const text = t(
-    lang,
-    `Status zgłoszenia ${formatTicketNumber(ticket.number)} (${ticket.title}) zmienił się na: ${statusLabel}.\n${getTicketUrl(ticket.id)}`,
-    `The status of ticket ${formatTicketNumber(ticket.number)} (${ticket.title}) changed to: ${statusLabel}.\n${getTicketUrl(ticket.id)}`
-  );
+  const text = t(lang, {
+    pl: `Status zgłoszenia ${formatTicketNumber(ticket.number)} (${ticket.title}) zmienił się na: ${statusLabel}.\n${getTicketUrl(ticket.id)}`,
+    en: `The status of ticket ${formatTicketNumber(ticket.number)} (${ticket.title}) changed to: ${statusLabel}.\n${getTicketUrl(ticket.id)}`,
+    it: `Lo stato del ticket ${formatTicketNumber(ticket.number)} (${ticket.title}) è cambiato in: ${statusLabel}.\n${getTicketUrl(ticket.id)}`
+  });
 
   await sendEmail({ to: reporter.email, subject, text, lang });
   return { sent: true };
@@ -110,17 +122,17 @@ async function notifyReporterDeveloperComment({ ticketId, actorUserId, commentCo
     return { sent: false, reason: "developer_comment_disabled_by_user" };
   }
 
-  const lang = reporter.language === "en" ? "en" : "pl";
-  const subject = t(
-    lang,
-    `Nowy komentarz developera ${formatTicketNumber(ticket.number)}`,
-    `New developer comment ${formatTicketNumber(ticket.number)}`
-  );
-  const text = t(
-    lang,
-    `Developer dodał komentarz do zgłoszenia ${formatTicketNumber(ticket.number)} (${ticket.title}).\n\n${commentContent}\n\n${getTicketUrl(ticket.id)}`,
-    `A developer posted a comment on ticket ${formatTicketNumber(ticket.number)} (${ticket.title}).\n\n${commentContent}\n\n${getTicketUrl(ticket.id)}`
-  );
+  const lang = normalizeLanguage(reporter.language);
+  const subject = t(lang, {
+    pl: `Nowy komentarz developera ${formatTicketNumber(ticket.number)}`,
+    en: `New developer comment ${formatTicketNumber(ticket.number)}`,
+    it: `Nuovo commento dello sviluppatore ${formatTicketNumber(ticket.number)}`
+  });
+  const text = t(lang, {
+    pl: `Developer dodał komentarz do zgłoszenia ${formatTicketNumber(ticket.number)} (${ticket.title}).\n\n${commentContent}\n\n${getTicketUrl(ticket.id)}`,
+    en: `A developer posted a comment on ticket ${formatTicketNumber(ticket.number)} (${ticket.title}).\n\n${commentContent}\n\n${getTicketUrl(ticket.id)}`,
+    it: `Uno sviluppatore ha aggiunto un commento al ticket ${formatTicketNumber(ticket.number)} (${ticket.title}).\n\n${commentContent}\n\n${getTicketUrl(ticket.id)}`
+  });
 
   await sendEmail({ to: reporter.email, subject, text, lang });
   return { sent: true };

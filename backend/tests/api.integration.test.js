@@ -689,8 +689,11 @@ test("settings readiness exposes self-hosting checks for developers", async () =
   assert.equal(readiness.body.access.developer_emails_count, 1);
   assert.ok(readiness.body.version);
   assert.ok(readiness.body.data.sqlite_path);
-  assert.equal(readiness.body.data.backup_script_available, true);
-  assert.equal(readiness.body.data.restore_script_available, true);
+  // Asserts the CAPABILITY, not the presence of a file at a repo-relative path.
+  // The containers mount only backend/, so the old assertion was testing the
+  // mount layout and failed in exactly the deployment this check exists for.
+  assert.equal(readiness.body.data.backup_available, true);
+  assert.ok(["script", "runtime"].includes(readiness.body.data.backup_method));
   assert.ok(readiness.body.checks.some((check) => check.key === "backup_restore"));
 });
 

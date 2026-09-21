@@ -31,3 +31,17 @@ export async function deleteProjectIcon(id) {
 export async function deleteProject(id) {
   await client.delete(`/api/projects/${id}`);
 }
+
+export async function getProjectCustomFields(projectId) {
+  const response = await client.get(`/api/projects/${projectId}/custom-fields`);
+  return response.data.items || [];
+}
+
+export async function createProjectCustomField(projectId, payload) {
+  const response = await client.post(`/api/projects/${projectId}/custom-fields`, payload);
+  return response.data;
+}
+
+export async function archiveProjectCustomField(projectId, fieldId) {
+  await client.delete(`/api/projects/${projectId}/custom-fields/${fieldId}`);
+}

@@ -49,3 +49,14 @@ make restore BACKUP=backups/edudoroit-backup-manual.tar.gz
 ## Manual test UI/API
 - Po restore zaloguj się OTP i otwórz ticket detail.
 - Oczekiwany rezultat: dane ticketu i załączniki są dostępne.
+
+## Jak panel gotowości wykrywa backup
+
+Check `backup_restore` raportuje **zdolność**, nie obecność pliku. Dwie metody:
+
+- `script` — skrypty `backup.sh` i `restore.sh` są osiągalne. Domyślnie szukane w `scripts/` obok `backend/`; wskaż inne miejsce zmienną `BACKUP_SCRIPTS_DIR` (przydatne, gdy wdrożenie montuje je pod inną ścieżką).
+- `runtime` — backend potrafi sam zrobić spójną migawkę SQLite przez API sterownika, a katalog danych jest zapisywalny.
+
+Wykrycie obu skryptów naraz jest wymagane: backup, którego nie da się odtworzyć, nie jest backupem.
+
+Dlaczego tak: kontenery montują wyłącznie `backend/`, więc ścieżka `scripts/` liczona od katalogu repo nigdy się w nich nie rozwiązuje. Poprzedni check sprawdzał istnienie pliku i w efekcie mówił **każdemu** wdrożeniu dockerowemu, że backup jest niedostępny — mimo że `make backup` na hoście działał. Raportował układ montowań, nie zdolność.

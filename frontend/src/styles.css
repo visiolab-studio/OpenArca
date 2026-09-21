@@ -3256,3 +3256,167 @@ table th {
     align-items: start;
   }
 }
+
+/* Extension layer stack in the admin readiness view. Reads bottom-to-top, the
+   same direction layers load, so the visual order matches the mental model. */
+.admin-readiness-layers {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-readiness-layers-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.admin-readiness-layers-header p {
+  margin: 4px 0 0;
+}
+
+.admin-layer-stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-layer {
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-layer-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-layer-head code {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.admin-layer p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.admin-layer-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning, #b45309);
+}
+
+.admin-layer-warnings ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-layer-warnings li {
+  font-size: 13px;
+}
+
+/* Custom ticket fields. Deliberately quiet: these are context around the
+   ticket, not the ticket itself. */
+.custom-fields {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 14px 16px;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.custom-fields legend {
+  padding: 0 4px;
+}
+
+.custom-fields .form-hint {
+  margin: 0;
+}
+
+.custom-field-values {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.custom-field-value {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.custom-field-value dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.custom-field-value dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.form-error {
+  color: var(--danger, #b91c1c);
+}
+
+/* Public submission page. Rendered outside the app shell, so it carries its own
+   page frame. Deliberately plain: this is the first OpenArca surface a stranger
+   sees, and it should read as trustworthy rather than clever. */
+.public-page {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 16px;
+}
+
+.public-card {
+  width: 100%;
+  max-width: 640px;
+  display: grid;
+  gap: 16px;
+}
+
+.public-card .card-title {
+  margin: 0;
+}
+
+.public-reference {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 520px) {
+  .public-page {
+    padding: 16px;
+  }
+
+  .public-reference {
+    font-size: 24px;
+  }
+}

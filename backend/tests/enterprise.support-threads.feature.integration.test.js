@@ -19,11 +19,18 @@ let db;
 let request;
 let devAuth;
 let previousRoutesFile;
+let previousLayers;
 
 test.before(async () => {
   const env = initTestEnv();
   envRoot = env.root;
   previousRoutesFile = process.env.EXTENSIONS_ROUTES_FILE;
+
+  // This test covers the LEGACY single-slot variable, which EXTENSIONS_LAYERS
+  // deliberately overrides. Clear it so an ambient layer configuration in the
+  // environment cannot decide the outcome.
+  previousLayers = process.env.EXTENSIONS_LAYERS;
+  delete process.env.EXTENSIONS_LAYERS;
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "openarca-support-threads-routes-"));
   const routesFile = path.join(tmpDir, "routes.js");
@@ -65,6 +72,11 @@ test.before(async () => {
 
   test.after(() => {
     process.env.EXTENSIONS_ROUTES_FILE = previousRoutesFile;
+    if (previousLayers === undefined) {
+      delete process.env.EXTENSIONS_LAYERS;
+    } else {
+      process.env.EXTENSIONS_LAYERS = previousLayers;
+    }
     resetAppModules();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });

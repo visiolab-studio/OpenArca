@@ -73,7 +73,7 @@ That means:
 - Projects and user/role management.
 
 ### Latest Release
-- Latest tag: `v0.2.8-rc1`
+- Latest tag: `v0.3.0`
 - Release notes and full change history: [`CHANGELOG.md`](CHANGELOG.md)
 
 ### Screenshots
@@ -198,6 +198,7 @@ Preferred channel: GitHub Security Advisories.
 
 **What is Open Core vs Enterprise here?**
 - This repository is Open Core. Enterprise-only capabilities are handled separately.
+- Both are loaded through the same public extension layer system, and so is any layer you build yourself. Several layers can be stacked, each building on the one below. See [`docs/extensions/README.md`](docs/extensions/README.md) for the guide and [`examples/example-layer/`](examples/example-layer) for a runnable example.
 
 **Where do OTP codes go in local development?**
 - To Mailpit (`http://localhost:8025`).
@@ -267,7 +268,7 @@ To znaczy:
 - Zarządzanie projektami i użytkownikami.
 
 ### Ostatnie wydanie
-- Najnowszy tag: `v0.2.8-rc1`
+- Najnowszy tag: `v0.3.0`
 - Pełna historia zmian i release notes: [`CHANGELOG.md`](CHANGELOG.md)
 
 ### Screenshots
@@ -392,6 +393,7 @@ Preferowany kanał: GitHub Security Advisories.
 
 **Jak rozumieć Open Core vs Enterprise?**
 - To repo to Open Core. Funkcje Enterprise są utrzymywane osobno.
+- Obie części ładują się przez ten sam, publiczny system warstw rozszerzeń — tak samo jak warstwa, którą zbudujesz sam. Warstwy można układać jedna na drugiej. Przewodnik: [`docs/extensions/README.md`](docs/extensions/README.md), gotowy przykład: [`examples/example-layer/`](examples/example-layer).
 
 **Gdzie znajdę kody OTP lokalnie?**
 - W Mailpit: `http://localhost:8025`.

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { createTicket } from "../api/tickets";
+import { getProjectCustomFields } from "../api/projects";
+import CustomFieldsInput from "../components/CustomFieldsInput";
 import { getProjects } from "../api/projects";
 import { getTicketTemplates } from "../api/ticketTemplates";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
@@ -110,6 +112,9 @@ export default function NewTicketPage() {
   });
 
   const [files, setFiles] = useState([]);
+  const [customFieldDefinitions, setCustomFieldDefinitions] = useState([]);
+  const [customFieldValues, setCustomFieldValues] = useState({});
+  const [customFieldErrors, setCustomFieldErrors] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -155,6 +160,33 @@ export default function NewTicketPage() {
     }
 
     loadTemplates();
+
+    // Values are cleared with the project: a value collected for one project's
+    // field is meaningless under another's definitions.
+    async function loadCustomFields() {
+      if (!form.project_id) {
+        if (active) {
+          setCustomFieldDefinitions([]);
+          setCustomFieldValues({});
+          setCustomFieldErrors({});
+        }
+        return;
+      }
+
+      try {
+        const definitions = await getProjectCustomFields(form.project_id);
+        if (!active) return;
+        setCustomFieldDefinitions(definitions);
+        setCustomFieldValues({});
+        setCustomFieldErrors({});
+      } catch (_error) {
+        if (!active) return;
+        setCustomFieldDefinitions([]);
+      }
+    }
+
+    loadCustomFields();
+
     return () => {
       active = false;
     };
@@ -240,6 +272,15 @@ export default function NewTicketPage() {
         payload.append("steps_to_reproduce", form.question_context.trim());
       }
 
+      // Multipart, so the object travels as JSON; the server parses it back and
+      // rejects a string that does not parse rather than dropping it.
+      const filledCustomFields = Object.fromEntries(
+        Object.entries(customFieldValues).filter(([, value]) => String(value ?? "").trim() !== "")
+      );
+      if (customFieldDefinitions.length > 0) {
+        payload.append("custom_fields", JSON.stringify(filledCustomFields));
+      }
+
       for (const file of files) {
         payload.append("attachments", file);
       }
@@ -247,6 +288,14 @@ export default function NewTicketPage() {
       const ticket = await createTicket(payload);
       navigate(`/ticket/${ticket.id}`);
     } catch (submitError) {
+      const details = submitError?.response?.data?.details;
+      const fieldIssue = Array.isArray(details)
+        ? details.find((issue) => Array.isArray(issue.path) && issue.path[0] === "custom_fields")
+        : null;
+      if (fieldIssue) {
+        setCustomFieldErrors({ [fieldIssue.path[1]]: fieldIssue.message });
+        setStep(3);
+      }
       setError(submitError?.response?.data?.error || submitError.message || "internal_error");
     } finally {
       setLoading(false);
@@ -515,6 +564,22 @@ export default function NewTicketPage() {
                 ))}
               </select>
             </label>
+
+            <CustomFieldsInput
+              definitions={customFieldDefinitions}
+              values={customFieldValues}
+              errors={customFieldErrors}
+              disabled={loading}
+              onChange={(key, value) => {
+                setCustomFieldValues((current) => ({ ...current, [key]: value }));
+                setCustomFieldErrors((current) => {
+                  if (!current[key]) return current;
+                  const next = { ...current };
+                  delete next[key];
+                  return next;
+                });
+              }}
+            />
 
             <label className="form-group">
               <span className="form-label">{t("tickets.attachments")}</span>

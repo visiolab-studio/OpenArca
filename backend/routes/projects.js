@@ -9,14 +9,31 @@ const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
 const { uploadsDir } = require("../config");
+const { customFieldsService } = require("../services/custom-fields");
+const { FIELD_TYPES, CustomFieldError } = require("../core/custom-fields");
 
 const router = express.Router();
 const LOGO_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const iconFilenameRegex = /^[a-z0-9-]+(\.[a-z0-9]+)?$/i;
 
 const idParamsSchema = z.object({ id: z.string().uuid() });
+const customFieldParamsSchema = z.object({
+  id: z.string().uuid(),
+  fieldId: z.string().uuid()
+});
+const createCustomFieldSchema = z
+  .object({
+    field_key: z.string().trim().min(2).max(50),
+    label: z.string().trim().min(1).max(120),
+    field_type: z.enum(FIELD_TYPES).default("text"),
+    required: z.boolean().optional().default(false),
+    options: z.array(z.string().trim().min(1).max(120)).optional(),
+    position: z.number().int().min(0).max(999).optional()
+  })
+  .strict();
 const createProjectSchema = z
   .object({
+    public_intake_enabled: z.boolean().optional(),
     name: z.string().trim().min(2).max(120),
     description: z.string().trim().max(2000).optional().nullable(),
     color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/).optional()
@@ -243,6 +260,67 @@ router.delete(
     }
 
     return res.status(204).send();
+  }
+);
+
+// Custom field definitions are project-scoped configuration, so they are managed
+// where projects are. The values themselves live with the ticket.
+router.get(
+  "/:id/custom-fields",
+  authRequired,
+  validate({ params: idParamsSchema }),
+  (req, res) => {
+    const includeArchived = req.user?.role === "developer" && req.query.include_archived === "true";
+    return res.json({
+      items: customFieldsService.listDefinitions({ projectId: req.params.id, includeArchived })
+    });
+  }
+);
+
+router.post(
+  "/:id/custom-fields",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: idParamsSchema, body: createCustomFieldSchema }),
+  (req, res, next) => {
+    try {
+      const project = db.prepare("SELECT id FROM projects WHERE id = ?").get(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: "project_not_found" });
+      }
+      const definition = customFieldsService.createDefinition({
+        projectId: req.params.id,
+        payload: req.body
+      });
+      return res.status(201).json(definition);
+    } catch (error) {
+      if (error instanceof CustomFieldError) {
+        return res.status(400).json({ error: error.code, field: error.field, message: error.message });
+      }
+      return next(error);
+    }
+  }
+);
+
+// Archives rather than deletes: removing the definition would take its ticket
+// values with it, silently changing the history of closed tickets.
+router.delete(
+  "/:id/custom-fields/:fieldId",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: customFieldParamsSchema }),
+  (req, res, next) => {
+    try {
+      customFieldsService.archiveDefinition({ id: req.params.fieldId });
+      return res.status(204).send();
+    } catch (error) {
+      if (error instanceof CustomFieldError) {
+        return res.status(404).json({ error: error.code, message: error.message });
+      }
+      return next(error);
+    }
   }
 );
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ticketDetailSections } from "virtual:openarca-extensions";
 import {
   addExternalReference,
   addRelatedTicket,
@@ -28,6 +29,18 @@ function parseError(error) {
 function toInitial(value) {
   const source = String(value || "U").trim();
   return source ? source[0].toUpperCase() : "U";
+}
+
+// Defence in depth. The server restricts url fields to http(s) at write time,
+// but a value stored while the field had a different type predates that check,
+// so never trust a stored value as an href — render it as text instead.
+function isSafeHttpUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export default function TicketDetailPage() {
@@ -811,6 +824,43 @@ export default function TicketDetailPage() {
                 </button>
               </form>
             ) : null}
+          </article>
+
+          {ticketDetailSections.map((section) => {
+            const Component = section.component;
+            return Component ? <Component key={section.key} ticket={ticket} /> : null;
+          })}
+
+          <article className="card">
+            <h2 className="card-title">{t("tickets.customFields")}</h2>
+
+            {Array.isArray(ticket.custom_fields) && ticket.custom_fields.length > 0 ? (
+              <dl className="custom-field-values">
+                {ticket.custom_fields.map((field) => (
+                  <div className="custom-field-value" key={field.field_key}>
+                    <dt>
+                      {field.label}
+                      {/* An archived definition still has values on older tickets;
+                          saying so beats letting a stale label look current. */}
+                      {field.archived ? (
+                        <span className="badge badge-no-dot">{t("tickets.customFieldArchived")}</span>
+                      ) : null}
+                    </dt>
+                    <dd>
+                      {field.field_type === "url" && isSafeHttpUrl(field.value) ? (
+                        <a href={field.value} target="_blank" rel="noopener noreferrer">
+                          {field.value}
+                        </a>
+                      ) : (
+                        field.value
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p>{t("tickets.customFieldsEmpty")}</p>
+            )}
           </article>
 
           <article className="card">

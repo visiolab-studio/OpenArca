@@ -1,0 +1,17 @@
+{
+  "reference": "en",
+  "fallback": "pl",
+  "languages": ["pl", "en", "it"],
+  "foreignCharacters": {
+    "en": {
+      "pattern": "[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]",
+      "reason": "Polish characters"
+    },
+    "it": {
+      "pattern": "[ąćęłńśźżĄĆĘŁŃŚŹŻ]",
+      "reason": "Polish characters"
+    }
+  },
+  "sourcePattern": "[ąćęłńóśźżĄĆĘŁŃÓŚŹŻàèéìòùÀÈÉÌÒÙ]",
+  "sourceReason": "hardcoded translated text"
+}

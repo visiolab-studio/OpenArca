@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { BookmarkPlus, RotateCcw, Trash2 } from "lucide-react";
 import { getTickets } from "../api/tickets";
-import { getProjects } from "../api/projects";
+import { getProjects, getProjectCustomFields } from "../api/projects";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
@@ -29,7 +29,9 @@ const DEFAULT_FILTERS = {
   origin: "",
   dateFrom: "",
   dateTo: "",
-  sortBy: "updated_at"
+  sortBy: "updated_at",
+  customFieldKey: "",
+  customFieldValue: ""
 };
 
 function priorityWeight(priority) {
@@ -61,6 +63,7 @@ export default function MyTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(initialSavedViewState.activeFilters);
+  const [customFieldDefinitions, setCustomFieldDefinitions] = useState([]);
   const [savedViews, setSavedViews] = useState(initialSavedViewState.views);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
   const [viewName, setViewName] = useState("");
@@ -139,6 +142,28 @@ export default function MyTicketsPage() {
     applyFilters(quickView.filters);
   }
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadDefinitions() {
+      if (!filters.projectId) {
+        if (active) setCustomFieldDefinitions([]);
+        return;
+      }
+      try {
+        const definitions = await getProjectCustomFields(filters.projectId);
+        if (active) setCustomFieldDefinitions(definitions);
+      } catch (_error) {
+        if (active) setCustomFieldDefinitions([]);
+      }
+    }
+
+    loadDefinitions();
+    return () => {
+      active = false;
+    };
+  }, [filters.projectId]);
+
   function handleResetFilters() {
     setViewName("");
     applyFilters(DEFAULT_FILTERS);
@@ -193,6 +218,16 @@ export default function MyTicketsPage() {
     if (filters.priority) rows = rows.filter((ticket) => ticket.priority === filters.priority);
     if (filters.category) rows = rows.filter((ticket) => ticket.category === filters.category);
     if (filters.projectId) rows = rows.filter((ticket) => ticket.project_id === filters.projectId);
+    // Both halves required: a key alone would match every ticket that has the
+    // field set, which is not what the control says it does.
+    if (filters.customFieldKey && filters.customFieldValue) {
+      const needle = filters.customFieldValue.trim().toLowerCase();
+      rows = rows.filter((ticket) =>
+        String(ticket.custom_fields?.[filters.customFieldKey] ?? "")
+          .toLowerCase()
+          .includes(needle)
+      );
+    }
     if (filters.origin) {
       rows = rows.filter((ticket) => matchesSupportThreadOrigin(filters.origin, ticket.source_support_thread_id));
     }
@@ -242,6 +277,39 @@ export default function MyTicketsPage() {
                 {quickView.label}
               </button>
             ))}
+            {customFieldDefinitions.length > 0 ? (
+              <>
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.customFieldFilter")}</span>
+                  <select
+                    className="form-select"
+                    value={filters.customFieldKey}
+                    onChange={(event) =>
+                      updateFilters({ customFieldKey: event.target.value, customFieldValue: "" })
+                    }
+                  >
+                    <option value="">{t("tickets.customFieldChoose")}</option>
+                    {customFieldDefinitions.map((definition) => (
+                      <option key={definition.field_key} value={definition.field_key}>
+                        {definition.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="form-group">
+                  <span className="form-label">{t("tickets.customFieldFilterValue")}</span>
+                  <input
+                    className="form-input"
+                    type="text"
+                    value={filters.customFieldValue}
+                    disabled={!filters.customFieldKey}
+                    onChange={(event) => updateFilters({ customFieldValue: event.target.value })}
+                  />
+                </label>
+              </>
+            ) : null}
+
             <button type="button" className="btn btn-secondary" onClick={handleResetFilters}>
               <RotateCcw size={14} />
               <span>{t("tickets.resetFilters")}</span>

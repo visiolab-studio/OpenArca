@@ -4,6 +4,7 @@ const path = require("path");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const { z } = require("zod");
+const { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE, translate } = require("../core/languages");
 const { v4: uuidv4 } = require("uuid");
 const db = require("../db");
 const { uploadsDir, jwtSecret, jwtExpiresIn } = require("../config");
@@ -19,7 +20,7 @@ const router = express.Router();
 const requestOtpSchema = z
   .object({
     email: z.string().trim().email().max(254),
-    lang: z.enum(["pl", "en"]).default("pl")
+    lang: z.enum(SUPPORTED_LANGUAGES).default(DEFAULT_LANGUAGE)
   })
   .strict();
 
@@ -33,7 +34,7 @@ const verifyOtpSchema = z
 const patchMeSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
-    language: z.enum(["pl", "en"]).optional(),
+    language: z.enum(SUPPORTED_LANGUAGES).optional(),
     email_notify_ticket_status: z.boolean().optional(),
     email_notify_developer_comment: z.boolean().optional()
   })
@@ -141,13 +142,22 @@ router.post(
         "INSERT INTO otp_codes (id, email, code, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, datetime('now'))"
       ).run(uuidv4(), email, code, expiresAt);
 
-      const subject = lang === "en" ? "Your login code" : "Twój kod logowania";
-      const text =
-        lang === "en"
-          ? `Your OTP code is: ${code}. It expires in 10 minutes.`
-          : `Twój kod OTP to: ${code}. Kod wygasa za 10 minut.`;
+      // OTP is the only way into the product, so a wrong language here is the
+      // first and possibly last thing a user sees.
+      const subject = translate(lang, {
+        pl: "Twój kod logowania",
+        en: "Your login code",
+        it: "Il tuo codice di accesso"
+      });
+      const text = translate(lang, {
+        pl: `Twój kod OTP to: ${code}. Kod wygasa za 10 minut.`,
+        en: `Your OTP code is: ${code}. It expires in 10 minutes.`,
+        it: `Il tuo codice OTP è: ${code}. Scade tra 10 minuti.`
+      });
 
-      await sendEmail({ to: email, subject, text, lang });
+      // The requester IS the recipient here, so the host they used is the right
+      // one to link back to.
+      await sendEmail({ to: email, subject, text, lang, origin: req.resolvedOrigin });
 
       return res.json({ success: true });
     } catch (error) {

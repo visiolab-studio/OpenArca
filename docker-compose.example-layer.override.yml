@@ -1,0 +1,16 @@
+# Runs the bundled example layer. Demonstrates the deployment pattern for every
+# layer: mount the layer into the containers and reference it by its in-container
+# absolute path. Relative EXTENSIONS_LAYERS entries resolve against the repository
+# root, which inside these containers is not the repository — only backend/ and
+# frontend/ are mounted — so deployments use absolute paths.
+services:
+  backend:
+    environment:
+      - EXTENSIONS_LAYERS=/opt/example-layer
+    volumes:
+      - ./examples/example-layer:/opt/example-layer:ro
+  frontend:
+    environment:
+      - EXTENSIONS_LAYERS=/opt/example-layer
+    volumes:
+      - ./examples/example-layer:/opt/example-layer:ro

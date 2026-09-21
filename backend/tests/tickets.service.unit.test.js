@@ -13,9 +13,13 @@ function createDbStub(capture, options = {}) {
     },
     prepare(sql) {
       capture.sql = sql;
+      capture.statements = capture.statements || [];
+      capture.statements.push(sql);
       return {
         all(...params) {
           capture.params = params;
+          capture.paramsBySql = capture.paramsBySql || new Map();
+          capture.paramsBySql.set(sql, params);
           if (typeof options.rowsFactory === "function") {
             return options.rowsFactory(sql, params);
           }
@@ -43,6 +47,13 @@ function createDbStub(capture, options = {}) {
   };
 }
 
+// listTickets issues a second query for custom field values, so assertions must
+// name the ticket query rather than assume there is only one.
+function ticketQuery(capture) {
+  const found = (capture.statements || []).find((sql) => sql.includes("FROM tickets t"));
+  return { sql: found || "", params: capture.paramsBySql?.get(found) || [] };
+}
+
 test("tickets service filters to own tickets for standard user", () => {
   const capture = { sql: "", params: [] };
   const service = createTicketsService({ db: createDbStub(capture) });
@@ -54,8 +65,9 @@ test("tickets service filters to own tickets for standard user", () => {
 
   assert.equal(Array.isArray(rows), true);
   assert.equal(rows.length, 1);
-  assert.match(capture.sql, /WHERE t\.reporter_id = \?/);
-  assert.deepEqual(capture.params, ["user-1"]);
+  const query = ticketQuery(capture);
+  assert.match(query.sql, /WHERE t\.reporter_id = \?/);
+  assert.deepEqual(query.params, ["user-1"]);
 });
 
 test("tickets service allows developer global list unless my=1", () => {
@@ -65,8 +77,9 @@ test("tickets service allows developer global list unless my=1", () => {
     user: { id: "dev-1", role: "developer" },
     query: {}
   });
-  assert.doesNotMatch(captureGlobal.sql, /WHERE t\.reporter_id = \?/);
-  assert.deepEqual(captureGlobal.params, []);
+  const globalQuery = ticketQuery(captureGlobal);
+  assert.doesNotMatch(globalQuery.sql, /WHERE t\.reporter_id = \?/);
+  assert.deepEqual(globalQuery.params, []);
 
   const captureMine = { sql: "", params: [] };
   const serviceMine = createTicketsService({ db: createDbStub(captureMine) });
@@ -74,8 +87,9 @@ test("tickets service allows developer global list unless my=1", () => {
     user: { id: "dev-1", role: "developer" },
     query: { my: "1" }
   });
-  assert.match(captureMine.sql, /WHERE t\.reporter_id = \?/);
-  assert.deepEqual(captureMine.params, ["dev-1"]);
+  const mineQuery = ticketQuery(captureMine);
+  assert.match(mineQuery.sql, /WHERE t\.reporter_id = \?/);
+  assert.deepEqual(mineQuery.params, ["dev-1"]);
 });
 
 test("tickets service includes query filters in params order", () => {
@@ -92,8 +106,9 @@ test("tickets service includes query filters in params order", () => {
     }
   });
 
-  assert.match(capture.sql, /WHERE t\.status = \? AND t\.priority = \? AND t\.category = \? AND t\.project_id = \?/);
-  assert.deepEqual(capture.params, ["verified", "high", "bug", "project-1"]);
+  const query = ticketQuery(capture);
+  assert.match(query.sql, /WHERE t\.status = \? AND t\.priority = \? AND t\.category = \? AND t\.project_id = \?/);
+  assert.deepEqual(query.params, ["verified", "high", "bug", "project-1"]);
 });
 
 test("tickets service preserves source support thread id in ticket list payload", () => {

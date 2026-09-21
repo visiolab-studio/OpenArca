@@ -1,16 +1,16 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import i18n from "../i18n";
+import i18n, { normalizeLanguage, DEFAULT_LANGUAGE } from "../i18n";
 import { getStoredValue, setStoredValue } from "../utils/storage";
 
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(
-    getStoredValue("edudoroit_lang", "pl")
+    normalizeLanguage(getStoredValue("edudoroit_lang", DEFAULT_LANGUAGE))
   );
 
   function setLanguage(nextLanguage) {
-    const normalized = nextLanguage === "en" ? "en" : "pl";
+    const normalized = normalizeLanguage(nextLanguage);
     setLanguageState(normalized);
     setStoredValue("edudoroit_lang", normalized);
     i18n.changeLanguage(normalized);

@@ -1,6 +1,6 @@
 {
   "name": "edudoroit-supportcenter-frontend",
-  "version": "0.2.8-rc1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {

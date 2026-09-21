@@ -16,6 +16,21 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.4.0] - 2026-09-21
+
+### Added
+- **Configurable ticket categories per project.** The built-in five describe a generic workflow, but a real deployment sorts tickets by who handles them — billing, content and data lookups go to different people even when all three are technically "questions". A project that configures nothing keeps the built-in five, so existing installations are unchanged.
+- Categories are archived rather than deleted, so tickets already filed under one still resolve.
+- `GET/POST /api/projects/:id/categories` and `DELETE /api/projects/:id/categories/:key`.
+
+### Changed
+- **Bug-report field requirements are now a per-project setting** (`require_bug_details`, default on). Requiring reproduction steps, expected result, actual result and environment makes sense when a developer files the ticket. When support files it on a customer's behalf, it produces filler text typed to get past the form, not better reports.
+- `category` is validated against the project's taxonomy instead of a fixed enum. A rejected value names the valid ones.
+
+### Notes
+- A configured project **replaces** the built-in categories rather than adding to them. A deployment defining its own taxonomy means it, and silently keeping `improvement` around would undo the point of configuring anything.
+- The new-ticket form corrects a selected category that is not in the project's list, rather than letting the form look valid and fail on submit.
+
 ## [0.3.2] - 2026-09-21
 
 ### Fixed

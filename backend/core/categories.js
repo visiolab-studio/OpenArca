@@ -1,0 +1,168 @@
+const { TICKET_CATEGORIES } = require("../constants");
+
+// Ticket categories, configurable per project.
+//
+// The five built-in categories describe a generic workflow. A real deployment
+// usually sorts tickets by WHO HANDLES THEM, not by the nature of the problem —
+// billing, content and data lookups go to different people even when they are
+// all technically "questions". A project that never configures anything keeps
+// the built-in five, so nothing changes for an existing install.
+//
+// Categories are ARCHIVED rather than deleted, for the same reason as custom
+// fields: removing one would orphan every ticket that used it.
+
+const CORE_CATEGORY_KEYS = TICKET_CATEGORIES;
+
+const CATEGORY_KEY_PATTERN = /^[a-z][a-z0-9_]{1,39}$/;
+
+class CategoryError extends Error {
+  constructor(code, message, key) {
+    super(message);
+    this.code = code;
+    this.key = key;
+    this.status = 400;
+    this.details = [{ path: "category", message, code }];
+  }
+}
+
+function installCategorySchema(db) {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS project_categories (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      category_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      archived_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`
+  ).run();
+
+  db.prepare(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_project_categories_key ON project_categories(project_id, category_key)"
+  ).run();
+}
+
+function validateDefinition({ category_key: key, label }) {
+  if (!CATEGORY_KEY_PATTERN.test(String(key || ""))) {
+    throw new CategoryError(
+      "invalid_category_key",
+      "Category key must start with a letter and contain only lowercase letters, digits and underscores",
+      key
+    );
+  }
+
+  if (!String(label || "").trim()) {
+    throw new CategoryError("invalid_category_label", "Category label is required", key);
+  }
+
+  return true;
+}
+
+function createCategoriesService(options = {}) {
+  const db = options.db || require("../db");
+
+  function listForProject(projectId) {
+    if (!projectId) return [];
+    return db
+      .prepare(
+        `SELECT category_key, label, position
+         FROM project_categories
+         WHERE project_id = ? AND archived_at IS NULL
+         ORDER BY position ASC, created_at ASC`
+      )
+      .all(projectId);
+  }
+
+  // The effective list: a project's own categories when it has any, otherwise
+  // the built-in five. There is deliberately no "merge" — a deployment that
+  // defines its own taxonomy means it, and silently keeping `improvement`
+  // around would undo the point of configuring anything.
+  function effectiveKeys(projectId) {
+    const configured = listForProject(projectId);
+    return configured.length > 0
+      ? configured.map((row) => row.category_key)
+      : [...CORE_CATEGORY_KEYS];
+  }
+
+  function describe(projectId) {
+    const configured = listForProject(projectId);
+    if (configured.length > 0) {
+      return configured.map((row) => ({
+        key: row.category_key,
+        label: row.label,
+        source: "project"
+      }));
+    }
+    // No label: the UI falls back to its own dictionary for built-ins.
+    return CORE_CATEGORY_KEYS.map((key) => ({ key, label: null, source: "core" }));
+  }
+
+  function assertValid({ projectId, category }) {
+    const allowed = effectiveKeys(projectId);
+    if (!allowed.includes(category)) {
+      throw new CategoryError(
+        "invalid_category",
+        `Category must be one of: ${allowed.join(", ")}`,
+        category
+      );
+    }
+    return category;
+  }
+
+  function upsert({ projectId, payload }) {
+    validateDefinition(payload);
+
+    const existing = db
+      .prepare("SELECT id FROM project_categories WHERE project_id = ? AND category_key = ?")
+      .get(projectId, payload.category_key);
+
+    if (existing) {
+      db.prepare(
+        `UPDATE project_categories
+         SET label = ?, position = ?, archived_at = NULL
+         WHERE id = ?`
+      ).run(payload.label.trim(), payload.position ?? 0, existing.id);
+      return { id: existing.id, ...payload };
+    }
+
+    const { randomUUID } = require("node:crypto");
+    const id = randomUUID();
+    db.prepare(
+      `INSERT INTO project_categories (id, project_id, category_key, label, position)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(id, projectId, payload.category_key, payload.label.trim(), payload.position ?? 0);
+
+    return { id, ...payload };
+  }
+
+  function archive({ projectId, categoryKey }) {
+    const result = db
+      .prepare(
+        "UPDATE project_categories SET archived_at = datetime('now') WHERE project_id = ? AND category_key = ?"
+      )
+      .run(projectId, categoryKey);
+
+    if (result.changes === 0) {
+      throw new CategoryError("category_not_found", "Category was not found", categoryKey);
+    }
+    return { archived: true };
+  }
+
+  return {
+    listForProject,
+    effectiveKeys,
+    describe,
+    assertValid,
+    upsert,
+    archive
+  };
+}
+
+module.exports = {
+  CORE_CATEGORY_KEYS,
+  CategoryError,
+  installCategorySchema,
+  validateDefinition,
+  createCategoriesService
+};

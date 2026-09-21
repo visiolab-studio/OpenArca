@@ -3,12 +3,14 @@ const express = require("express");
 const { z } = require("zod");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
+const db = require("../db");
+const { createCategoriesService } = require("../core/categories");
+const categoriesService = createCategoriesService({ db });
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
 const {
   TICKET_STATUSES,
   TICKET_PRIORITIES,
-  TICKET_CATEGORIES,
   COMMENT_TYPES
 } = require("../constants");
 const {
@@ -26,7 +28,7 @@ const listQuerySchema = z
   .object({
     status: z.enum(TICKET_STATUSES).optional(),
     priority: z.enum(TICKET_PRIORITIES).optional(),
-    category: z.enum(TICKET_CATEGORIES).optional(),
+    category: z.string().trim().min(1).max(40).optional(),
     project_id: z.string().uuid().optional(),
     my: z.enum(["0", "1"]).optional(),
     custom_field_key: z.string().trim().min(1).max(50).optional(),
@@ -48,7 +50,8 @@ const externalRefParamsSchema = z.object({
   refId: z.string().uuid()
 });
 
-const createTicketSchema = z
+function buildCreateTicketSchema(requireBugDetails) {
+  return z
   .object({
     title: z.string().min(10).max(300),
     description: z.string().min(50).max(20000),
@@ -57,13 +60,19 @@ const createTicketSchema = z
     actual_result: z.string().min(20).max(8000).optional(),
     environment: z.string().min(10).max(2000).optional(),
     urgency_reporter: z.enum(TICKET_PRIORITIES).default("normal"),
-    category: z.enum(TICKET_CATEGORIES).default("other"),
+    // Walidowana wzgledem kategorii PROJEKTU w serwisie, nie jako sztywny enum:
+    // projekt moze miec wlasna taksonomie.
+    category: z.string().trim().min(1).max(40).default("other"),
     project_id: z.string().uuid().optional(),
     custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.null()])).optional()
   })
   .strict()
   .superRefine((value, ctx) => {
-    if (value.category === "bug") {
+    // Pominiete, gdy projekt ma wylaczony rygor. Powod: w rzeczywistym
+    // wdrozeniu zglasza obsluga klienta, przepisujac wiadomosc od klienta —
+    // zadanie od niej "krokow reprodukcji" nie daje lepszych zgloszen, tylko
+    // wypelniacze wklejane, zeby przejsc dalej.
+    if (value.category === "bug" && requireBugDetails) {
       if (value.description.length < 100) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -87,7 +96,11 @@ const createTicketSchema = z
       }
     }
 
-    if (["feature", "improvement"].includes(value.category) && value.description.length < 100) {
+    if (
+      requireBugDetails &&
+      ["feature", "improvement"].includes(value.category) &&
+      value.description.length < 100
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["description"],
@@ -95,6 +108,7 @@ const createTicketSchema = z
       });
     }
   });
+}
 
 const createCommentSchema = z
   .object({
@@ -196,7 +210,7 @@ function normalizeCustomFields(input) {
   throw createValidationError("custom_fields must be a JSON object");
 }
 
-function parseCreateTicketBody(raw) {
+function parseCreateTicketBody(raw, { requireBugDetails = true } = {}) {
   const normalized = {
     title: normalizeText(raw.title),
     description: normalizeText(raw.description),
@@ -214,7 +228,7 @@ function parseCreateTicketBody(raw) {
     delete normalized.custom_fields;
   }
 
-  return createTicketSchema.parse(normalized);
+  return buildCreateTicketSchema(requireBugDetails).parse(normalized);
 }
 
 function removeUploadedFiles(files) {
@@ -500,7 +514,21 @@ router.post(
 
       let payload;
       try {
-        payload = parseCreateTicketBody(req.body || {});
+        // Rygor czyta sie z projektu, do ktorego zglaszamy. Projekt obslugiwany
+        // przez klientow moze go wylaczyc; wewnetrzny zostawia wlaczony.
+        const targetProjectId = String(req.body?.project_id || "").trim() || null;
+        const project = targetProjectId
+          ? db.prepare("SELECT require_bug_details FROM projects WHERE id = ?").get(targetProjectId)
+          : null;
+        const requireBugDetails = project ? project.require_bug_details !== 0 : true;
+
+        payload = parseCreateTicketBody(req.body || {}, { requireBugDetails });
+
+        // Kategoria walidowana wzgledem taksonomii projektu, nie stalej rdzenia.
+        categoriesService.assertValid({
+          projectId: targetProjectId,
+          category: payload.category
+        });
       } catch (error) {
         if (error instanceof z.ZodError) {
           throw zodToValidationError(error);

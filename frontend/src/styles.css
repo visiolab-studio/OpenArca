@@ -2963,6 +2963,51 @@ table th {
   border-left: 3px solid var(--yellow);
 }
 
+/* Machine-authored comment: a confident, wrong analysis rendered like a human
+   answer gets relayed to a customer as fact, so this must read as "not a
+   person" at a glance, without hovering — a distinct left border/background
+   plus a badge, not just a tooltip. */
+.comment.machine {
+  border-left: 3px solid var(--status-verified-text);
+  background: var(--status-verified-bg);
+}
+
+.comment.machine .comment-avatar {
+  background: var(--status-verified-text);
+  color: var(--accent-text);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.comment-machine-note {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-verified-text);
+}
+
+/* Draft (unpublished) comment: only ever sent to a developer, but must still
+   look unfinished so it is never mistaken for something the reporter can
+   already see. */
+.comment.draft {
+  border-style: dashed;
+  border-color: var(--status-waiting-text);
+}
+
+.comment-draft-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  background: var(--status-waiting-bg);
+  border: 1px solid var(--status-waiting-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--status-waiting-text);
+}
+
 .history-item {
   display: flex;
   align-items: flex-start;

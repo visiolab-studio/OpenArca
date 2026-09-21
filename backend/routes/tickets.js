@@ -1,7 +1,7 @@
 const fs = require("fs");
 const express = require("express");
 const { z } = require("zod");
-const { authRequired, requireRole } = require("../middleware/auth");
+const { authRequired, requireRole, requireScope } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const db = require("../db");
 const { createCategoriesService } = require("../core/categories");
@@ -48,6 +48,11 @@ const relatedParamsSchema = z.object({
 const externalRefParamsSchema = z.object({
   id: z.string().uuid(),
   refId: z.string().uuid()
+});
+
+const commentParamsSchema = z.object({
+  id: z.string().uuid(),
+  commentId: z.string().uuid()
 });
 
 // `simpleIntake` oznacza kategorie lekka (np. szybkie pytanie). Progi dlugosci
@@ -123,7 +128,16 @@ const createCommentSchema = z
     is_internal: z.boolean().optional().default(false),
     is_closure_summary: z.boolean().optional().default(false),
     type: z.enum(COMMENT_TYPES).optional().default("comment"),
-    parent_id: z.string().uuid().nullable().optional()
+    parent_id: z.string().uuid().nullable().optional(),
+    // Default true: every existing caller keeps posting visible comments. Pass
+    // false to save a draft that only developers can see until it is published.
+    publish: z.boolean().optional().default(true),
+    // Accepted so a caller sending it doesn't get a validation_error, but the
+    // value is NEVER used: author_kind is derived server-side from request
+    // identity (req.machine), never from the body — see the route handler
+    // below. A machine must not be able to post as human by omitting/forging
+    // this, and a human must not be able to disclaim authorship by setting it.
+    author_kind: z.any().optional()
   })
   .strict();
 
@@ -277,7 +291,7 @@ function getTicket(ticketId) {
   return ticketsService.getTicketById({ ticketId });
 }
 
-router.get("/", authRequired, validate({ query: listQuerySchema }), (req, res) => {
+router.get("/", authRequired, requireScope("tickets:read"), validate({ query: listQuerySchema }), (req, res) => {
   const rows = ticketsService.listTickets({
     user: req.user,
     query: req.query
@@ -492,7 +506,7 @@ router.delete(
   }
 );
 
-router.get("/:id", authRequired, validate({ params: idParamsSchema }), (req, res, next) => {
+router.get("/:id", authRequired, requireScope("tickets:read"), validate({ params: idParamsSchema }), (req, res, next) => {
   try {
     const payload = ticketsService.getTicketDetail({
       ticketId: req.params.id,
@@ -654,14 +668,33 @@ router.patch("/:id", authRequired, writeLimiter, validate({ params: idParamsSche
 router.post(
   "/:id/comments",
   authRequired,
+  // Bez tej bramki zakres `tickets:comment` byl dekoracyjny: token wydany
+  // wylacznie do odczytu i tak moglby pisac.
+  requireScope("tickets:comment"),
   writeLimiter,
   validate({ params: idParamsSchema, body: createCommentSchema }),
   async (req, res, next) => {
     try {
+      // eslint-disable-next-line no-unused-vars
+      const { author_kind: _ignoredAuthorKind, ...commentPayload } = req.body;
+
+      // Komentarz widoczny dla zglaszajacego to inna klasa dzialania niz
+      // notatka wewnetrzna, wiec ma wlasny zakres. Zalezy od TRESCI zadania,
+      // wiec nie da sie tego sprawdzic samym middleware.
+      if (req.machine && commentPayload.is_internal === false) {
+        if (!req.machine.scopes?.includes("tickets:propose_reply")) {
+          return res.status(403).json({
+            error: "forbidden",
+            reason: "missing_scope",
+            scope: "tickets:propose_reply"
+          });
+        }
+      }
       const result = ticketsService.createTicketComment({
         ticketId: req.params.id,
         user: req.user,
-        payload: req.body
+        payload: commentPayload,
+        authorKind: req.machine ? "machine" : "human"
       });
 
       if (result.shouldNotifyReporterDeveloperComment) {
@@ -700,6 +733,100 @@ router.post(
       }
       if (error?.code === "invalid_parent_comment") {
         return res.status(400).json({ error: "invalid_parent_comment" });
+      }
+      return next(error);
+    }
+  }
+);
+
+// requireRole("developer") is what makes these developer-only, and it refuses a
+// machine identity outright (see middleware/auth.js). So whatever drafted a
+// comment, releasing it to the reporter is always a person's act.
+router.post(
+  "/:id/comments/:commentId/publish",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: commentParamsSchema }),
+  async (req, res, next) => {
+    try {
+      const result = ticketsService.publishTicketComment({
+        ticketId: req.params.id,
+        commentId: req.params.commentId,
+        user: req.user
+      });
+
+      if (result.shouldNotifyReporterDeveloperComment) {
+        try {
+          await notifyReporterDeveloperComment({
+            ticketId: req.params.id,
+            actorUserId: req.user.id,
+            commentContent: result.comment.content
+          });
+        } catch (error) {
+          console.error("comment_notification_failed", error);
+        }
+      }
+
+      if (result.shouldTrackClosureSummary) {
+        trackTelemetryEvent({
+          eventName: "closure_summary_added",
+          userId: req.user.id,
+          ticketId: req.params.id,
+          properties: {
+            comment_id: result.comment.id
+          }
+        });
+      }
+
+      return res.json(result.comment);
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "comment_not_found") {
+        return res.status(404).json({ error: "comment_not_found" });
+      }
+      if (error?.code === "comment_already_published") {
+        return res.status(400).json({ error: "comment_already_published" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      return next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:id/comments/:commentId",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: commentParamsSchema }),
+  (req, res, next) => {
+    try {
+      const payload = ticketsService.discardTicketComment({
+        ticketId: req.params.id,
+        commentId: req.params.commentId,
+        user: req.user
+      });
+      return res.json(payload);
+    } catch (error) {
+      if (error?.code === "ticket_not_found") {
+        return res.status(404).json({ error: "ticket_not_found" });
+      }
+      if (error?.code === "comment_not_found") {
+        return res.status(404).json({ error: "comment_not_found" });
+      }
+      if (error?.code === "comment_already_published") {
+        return res.status(400).json({ error: "comment_already_published" });
+      }
+      if (error?.code === "comment_has_replies") {
+        return res.status(400).json({ error: "comment_has_replies" });
+      }
+      if (error?.code === "forbidden") {
+        return res.status(403).json({ error: "forbidden" });
       }
       return next(error);
     }

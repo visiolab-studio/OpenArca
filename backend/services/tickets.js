@@ -172,6 +172,17 @@ function historyValue(value) {
   return String(value);
 }
 
+// A comment row reaches an API response only through here, so the draft state
+// is always spelled out rather than left for a client to infer from a NULL it
+// may not know to look at.
+function decorateComment(row) {
+  if (!row) return row;
+  return { ...row, is_unpublished: row.published_at == null };
+}
+
+// A closure summary the reporter cannot read is not a closure summary. An
+// unpublished draft therefore does not satisfy the gate that requires one
+// before closing.
 function hasClosureSummaryComment({ database, ticketId }) {
   const row = database
     .prepare(
@@ -180,6 +191,7 @@ function hasClosureSummaryComment({ database, ticketId }) {
        WHERE ticket_id = ?
          AND is_closure_summary = 1
          AND is_internal = 0
+         AND published_at IS NOT NULL
        LIMIT 1`
     )
     .get(ticketId);
@@ -330,6 +342,7 @@ function buildClosureSummaryIndexFeed(database, { limit = 200, updatedSince = nu
           FROM comments
           WHERE is_closure_summary = 1
             AND is_internal = 0
+            AND published_at IS NOT NULL
           GROUP BY ticket_id
         ) m ON m.max_rowid = c.rowid
       )
@@ -1043,7 +1056,12 @@ function createTicketsService(options = {}) {
       return created;
     },
 
-    createTicketComment({ ticketId, user, payload }) {
+    createTicketComment({ ticketId, user, payload, authorKind }) {
+      // author_kind must reflect who/what actually authenticated the request,
+      // never a value a caller can set — see backend/routes/tickets.js, which
+      // derives this from req.machine and never from the request body.
+      const resolvedAuthorKind = authorKind === "machine" ? "machine" : "human";
+
       getReadableTicketOrThrow({ database, ticketId, user });
 
       if (payload?.is_internal && user.role !== "developer") {
@@ -1056,6 +1074,18 @@ function createTicketsService(options = {}) {
 
       if (payload?.is_closure_summary && payload?.is_internal) {
         throw createServiceError("invalid_closure_summary_visibility", 400);
+      }
+
+      // An unpublished comment is readable only by developers, so only a
+      // developer can create one — a reporter drafting would be writing into a
+      // hole they cannot look into. The mechanism itself is deliberately
+      // general: a human composing a careful answer over two sittings uses the
+      // same draft/publish pair as anything else. Any policy about WHICH
+      // drafts must be reviewed by a person before release (machine-authored
+      // ones, say) is a higher layer's rule, not this table's.
+      const publish = payload?.publish !== false;
+      if (!publish && user.role !== "developer") {
+        throw createServiceError("forbidden", 403);
       }
 
       if (payload?.parent_id) {
@@ -1072,9 +1102,11 @@ function createTicketsService(options = {}) {
         .prepare(
           `INSERT INTO comments (
             id, ticket_id, user_id, content,
-            is_developer, is_internal, is_closure_summary, type,
-            parent_id, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+            is_developer, is_internal, is_closure_summary, author_kind, type,
+            parent_id, created_at, published_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ${
+            publish ? "datetime('now')" : "NULL"
+          })`
         )
         .run(
           commentId,
@@ -1084,24 +1116,116 @@ function createTicketsService(options = {}) {
           user.role === "developer" ? 1 : 0,
           payload.is_internal ? 1 : 0,
           payload.is_closure_summary ? 1 : 0,
+          resolvedAuthorKind,
           payload.type || "comment",
           payload.parent_id || null
         );
 
-      const comment = database
-        .prepare("SELECT * FROM comments WHERE id = ?")
-        .get(commentId);
+      const comment = decorateComment(
+        database.prepare("SELECT * FROM comments WHERE id = ?").get(commentId)
+      );
 
       return {
         comment,
-        shouldNotifyReporterDeveloperComment: user.role === "developer" && !payload.is_internal,
-        shouldTrackClosureSummary: user.role === "developer" && Boolean(payload.is_closure_summary)
+        // A draft must not reach the reporter by ANY route, and an e-mail is a
+        // route. Notifying on an unpublished comment would hand the reporter
+        // the full text of something nobody has approved yet.
+        shouldNotifyReporterDeveloperComment:
+          publish && user.role === "developer" && !payload.is_internal,
+        // Counted when the summary actually reaches the reporter, so a draft
+        // does not inflate the metric and then count a second time on publish.
+        shouldTrackClosureSummary:
+          publish && user.role === "developer" && Boolean(payload.is_closure_summary)
       };
+    },
+
+    // Publishing and discarding are developer-only. The route also wraps these
+    // in requireRole("developer"), which additionally refuses a machine
+    // identity — deliberate belt and braces: whatever drafted a reply, a person
+    // decides whether it goes out.
+    publishTicketComment({ ticketId, commentId, user }) {
+      if (user?.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      getReadableTicketOrThrow({ database, ticketId, user });
+
+      const existing = database
+        .prepare("SELECT * FROM comments WHERE id = ? AND ticket_id = ?")
+        .get(commentId, ticketId);
+
+      if (!existing) {
+        throw createServiceError("comment_not_found", 404);
+      }
+
+      if (existing.published_at != null) {
+        throw createServiceError("comment_already_published", 400);
+      }
+
+      database
+        .prepare("UPDATE comments SET published_at = datetime('now') WHERE id = ?")
+        .run(commentId);
+
+      const comment = decorateComment(
+        database.prepare("SELECT * FROM comments WHERE id = ?").get(commentId)
+      );
+
+      return {
+        comment,
+        shouldNotifyReporterDeveloperComment:
+          Boolean(comment.is_developer) && !comment.is_internal,
+        shouldTrackClosureSummary: Boolean(comment.is_closure_summary)
+      };
+    },
+
+    // Discard removes the row outright, which is safe precisely BECAUSE it is
+    // restricted to drafts: nobody outside the developer view has ever seen it,
+    // so nothing anyone was shown disappears. A published comment is part of
+    // the conversation the reporter read and is not deletable here.
+    discardTicketComment({ ticketId, commentId, user }) {
+      if (user?.role !== "developer") {
+        throw createServiceError("forbidden", 403);
+      }
+
+      getReadableTicketOrThrow({ database, ticketId, user });
+
+      const existing = database
+        .prepare("SELECT * FROM comments WHERE id = ? AND ticket_id = ?")
+        .get(commentId, ticketId);
+
+      if (!existing) {
+        throw createServiceError("comment_not_found", 404);
+      }
+
+      if (existing.published_at != null) {
+        throw createServiceError("comment_already_published", 400);
+      }
+
+      const tx = database.transaction(() => {
+        // A reply threaded under a discarded draft would be orphaned by the
+        // FK, so refuse rather than corrupt the thread.
+        const child = database
+          .prepare("SELECT 1 FROM comments WHERE parent_id = ? LIMIT 1")
+          .get(commentId);
+        if (child) {
+          throw createServiceError("comment_has_replies", 400);
+        }
+        database.prepare("DELETE FROM comments WHERE id = ?").run(commentId);
+      });
+
+      tx();
+
+      return { discarded: true, comment_id: commentId };
     },
 
     getTicketDetail({ ticketId, user }) {
       const ticket = getReadableTicketOrThrow({ database, ticketId, user });
 
+      // Two independent gates hide a comment from a non-developer, and the
+      // second one does NOT fall back to the first: published_at IS NULL hides
+      // a comment whether or not is_internal is set, because a draft reply is
+      // written to be public eventually and is_internal = 0 from the moment it
+      // exists.
       const commentsQuery =
         user.role === "developer"
           ? `SELECT c.*, u.name AS user_name, u.email AS user_email
@@ -1112,10 +1236,10 @@ function createTicketsService(options = {}) {
           : `SELECT c.*, u.name AS user_name, u.email AS user_email
              FROM comments c
              LEFT JOIN users u ON u.id = c.user_id
-             WHERE c.ticket_id = ? AND c.is_internal = 0
+             WHERE c.ticket_id = ? AND c.is_internal = 0 AND c.published_at IS NOT NULL
              ORDER BY c.created_at ASC`;
 
-      const comments = database.prepare(commentsQuery).all(ticket.id);
+      const comments = database.prepare(commentsQuery).all(ticket.id).map(decorateComment);
       const attachments = database
         .prepare("SELECT * FROM attachments WHERE ticket_id = ? ORDER BY created_at ASC")
         .all(ticket.id);

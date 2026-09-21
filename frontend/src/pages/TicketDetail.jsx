@@ -651,14 +651,28 @@ export default function TicketDetailPage() {
             <ul className="comments-thread">
               {ticket.comments?.map((comment) => {
                 const author = comment.user_name || comment.user_email || "User";
+                // A machine-authored comment is a reporter's OWN account acting
+                // as the user_id (see backend/middleware/auth.js), so `author`
+                // above is already the human owner it acted for — the marker
+                // below only has to name the fact that an agent produced it, so
+                // a confident-but-wrong analysis is never mistaken for the
+                // owner's own words at a glance, without a hover.
+                const isMachineAuthored = comment.author_kind === "machine";
+                // published_at IS NULL is a developer-only draft (see
+                // backend/services/tickets.js, decorateComment) — never shown
+                // to a reporter, but still needs to read as "not final" to the
+                // developer who can see it.
+                const isDraft = Boolean(comment.is_unpublished);
                 return (
                   <li
                     key={comment.id}
                     className={`comment ${comment.is_developer ? "developer" : "user"} ${
                       comment.type === "question" ? "question" : ""
-                    }`}
+                    } ${isMachineAuthored ? "machine" : ""} ${isDraft ? "draft" : ""}`}
                   >
-                    <div className="comment-avatar">{toInitial(author)}</div>
+                    <div className="comment-avatar">
+                      {isMachineAuthored ? t("tickets.machineAvatar") : toInitial(author)}
+                    </div>
                     <div className="comment-body">
                       <div className="comment-meta">
                         <span className="comment-author">{author}</span>
@@ -667,7 +681,15 @@ export default function TicketDetailPage() {
                         ) : null}
                         <span className="comment-time">{formatDate(comment.created_at)}</span>
                         {comment.is_internal ? <span className="badge">{t("tickets.internal")}</span> : null}
+                        {isDraft ? (
+                          <span className="comment-draft-badge">{t("tickets.commentDraft")}</span>
+                        ) : null}
                       </div>
+                      {isMachineAuthored ? (
+                        <p className="comment-machine-note">
+                          {t("tickets.machineActingFor", { owner: author })}
+                        </p>
+                      ) : null}
                       <p className="comment-content">{comment.content}</p>
                     </div>
                   </li>

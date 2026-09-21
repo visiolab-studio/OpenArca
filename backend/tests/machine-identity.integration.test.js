@@ -294,3 +294,76 @@ test("a machine-looking value is never accepted as a JWT, and a JWT never as a t
     .set("Authorization", `Bearer ${machineToken.slice(3)}`);
   assert.equal(tokenWithoutPrefix.statusCode, 401);
 });
+
+
+// Zakresy musza byc egzekwowane na TRASIE, nie tylko istniec w slowniku.
+// Bez tego token wydany do odczytu moglby komentowac, a zakres bylby ozdoba.
+async function createTicketAsDeveloper() {
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .field("title", "Zgloszenie do testu zakresow")
+    .field("description", "Tresc wystarczajaco dluga, zeby przejsc walidacje formularza zgloszenia.")
+    .field("category", "question")
+    .expect(201);
+  return created.body.id;
+}
+
+test("a read-only machine token cannot post a comment", async () => {
+  const ticketId = await createTicketAsDeveloper();
+  const readOnly = accounts.mintToken({
+    accountId: account.id,
+    scopes: ["tickets:read"]
+  }).clearToken;
+
+  const response = await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${readOnly}`)
+    .send({ content: "analiza od agenta", is_internal: true })
+    .expect(403);
+
+  assert.equal(response.body.reason, "missing_scope");
+  assert.equal(response.body.scope, "tickets:comment");
+});
+
+test("tickets:comment allows an internal note but not a reporter-facing one", async () => {
+  const ticketId = await createTicketAsDeveloper();
+
+  await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${machineToken}`)
+    .send({ content: "notatka wewnetrzna agenta", is_internal: true })
+    .expect(201);
+
+  // Tresc widoczna dla zglaszajacego to inna klasa dzialania i ma wlasny zakres.
+  const refused = await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${machineToken}`)
+    .send({ content: "propozycja odpowiedzi", is_internal: false, publish: false })
+    .expect(403);
+
+  assert.equal(refused.body.scope, "tickets:propose_reply");
+});
+
+test("a machine holding tickets:propose_reply may draft a reporter-facing reply", async () => {
+  const ticketId = await createTicketAsDeveloper();
+  const proposer = accounts.mintToken({
+    accountId: account.id,
+    scopes: ["tickets:read", "tickets:comment", "tickets:propose_reply"]
+  }).clearToken;
+
+  await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${proposer}`)
+    .send({ content: "propozycja odpowiedzi dla klienta", is_internal: false, publish: false })
+    .expect(201);
+});
+
+test("a human developer is unaffected by scope gates", async () => {
+  const ticketId = await createTicketAsDeveloper();
+  await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ content: "odpowiedz czlowieka dla zglaszajacego", is_internal: false })
+    .expect(201);
+});

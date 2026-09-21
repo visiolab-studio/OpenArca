@@ -103,9 +103,11 @@ const schemaStatements = [
     is_developer INTEGER NOT NULL DEFAULT 0,
     is_internal INTEGER NOT NULL DEFAULT 0,
     is_closure_summary INTEGER NOT NULL DEFAULT 0,
+    author_kind TEXT NOT NULL DEFAULT 'human',
     type TEXT NOT NULL DEFAULT 'comment',
     parent_id TEXT REFERENCES comments(id),
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    published_at TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS attachments (
     id TEXT PRIMARY KEY,
@@ -323,6 +325,26 @@ function initDb() {
 
     if (!commentColumnNames.has("is_closure_summary")) {
       db.prepare("ALTER TABLE comments ADD COLUMN is_closure_summary INTEGER NOT NULL DEFAULT 0").run();
+    }
+
+    // Set only from request IDENTITY (req.machine), never from client input —
+    // see backend/routes/tickets.js. Existing rows predate machine identity,
+    // so 'human' is true of all of them.
+    if (!commentColumnNames.has("author_kind")) {
+      db.prepare("ALTER TABLE comments ADD COLUMN author_kind TEXT NOT NULL DEFAULT 'human'").run();
+    }
+
+    // published_at IS NULL means "draft": visible to developers only, never to
+    // the reporter, whatever is_internal says. That rule is only safe if every
+    // comment written BEFORE this column existed reads as published — the
+    // backfill below is the whole point of this migration, not a tidy-up. Leave
+    // those rows NULL and the entire comment history of every ticket silently
+    // disappears from every reporter's view on upgrade. created_at (not
+    // datetime('now')) is the right value: those comments were visible from the
+    // moment they were written, so that is when they were published.
+    if (!commentColumnNames.has("published_at")) {
+      db.prepare("ALTER TABLE comments ADD COLUMN published_at TEXT").run();
+      db.prepare("UPDATE comments SET published_at = created_at WHERE published_at IS NULL").run();
     }
 
     const projectColumns = db.prepare("PRAGMA table_info(projects)").all();

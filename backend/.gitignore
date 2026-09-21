@@ -1,0 +1,6 @@
+
+
+# Local SQLite database and uploads. These are runtime state, never source —
+# and a database committed by accident carries whatever was in it at the time.
+data/
+uploads/

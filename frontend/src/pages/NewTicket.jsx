@@ -253,7 +253,12 @@ export default function NewTicketPage() {
       : CATEGORY_OPTIONS.map((key) => ({ key, label: null }));
     return source.map((entry) => ({
       key: entry.key,
-      label: entry.label || t(`category.${entry.key}`)
+      label: entry.label || t(`category.${entry.key}`),
+      // Opis z konfiguracji projektu ma pierwszenstwo; wbudowane biora swoj ze
+      // slownika, wiec dzialaja w trzech jezykach.
+      description:
+        entry.description ||
+        (categoryMeta[entry.key] ? t(categoryMeta[entry.key].desc) : null)
     }));
   }, [categories, t]);
 
@@ -450,10 +455,8 @@ export default function NewTicketPage() {
                       {categoryMeta[category.key]?.icon || "📌"}
                     </span>
                     <span className="category-option-label">{category.label}</span>
-                    {categoryMeta[category.key] ? (
-                      <span className="category-option-desc">
-                        {t(categoryMeta[category.key].desc, category.label)}
-                      </span>
+                    {category.description ? (
+                      <span className="category-option-desc">{category.description}</span>
                     ) : null}
                   </button>
                 ))}

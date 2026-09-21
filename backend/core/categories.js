@@ -32,6 +32,7 @@ function installCategorySchema(db) {
       project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       category_key TEXT NOT NULL,
       label TEXT NOT NULL,
+      description TEXT,
       position INTEGER NOT NULL DEFAULT 0,
       archived_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -66,7 +67,7 @@ function createCategoriesService(options = {}) {
     if (!projectId) return [];
     return db
       .prepare(
-        `SELECT category_key, label, position
+        `SELECT category_key, label, description, position
          FROM project_categories
          WHERE project_id = ? AND archived_at IS NULL
          ORDER BY position ASC, created_at ASC`
@@ -91,11 +92,20 @@ function createCategoriesService(options = {}) {
       return configured.map((row) => ({
         key: row.category_key,
         label: row.label,
+        // Jedno zdanie, ktore ma powiedziec zglaszajacemu, czy to ta kategoria.
+        // Bez niego nazwy takie jak "Sprawdzenie danych" i "Tresc i katalog"
+        // sa rozroznialne dopiero po kilku pomylkach.
+        description: row.description || null,
         source: "project"
       }));
     }
     // No label: the UI falls back to its own dictionary for built-ins.
-    return CORE_CATEGORY_KEYS.map((key) => ({ key, label: null, source: "core" }));
+    return CORE_CATEGORY_KEYS.map((key) => ({
+      key,
+      label: null,
+      description: null,
+      source: "core"
+    }));
   }
 
   function assertValid({ projectId, category }) {
@@ -120,18 +130,30 @@ function createCategoriesService(options = {}) {
     if (existing) {
       db.prepare(
         `UPDATE project_categories
-         SET label = ?, position = ?, archived_at = NULL
+         SET label = ?, description = ?, position = ?, archived_at = NULL
          WHERE id = ?`
-      ).run(payload.label.trim(), payload.position ?? 0, existing.id);
+      ).run(
+        payload.label.trim(),
+        payload.description?.trim() || null,
+        payload.position ?? 0,
+        existing.id
+      );
       return { id: existing.id, ...payload };
     }
 
     const { randomUUID } = require("node:crypto");
     const id = randomUUID();
     db.prepare(
-      `INSERT INTO project_categories (id, project_id, category_key, label, position)
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(id, projectId, payload.category_key, payload.label.trim(), payload.position ?? 0);
+      `INSERT INTO project_categories (id, project_id, category_key, label, description, position)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+      id,
+      projectId,
+      payload.category_key,
+      payload.label.trim(),
+      payload.description?.trim() || null,
+      payload.position ?? 0
+    );
 
     return { id, ...payload };
   }

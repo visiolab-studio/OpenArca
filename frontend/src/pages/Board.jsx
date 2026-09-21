@@ -19,6 +19,7 @@ import ProjectBadge from "../components/ProjectBadge";
 import StatusBadge from "../components/StatusBadge";
 import SupportThreadOriginBadge, { matchesSupportThreadOrigin } from "../components/SupportThreadOriginBadge";
 import { useAuth } from "../contexts/AuthContext";
+import { useCategoryLabels } from "../contexts/CategoryLabelsContext";
 import {
   areFiltersEqual,
   createSavedView,
@@ -197,6 +198,18 @@ function KanbanColumn({ title, status, tickets, collapsed, onToggle, onOpenPrevi
 
 export default function BoardPage() {
   const { t } = useTranslation();
+  const { allCategories } = useCategoryLabels();
+
+  // Filtr dziala miedzy projektami. Dopoki zaden projekt nie ma wlasnej
+  // taksonomii (albo lista jeszcze nie doszla), zostaje wbudowana piatka.
+  const filterCategories = useMemo(
+    () =>
+      allCategories.length > 0
+        ? allCategories
+        : CATEGORY_OPTIONS.map((key) => ({ key, label: t(`category.${key}`) })),
+    [allCategories, t]
+  );
+
   const { isDeveloper } = useAuth();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const initialSavedViewsState = loadSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS);
@@ -601,9 +614,9 @@ export default function BoardPage() {
           <span className="form-label">{t("tickets.category")}</span>
           <select className="form-select" value={filters.category} onChange={(event) => updateFilters({ category: event.target.value })}>
             <option value="">-</option>
-            {CATEGORY_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {t(`category.${value}`)}
+            {filterCategories.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
               </option>
             ))}
           </select>

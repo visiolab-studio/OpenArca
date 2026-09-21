@@ -38,7 +38,10 @@ vi.mock("../../api/users", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => key
-  })
+  }),
+  // Strony siegaja po jezyk interfejsu (kategorie sa tlumaczone), a to ciagnie
+  // modul i18n, ktory inicjalizuje sie tym pluginem.
+  initReactI18next: { type: "3rdParty", init: () => {} }
 }));
 
 describe("Admin ticket templates", () => {

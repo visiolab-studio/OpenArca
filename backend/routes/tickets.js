@@ -50,11 +50,15 @@ const externalRefParamsSchema = z.object({
   refId: z.string().uuid()
 });
 
-function buildCreateTicketSchema(requireBugDetails) {
+// `simpleIntake` oznacza kategorie lekka (np. szybkie pytanie). Progi dlugosci
+// istnieja po to, zeby zgloszenie dalo sie obsluzyc bez dopytywania — przy
+// pytaniu w rodzaju "czy mozemy dodac ten tag?" wymuszaja tylko rozwlekanie
+// jednego zdania do polowy akapitu.
+function buildCreateTicketSchema(requireBugDetails, { simpleIntake = false } = {}) {
   return z
   .object({
-    title: z.string().min(10).max(300),
-    description: z.string().min(50).max(20000),
+    title: z.string().min(simpleIntake ? 5 : 10).max(300),
+    description: z.string().min(simpleIntake ? 20 : 50).max(20000),
     steps_to_reproduce: z.string().min(30).max(8000).optional(),
     expected_result: z.string().min(20).max(8000).optional(),
     actual_result: z.string().min(20).max(8000).optional(),
@@ -68,6 +72,9 @@ function buildCreateTicketSchema(requireBugDetails) {
   })
   .strict()
   .superRefine((value, ctx) => {
+    // Kategoria lekka nie podlega zadnemu z ponizszych rygorow — nawet gdyby
+    // wdrozenie nazwalo ja `bug`.
+    if (simpleIntake) return;
     // Pominiete, gdy projekt ma wylaczony rygor. Powod: w rzeczywistym
     // wdrozeniu zglasza obsluga klienta, przepisujac wiadomosc od klienta —
     // zadanie od niej "krokow reprodukcji" nie daje lepszych zgloszen, tylko
@@ -210,7 +217,7 @@ function normalizeCustomFields(input) {
   throw createValidationError("custom_fields must be a JSON object");
 }
 
-function parseCreateTicketBody(raw, { requireBugDetails = true } = {}) {
+function parseCreateTicketBody(raw, { requireBugDetails = true, simpleIntake = false } = {}) {
   const normalized = {
     title: normalizeText(raw.title),
     description: normalizeText(raw.description),
@@ -228,7 +235,7 @@ function parseCreateTicketBody(raw, { requireBugDetails = true } = {}) {
     delete normalized.custom_fields;
   }
 
-  return buildCreateTicketSchema(requireBugDetails).parse(normalized);
+  return buildCreateTicketSchema(requireBugDetails, { simpleIntake }).parse(normalized);
 }
 
 function removeUploadedFiles(files) {
@@ -522,7 +529,15 @@ router.post(
           : null;
         const requireBugDetails = project ? project.require_bug_details !== 0 : true;
 
-        payload = parseCreateTicketBody(req.body || {}, { requireBugDetails });
+        // Lekkosc czytamy przed walidacja, bo decyduje o progach. Klucz bierzemy
+        // z surowego ciala — kategoria spoza taksonomii projektu i tak odpadnie
+        // ponizej na assertValid.
+        const simpleIntake = categoriesService.isSimpleIntake({
+          projectId: targetProjectId,
+          category: String(req.body?.category || "").trim()
+        });
+
+        payload = parseCreateTicketBody(req.body || {}, { requireBugDetails, simpleIntake });
 
         // Kategoria walidowana wzgledem taksonomii projektu, nie stalej rdzenia.
         categoriesService.assertValid({

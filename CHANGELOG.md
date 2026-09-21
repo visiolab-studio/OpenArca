@@ -16,6 +16,11 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.4.1] - 2026-09-21
+
+### Fixed
+- The new-ticket form showed the built-in five categories until a project was chosen, which made a project's own taxonomy look like it had not been applied. Categories are per project, so the selector now asks for a project first rather than offering a list the server may reject.
+
 ## [0.4.0] - 2026-09-21
 
 ### Added

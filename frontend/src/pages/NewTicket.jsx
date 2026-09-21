@@ -428,6 +428,12 @@ export default function NewTicketPage() {
 
             <div>
               <p className="form-label">{t("tickets.category")}</p>
+              {!form.project_id ? (
+                // Kategorie sa per projekt. Pokazanie tu wbudowanej piatki
+                // sugerowaloby, ze to jest lista do wyboru — a projekt z wlasna
+                // taksonomia odrzucilby polowe z niej przy wysylce.
+                <p className="form-hint">{t("newTicket.categoryNeedsProject")}</p>
+              ) : (
               <div className="category-selector">
                 {visibleCategories.map((category) => (
                   <button
@@ -452,6 +458,7 @@ export default function NewTicketPage() {
                   </button>
                 ))}
               </div>
+              )}
             </div>
 
             <label className="form-group">

@@ -252,7 +252,8 @@
     "templateChecklistHeading": "Checklista",
     "businessGoal": "Cel biznesowy",
     "questionContext": "Kontekst pytania",
-    "confirm": "Potwierdzam kompletność danych"
+    "confirm": "Potwierdzam kompletność danych",
+    "categoryNeedsProject": "Najpierw wybierz projekt — kategorie zależą od niego."
   },
   "dev": {
     "summary": "Podsumowanie",

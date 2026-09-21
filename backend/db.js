@@ -314,8 +314,15 @@ function initDb() {
     // w ktorym zglasza obsluga klienta, moze go wylaczyc.
     // Kolumna dodana po tym, jak tabela juz istniala u wczesnych uzytkownikow.
     const categoryColumns = db.prepare("PRAGMA table_info(project_categories)").all();
-    if (!categoryColumns.some((column) => String(column.name) === "description")) {
+    const categoryColumnNames = new Set(categoryColumns.map((column) => String(column.name)));
+    if (!categoryColumnNames.has("description")) {
       db.prepare("ALTER TABLE project_categories ADD COLUMN description TEXT").run();
+    }
+    // Tlumaczenia etykiety i opisu. Kategoria jest trescia konfigurowalna, wiec
+    // musi podazac za jezykiem INTERFEJSU, nie za projektem — inaczej ktos z
+    // polskim UI dostaje wloskie kategorie tylko dlatego, ze wybral ten sklep.
+    if (!categoryColumnNames.has("translations")) {
+      db.prepare("ALTER TABLE project_categories ADD COLUMN translations TEXT").run();
     }
 
     if (!projectColumnNames.has("require_bug_details")) {

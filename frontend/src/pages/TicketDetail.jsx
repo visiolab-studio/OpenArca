@@ -15,6 +15,7 @@ import {
 import { getUsers } from "../api/users";
 import { API_BASE_URL } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { useCategoryLabels } from "../contexts/CategoryLabelsContext";
 import StatusBadge from "../components/StatusBadge";
 import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
@@ -46,9 +47,24 @@ function isSafeHttpUrl(value) {
 export default function TicketDetailPage() {
   const { id } = useParams();
   const { t } = useTranslation();
+  const { labelFor, categoriesFor } = useCategoryLabels();
   const { isDeveloper, token } = useAuth();
 
   const [ticket, setTicket] = useState(null);
+
+  // Edycja dotyczy JEDNEGO zgloszenia, wiec lista pochodzi z jego projektu —
+  // inaczej dalo by sie wybrac kategorie, ktorej backend nie przyjmie.
+  const editCategories = useMemo(() => {
+    const configured = categoriesFor(ticket?.project_id);
+    if (configured.length > 0) {
+      return configured.map((entry) => ({
+        key: entry.key,
+        label: labelFor(ticket?.project_id, entry.key)
+      }));
+    }
+    return CATEGORY_OPTIONS.map((key) => ({ key, label: t(`category.${key}`) }));
+  }, [categoriesFor, labelFor, ticket?.project_id, t]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [commentText, setCommentText] = useState("");
@@ -515,9 +531,9 @@ export default function TicketDetailPage() {
                           setEditForm((current) => ({ ...current, category: event.target.value }))
                         }
                       >
-                        {CATEGORY_OPTIONS.map((value) => (
-                          <option key={value} value={value}>
-                            {t(`category.${value}`)}
+                        {editCategories.map((entry) => (
+                          <option key={entry.key} value={entry.key}>
+                            {entry.label}
                           </option>
                         ))}
                       </select>
@@ -746,7 +762,7 @@ export default function TicketDetailPage() {
             </div>
             <div className="ticket-meta-row">
               <span className="ticket-meta-label">{t("tickets.category")}</span>
-              <span>{t(`category.${ticket.category}`)}</span>
+              <span>{labelFor(ticket.project_id, ticket.category)}</span>
             </div>
             <div className="ticket-meta-row">
               <span className="ticket-meta-label">{t("tickets.assignee")}</span>

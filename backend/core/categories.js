@@ -33,6 +33,7 @@ function installCategorySchema(db) {
       category_key TEXT NOT NULL,
       label TEXT NOT NULL,
       description TEXT,
+      translations TEXT,
       position INTEGER NOT NULL DEFAULT 0,
       archived_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -42,6 +43,16 @@ function installCategorySchema(db) {
   db.prepare(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_project_categories_key ON project_categories(project_id, category_key)"
   ).run();
+}
+
+function parseTranslations(raw) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function validateDefinition({ category_key: key, label }) {
@@ -67,7 +78,7 @@ function createCategoriesService(options = {}) {
     if (!projectId) return [];
     return db
       .prepare(
-        `SELECT category_key, label, description, position
+        `SELECT category_key, label, description, translations, position
          FROM project_categories
          WHERE project_id = ? AND archived_at IS NULL
          ORDER BY position ASC, created_at ASC`
@@ -96,6 +107,10 @@ function createCategoriesService(options = {}) {
         // Bez niego nazwy takie jak "Sprawdzenie danych" i "Tresc i katalog"
         // sa rozroznialne dopiero po kilku pomylkach.
         description: row.description || null,
+        // Zwracamy caly zestaw, a klient wybiera po swoim jezyku. Negocjacja po
+        // stronie serwera wymagalaby, zeby kazde zapytanie niosło jezyk, a UI
+        // przelacza go bez przeladowania.
+        translations: parseTranslations(row.translations),
         source: "project"
       }));
     }
@@ -104,6 +119,7 @@ function createCategoriesService(options = {}) {
       key,
       label: null,
       description: null,
+      translations: null,
       source: "core"
     }));
   }
@@ -130,11 +146,12 @@ function createCategoriesService(options = {}) {
     if (existing) {
       db.prepare(
         `UPDATE project_categories
-         SET label = ?, description = ?, position = ?, archived_at = NULL
+         SET label = ?, description = ?, translations = ?, position = ?, archived_at = NULL
          WHERE id = ?`
       ).run(
         payload.label.trim(),
         payload.description?.trim() || null,
+        payload.translations ? JSON.stringify(payload.translations) : null,
         payload.position ?? 0,
         existing.id
       );
@@ -144,14 +161,16 @@ function createCategoriesService(options = {}) {
     const { randomUUID } = require("node:crypto");
     const id = randomUUID();
     db.prepare(
-      `INSERT INTO project_categories (id, project_id, category_key, label, description, position)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO project_categories
+         (id, project_id, category_key, label, description, translations, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       projectId,
       payload.category_key,
       payload.label.trim(),
       payload.description?.trim() || null,
+      payload.translations ? JSON.stringify(payload.translations) : null,
       payload.position ?? 0
     );
 
@@ -183,6 +202,7 @@ function createCategoriesService(options = {}) {
 
 module.exports = {
   CORE_CATEGORY_KEYS,
+  parseTranslations,
   CategoryError,
   installCategorySchema,
   validateDefinition,

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { createTicket } from "../api/tickets";
 import { getProjectCustomFields, getProjectCategories } from "../api/projects";
+import { resolveCategoryText } from "../utils/categoryLabel";
+import { DEFAULT_LANGUAGE } from "../utils/categoryLabel";
 import CustomFieldsInput from "../components/CustomFieldsInput";
 import { getProjects } from "../api/projects";
 import { getTicketTemplates } from "../api/ticketTemplates";
@@ -87,7 +89,8 @@ export function validateNewTicketForm(form) {
 
 export default function NewTicketPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n?.language || DEFAULT_LANGUAGE;
 
   const [projects, setProjects] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -245,22 +248,24 @@ export default function NewTicketPage() {
     setStep((current) => Math.min(4, Math.max(1, current + direction)));
   }
 
-  // Kategoria skonfigurowana w projekcie niesie wlasna etykiete; wbudowana
-  // bierze ja ze slownika, zeby dzialala w trzech jezykach.
+  // Kategoria skonfigurowana w projekcie niesie wlasne tlumaczenia; wbudowana
+  // bierze nazwe i opis ze slownika UI. W obu przypadkach decyduje JEZYK
+  // INTERFEJSU — wybor sklepu nie moze przelaczac jezyka kategorii.
   const visibleCategories = useMemo(() => {
     const source = categories && categories.length > 0
       ? categories
-      : CATEGORY_OPTIONS.map((key) => ({ key, label: null }));
-    return source.map((entry) => ({
-      key: entry.key,
-      label: entry.label || t(`category.${entry.key}`),
-      // Opis z konfiguracji projektu ma pierwszenstwo; wbudowane biora swoj ze
-      // slownika, wiec dzialaja w trzech jezykach.
-      description:
-        entry.description ||
-        (categoryMeta[entry.key] ? t(categoryMeta[entry.key].desc) : null)
-    }));
-  }, [categories, t]);
+      : CATEGORY_OPTIONS.map((key) => ({ key }));
+    return source.map((entry) => {
+      const resolved = resolveCategoryText(entry, language);
+      return {
+        key: entry.key,
+        label: resolved.label || t(`category.${entry.key}`),
+        description:
+          resolved.description ||
+          (categoryMeta[entry.key] ? t(categoryMeta[entry.key].desc) : null)
+      };
+    });
+  }, [categories, language, t]);
 
   useEffect(() => {
     if (!visibleCategories.length) return;

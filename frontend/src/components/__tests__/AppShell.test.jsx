@@ -26,7 +26,10 @@ vi.mock("../../api/settings", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => key
-  })
+  }),
+  // Strony siegaja po jezyk interfejsu (kategorie sa tlumaczone), a to ciagnie
+  // modul i18n, ktory inicjalizuje sie tym pluginem.
+  initReactI18next: { type: "3rdParty", init: () => {} }
 }));
 
 vi.mock("virtual:openarca-extensions", () => ({

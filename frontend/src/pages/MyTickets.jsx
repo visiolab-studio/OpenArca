@@ -9,6 +9,7 @@ import PriorityBadge from "../components/PriorityBadge";
 import ProjectBadge from "../components/ProjectBadge";
 import SupportThreadOriginBadge, { matchesSupportThreadOrigin } from "../components/SupportThreadOriginBadge";
 import { useAuth } from "../contexts/AuthContext";
+import { useCategoryLabels } from "../contexts/CategoryLabelsContext";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS, STATUS_OPTIONS } from "../utils/constants";
 import { formatDateShort } from "../utils/format";
 import {
@@ -57,6 +58,18 @@ function getThisWeekRange() {
 
 export default function MyTicketsPage() {
   const { t } = useTranslation();
+  const { labelFor, allCategories } = useCategoryLabels();
+
+  // Filtr dziala miedzy projektami. Dopoki zaden projekt nie ma wlasnej
+  // taksonomii (albo lista jeszcze nie doszla), zostaje wbudowana piatka.
+  const filterCategories = useMemo(
+    () =>
+      allCategories.length > 0
+        ? allCategories
+        : CATEGORY_OPTIONS.map((key) => ({ key, label: t(`category.${key}`) })),
+    [allCategories, t]
+  );
+
   const { isDeveloper } = useAuth();
   const initialSavedViewState = loadSavedViewsState(SAVED_VIEWS_STORAGE_KEY, DEFAULT_FILTERS);
   const [projects, setProjects] = useState([]);
@@ -386,9 +399,9 @@ export default function MyTicketsPage() {
           {t("tickets.category")}
           <select value={filters.category} onChange={(event) => updateFilters({ category: event.target.value })}>
             <option value="">-</option>
-            {CATEGORY_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {t(`category.${value}`)}
+            {filterCategories.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
               </option>
             ))}
           </select>
@@ -477,7 +490,7 @@ export default function MyTicketsPage() {
                       showEmpty
                     />
                   </td>
-                  <td>{t(`category.${ticket.category}`)}</td>
+                  <td>{labelFor(ticket.project_id, ticket.category)}</td>
                   <td><PriorityBadge priority={ticket.priority} /></td>
                   <td><StatusBadge status={ticket.status} /></td>
                   <td>{formatDateShort(ticket.created_at)}</td>

@@ -16,6 +16,14 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.3.2] - 2026-09-21
+
+### Fixed
+- A layered **production** build shipped no extension UI. Backend layers mount at runtime and worked, but frontend slots are composed by Vite at build time, and the layer directories sat outside the frontend build context — so the build silently fell back to the stub. `Dockerfile.prod` now takes layers through a named build context (`--build-context layers=...`) and **fails the build** when a path in `EXTENSIONS_LAYERS` is not present, rather than producing a bundle with the extension UI quietly missing.
+
+### Notes
+- Core-only production builds are unaffected and need nothing extra; the layers context defaults to empty.
+
 ## [0.3.1] - 2026-09-21
 
 ### Added

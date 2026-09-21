@@ -34,6 +34,7 @@ function installCategorySchema(db) {
       label TEXT NOT NULL,
       description TEXT,
       translations TEXT,
+      simple_intake INTEGER NOT NULL DEFAULT 0,
       position INTEGER NOT NULL DEFAULT 0,
       archived_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -78,7 +79,7 @@ function createCategoriesService(options = {}) {
     if (!projectId) return [];
     return db
       .prepare(
-        `SELECT category_key, label, description, translations, position
+        `SELECT category_key, label, description, translations, simple_intake, position
          FROM project_categories
          WHERE project_id = ? AND archived_at IS NULL
          ORDER BY position ASC, created_at ASC`
@@ -111,6 +112,10 @@ function createCategoriesService(options = {}) {
         // stronie serwera wymagalaby, zeby kazde zapytanie niosło jezyk, a UI
         // przelacza go bez przeladowania.
         translations: parseTranslations(row.translations),
+        // Kategoria lekka: zglaszajacy podaje tytul, tresc i ewentualnie plik.
+        // Bez tego "szybkie pytanie" przechodzi ten sam prog dlugosci opisu co
+        // raport bledu i przestaje byc szybkie.
+        simple_intake: row.simple_intake === 1,
         source: "project"
       }));
     }
@@ -120,8 +125,14 @@ function createCategoriesService(options = {}) {
       label: null,
       description: null,
       translations: null,
+      simple_intake: false,
       source: "core"
     }));
+  }
+
+  function isSimpleIntake({ projectId, category }) {
+    const row = listForProject(projectId).find((entry) => entry.category_key === category);
+    return Boolean(row && row.simple_intake === 1);
   }
 
   function assertValid({ projectId, category }) {
@@ -146,12 +157,13 @@ function createCategoriesService(options = {}) {
     if (existing) {
       db.prepare(
         `UPDATE project_categories
-         SET label = ?, description = ?, translations = ?, position = ?, archived_at = NULL
+         SET label = ?, description = ?, translations = ?, simple_intake = ?, position = ?, archived_at = NULL
          WHERE id = ?`
       ).run(
         payload.label.trim(),
         payload.description?.trim() || null,
         payload.translations ? JSON.stringify(payload.translations) : null,
+        payload.simple_intake ? 1 : 0,
         payload.position ?? 0,
         existing.id
       );
@@ -162,8 +174,8 @@ function createCategoriesService(options = {}) {
     const id = randomUUID();
     db.prepare(
       `INSERT INTO project_categories
-         (id, project_id, category_key, label, description, translations, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+         (id, project_id, category_key, label, description, translations, simple_intake, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       projectId,
@@ -171,6 +183,7 @@ function createCategoriesService(options = {}) {
       payload.label.trim(),
       payload.description?.trim() || null,
       payload.translations ? JSON.stringify(payload.translations) : null,
+      payload.simple_intake ? 1 : 0,
       payload.position ?? 0
     );
 
@@ -194,6 +207,7 @@ function createCategoriesService(options = {}) {
     listForProject,
     effectiveKeys,
     describe,
+    isSimpleIntake,
     assertValid,
     upsert,
     archive

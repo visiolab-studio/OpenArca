@@ -47,23 +47,33 @@ function buildTemplateDescription(template, t) {
   return [baseDescription, checklistBlock].filter(Boolean).join("\n\n");
 }
 
-export function validateNewTicketForm(form) {
+// `requireBugDetails` i `simpleIntake` musza dojechac tutaj z projektu i
+// kategorii, bo backend liczy progi dokladnie tak samo. Gdy front trzymal je
+// na sztywno, projekt z wylaczonym rygorem i tak nie pozwalal wyslac zgloszenia
+// — serwer by je przyjal, ale formularz nie dawal klikac dalej.
+export function validateNewTicketForm(form, { requireBugDetails = true, simpleIntake = false } = {}) {
   const errors = {};
 
-  if ((form.title || "").trim().length < 10) {
+  if ((form.title || "").trim().length < (simpleIntake ? 5 : 10)) {
     errors.title = "tickets.validation.title";
   }
 
   const descriptionLength = (form.description || "").trim().length;
-  const minDescription =
-    form.category === "bug" || form.category === "feature" || form.category === "improvement"
+  const minDescription = simpleIntake
+    ? 20
+    : requireBugDetails &&
+        ["bug", "feature", "improvement"].includes(form.category)
       ? 100
       : 50;
   if (descriptionLength < minDescription) {
     errors.description = "tickets.validation.description";
   }
 
-  if (form.category === "bug") {
+  if (simpleIntake) {
+    return errors;
+  }
+
+  if (form.category === "bug" && requireBugDetails) {
     if ((form.steps_to_reproduce || "").trim().length < 30)
       errors.steps_to_reproduce = "tickets.validation.steps";
     if ((form.expected_result || "").trim().length < 20)
@@ -74,12 +84,12 @@ export function validateNewTicketForm(form) {
       errors.environment = "tickets.validation.environment";
   }
 
-  if (["feature", "improvement"].includes(form.category)) {
+  if (requireBugDetails && ["feature", "improvement"].includes(form.category)) {
     if ((form.business_goal || "").trim().length < 30)
       errors.business_goal = "tickets.validation.businessGoal";
   }
 
-  if (form.category === "question") {
+  if (form.category === "question" && requireBugDetails) {
     if ((form.question_context || "").trim().length < 30)
       errors.question_context = "tickets.validation.questionContext";
   }
@@ -213,7 +223,25 @@ export default function NewTicketPage() {
     };
   }, [form.project_id]);
 
-  const errors = useMemo(() => validateNewTicketForm(form), [form]);
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === form.project_id) || null,
+    [projects, form.project_id]
+  );
+  const requireBugDetails = selectedProject ? selectedProject.require_bug_details !== 0 : true;
+  const simpleIntake = Boolean(
+    (categories || []).find((entry) => entry.key === form.category)?.simple_intake
+  );
+
+  const errors = useMemo(
+    () => validateNewTicketForm(form, { requireBugDetails, simpleIntake }),
+    [form, requireBugDetails, simpleIntake]
+  );
+
+  const detailsEnabled = requireBugDetails && !simpleIntake;
+  const showBugDetails = detailsEnabled && form.category === "bug";
+  const showBusinessGoal = detailsEnabled && ["feature", "improvement"].includes(form.category);
+  const showQuestionContext = detailsEnabled && form.category === "question";
+  const minDescriptionHint = simpleIntake ? 20 : showBugDetails || showBusinessGoal ? 100 : 50;
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) || null,
     [selectedTemplateId, templates]
@@ -291,10 +319,10 @@ export default function NewTicketPage() {
       payload.append("title", form.title.trim());
 
       let description = form.description.trim();
-      if (["feature", "improvement"].includes(form.category)) {
+      if (showBusinessGoal) {
         description += `\n\nBusiness Goal:\n${form.business_goal.trim()}`;
       }
-      if (form.category === "question") {
+      if (showQuestionContext) {
         description += `\n\nContext:\n${form.question_context.trim()}`;
       }
 
@@ -304,18 +332,18 @@ export default function NewTicketPage() {
 
       if (form.project_id) payload.append("project_id", form.project_id);
 
-      if (form.category === "bug") {
+      if (showBugDetails) {
         payload.append("steps_to_reproduce", form.steps_to_reproduce.trim());
         payload.append("expected_result", form.expected_result.trim());
         payload.append("actual_result", form.actual_result.trim());
         payload.append("environment", form.environment.trim());
       }
 
-      if (["feature", "improvement"].includes(form.category)) {
+      if (showBusinessGoal) {
         payload.append("expected_result", form.business_goal.trim());
       }
 
-      if (form.category === "question") {
+      if (showQuestionContext) {
         payload.append("steps_to_reproduce", form.question_context.trim());
       }
 
@@ -493,7 +521,7 @@ export default function NewTicketPage() {
             <div className="form-instruction-box">
               <div className="form-instruction-box-title">{t("tickets.description")}</div>
               <p>
-                {form.category === "bug"
+                {showBugDetails
                   ? t("newTicket.bugHint")
                   : t("newTicket.generalHint")}
               </p>
@@ -509,13 +537,13 @@ export default function NewTicketPage() {
                 onChange={(event) => updateField("description", event.target.value)}
                 required
               />
-              <div className={charCountClass(form.description.trim().length, 100)}>
+              <div className={charCountClass(form.description.trim().length, minDescriptionHint)}>
                 {form.description.trim().length}/20000
               </div>
               {errors.description ? <small className="form-error-msg">{t(errors.description)}</small> : null}
             </label>
 
-            {form.category === "bug" ? (
+            {showBugDetails ? (
               <>
                 <label className="form-group">
                   <span className="form-label">{t("tickets.steps")}</span>
@@ -571,7 +599,7 @@ export default function NewTicketPage() {
               </>
             ) : null}
 
-            {["feature", "improvement"].includes(form.category) ? (
+            {showBusinessGoal ? (
               <label className="form-group">
                 <span className="form-label">{t("newTicket.businessGoal")}</span>
                 <textarea
@@ -586,7 +614,7 @@ export default function NewTicketPage() {
               </label>
             ) : null}
 
-            {form.category === "question" ? (
+            {showQuestionContext ? (
               <label className="form-group">
                 <span className="form-label">{t("newTicket.questionContext")}</span>
                 <textarea

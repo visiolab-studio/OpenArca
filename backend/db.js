@@ -324,6 +324,11 @@ function initDb() {
     if (!categoryColumnNames.has("translations")) {
       db.prepare("ALTER TABLE project_categories ADD COLUMN translations TEXT").run();
     }
+    if (!categoryColumnNames.has("simple_intake")) {
+      db.prepare(
+        "ALTER TABLE project_categories ADD COLUMN simple_intake INTEGER NOT NULL DEFAULT 0"
+      ).run();
+    }
 
     if (!projectColumnNames.has("require_bug_details")) {
       db.prepare(

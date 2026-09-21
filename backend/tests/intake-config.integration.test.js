@@ -118,3 +118,53 @@ test("a custom taxonomy replaces the built-ins", async () => {
   assert.equal(refused.body.error, "invalid_category");
   assert.match(refused.body.message || refused.body.details?.[0]?.message || "", /data_check/);
 });
+
+test("a simple-intake category accepts a one-sentence question", async () => {
+  await request
+    .post(`/api/projects/${relaxedProjectId}/categories`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({
+      category_key: "quick_question",
+      label: "Szybkie pytanie",
+      simple_intake: true
+    })
+    .expect(201);
+
+  // Skonfigurowanie jednej kategorii zastepuje wbudowana piatke, wiec kolejny
+  // test potrzebuje wlasnej kategorii zwyklej — inaczej sprawdzalby odrzucenie
+  // nieznanego klucza zamiast progu dlugosci.
+  await request
+    .post(`/api/projects/${relaxedProjectId}/categories`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ category_key: "billing", label: "Płatności" })
+    .expect(201);
+
+  // Dokladnie taka dlugosc, jaka ma realne pytanie w kanale obslugi. Pod
+  // zwyklym progiem (50 znakow) odpadloby jako "za krotkie".
+  const created = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .field("project_id", relaxedProjectId)
+    .field("category", "quick_question")
+    .field("title", "Tag w filtrze")
+    .field("description", "Czy mozemy dodac tag?")
+    .expect(201);
+
+  assert.ok(created.body.id);
+});
+
+test("the relaxed thresholds do not leak to the project's other categories", async () => {
+  const rejected = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .field("project_id", relaxedProjectId)
+    .field("category", "billing")
+    .field("title", "Tag w filtrze")
+    .field("description", "Czy mozemy dodac tag?")
+    .expect(400);
+
+  assert.ok(
+    JSON.stringify(rejected.body).includes("description"),
+    "krotki opis poza kategoria lekka ma nadal odpadac"
+  );
+});

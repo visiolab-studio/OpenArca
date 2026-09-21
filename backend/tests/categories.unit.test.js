@@ -116,3 +116,81 @@ test("a label is required", () => {
     (error) => error.code === "invalid_category_label"
   );
 });
+
+test("translations survive a round trip and reach describe()", () => {
+  const { db, dir } = createDb();
+  const service = createCategoriesService({ db });
+
+  service.upsert({
+    projectId: "p1",
+    payload: {
+      category_key: "data_check",
+      label: "Verifica dei dati",
+      description: "Serve un'informazione.",
+      translations: {
+        pl: { label: "Sprawdzenie danych", description: "Potrzebujesz informacji." },
+        it: { label: "Verifica dei dati" }
+      }
+    }
+  });
+
+  const [row] = service.describe("p1");
+  assert.equal(row.translations.pl.label, "Sprawdzenie danych");
+  assert.equal(row.translations.it.label, "Verifica dei dati");
+  // Etykieta domyslna zostaje: klient wybiera po jezyku, a gdy go nie ma —
+  // spada wlasnie tutaj.
+  assert.equal(row.label, "Verifica dei dati");
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("a broken translations blob degrades to no translations, not to a crash", () => {
+  const { db, dir } = createDb();
+  const service = createCategoriesService({ db });
+
+  service.upsert({ projectId: "p1", payload: { category_key: "billing", label: "Płatności" } });
+  db.prepare("UPDATE project_categories SET translations = ? WHERE category_key = 'billing'").run(
+    "{nie-json"
+  );
+
+  assert.equal(service.describe("p1")[0].translations, null);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("simple_intake is off unless a deployment asks for it", () => {
+  const { db, dir } = createDb();
+  const service = createCategoriesService({ db });
+
+  service.upsert({ projectId: "p1", payload: { category_key: "billing", label: "Płatności" } });
+  service.upsert({
+    projectId: "p1",
+    payload: { category_key: "quick_question", label: "Szybkie pytanie", simple_intake: true }
+  });
+
+  assert.equal(service.isSimpleIntake({ projectId: "p1", category: "quick_question" }), true);
+  assert.equal(service.isSimpleIntake({ projectId: "p1", category: "billing" }), false);
+  // Wbudowane kategorie nigdy nie sa lekkie — projekt bez konfiguracji zachowuje
+  // dotychczasowe progi.
+  assert.equal(service.isSimpleIntake({ projectId: "p2", category: "bug" }), false);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("an upsert can turn simple intake back off", () => {
+  const { db, dir } = createDb();
+  const service = createCategoriesService({ db });
+
+  service.upsert({
+    projectId: "p1",
+    payload: { category_key: "quick_question", label: "Szybkie pytanie", simple_intake: true }
+  });
+  service.upsert({
+    projectId: "p1",
+    payload: { category_key: "quick_question", label: "Szybkie pytanie" }
+  });
+
+  assert.equal(service.isSimpleIntake({ projectId: "p1", category: "quick_question" }), false);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});

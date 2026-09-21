@@ -252,7 +252,8 @@
     "templateChecklistHeading": "Checklist",
     "businessGoal": "Business goal",
     "questionContext": "Question context",
-    "confirm": "I confirm the ticket contains complete information"
+    "confirm": "I confirm the ticket contains complete information",
+    "categoryNeedsProject": "Choose a project first — categories depend on it."
   },
   "dev": {
     "summary": "Summary",

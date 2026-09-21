@@ -252,7 +252,8 @@
     "templateChecklistHeading": "Checklist",
     "businessGoal": "Obiettivo di business",
     "questionContext": "Contesto della domanda",
-    "confirm": "Confermo che il ticket contiene informazioni complete"
+    "confirm": "Confermo che il ticket contiene informazioni complete",
+    "categoryNeedsProject": "Scegli prima un progetto — le categorie dipendono da esso."
   },
   "dev": {
     "summary": "Riepilogo",

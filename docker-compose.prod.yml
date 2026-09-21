@@ -1,0 +1,76 @@
+# Production stack.
+#
+# Differs from docker-compose.yml in four ways that matter, each learned the
+# hard way somewhere:
+#   - ports bind to 127.0.0.1 only; a reverse proxy in front terminates TLS
+#   - no source bind mounts, so the container serves what it was built with
+#   - SQLite lives on a NAMED VOLUME, never a path inside the deploy directory
+#   - no Mailpit; production sends through a real SMTP or SES provider
+#
+# Run:  docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: openarca-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - APP_URL=${APP_URL:?APP_URL is required}
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-${APP_URL}}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - DATA_DIR=/app/data
+      - UPLOADS_DIR=/app/uploads
+      - SQLITE_PATH=/app/data/data.sqlite
+      - EXTENSIONS_LAYERS=${EXTENSIONS_LAYERS:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - OUTBOX_WORKER_ENABLED=${OUTBOX_WORKER_ENABLED:-true}
+    # Loopback only. Exposing container ports publicly was a real incident on
+    # the host this was first deployed to; the reverse proxy is the only way in.
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-4000}:4000"
+    volumes:
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+    mem_limit: ${BACKEND_MEM_LIMIT:-512m}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        # Empty: the bundle calls the origin it was served from, so one image
+        # serves every host in ALLOWED_HOSTS.
+        VITE_API_URL: ""
+    container_name: openarca-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3330}:3330"
+    depends_on:
+      backend:
+        condition: service_healthy
+    mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  # Named, not a bind mount into the deploy directory: a redeploy that replaces
+  # that directory would take the database with it.
+  backend_data:
+  backend_uploads:

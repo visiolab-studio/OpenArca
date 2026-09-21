@@ -367,3 +367,39 @@ test("a human developer is unaffected by scope gates", async () => {
     .send({ content: "odpowiedz czlowieka dla zglaszajacego", is_internal: false })
     .expect(201);
 });
+
+// Granica calego modulu: cokolwiek zobaczy zglaszajacy, zwalnia czlowiek.
+// Sam zakres tego nie zalatwial — pozwalal pisac do zglaszajacego, a `publish`
+// domyslnie jest `true`.
+test("a machine cannot publish a reporter-facing comment, even asking explicitly", async () => {
+  const ticketId = await createTicketAsDeveloper();
+  const proposer = accounts.mintToken({
+    accountId: account.id,
+    scopes: ["tickets:read", "tickets:comment", "tickets:propose_reply"]
+  }).clearToken;
+
+  const created = await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${proposer}`)
+    .send({ content: "odpowiedz prosto do klienta", is_internal: false, publish: true })
+    .expect(201);
+
+  const stored = db
+    .prepare("SELECT published_at, author_kind FROM comments WHERE id = ?")
+    .get(created.body.id);
+
+  assert.equal(stored.author_kind, "machine");
+  assert.equal(stored.published_at, null, "maszyna nie moze opublikowac tresci dla zglaszajacego");
+});
+
+test("a human developer may still publish a reporter-facing comment directly", async () => {
+  const ticketId = await createTicketAsDeveloper();
+  const created = await request
+    .post(`/api/tickets/${ticketId}/comments`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ content: "odpowiedz czlowieka od razu widoczna", is_internal: false, publish: true })
+    .expect(201);
+
+  const stored = db.prepare("SELECT published_at FROM comments WHERE id = ?").get(created.body.id);
+  assert.ok(stored.published_at, "czlowiek nie podlega tej bramce");
+});

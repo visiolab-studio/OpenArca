@@ -689,6 +689,21 @@ router.post(
             scope: "tickets:propose_reply"
           });
         }
+
+        // Maszyna mowiaca w imieniu STRONY OBSLUGI nigdy nie publikuje tresci,
+        // ktora zobaczy zglaszajacy — zostawia szkic, a zwalnia go czlowiek.
+        // Sam zakres tego nie zalatwial: pozwalal napisac do zglaszajacego, a
+        // `publish` domyslnie jest `true`, wiec token uzyty poza naszym
+        // narzedziem (choćby curlem) odpowiadal klientowi bez niczyjej zgody.
+        //
+        // Ograniczone do wlasciciela-dewelopera celowo. Agent zglaszajacego
+        // pisze na WLASNYM zgloszeniu i nie ma po drugiej stronie klienta,
+        // ktorego trzeba chronic — a szkicu i tak nie mialby kto zwolnic,
+        // bo zwalnianie jest dla deweloperow. Wyszedlby komentarz, ktory po
+        // cichu znika.
+        if (req.machine.owner?.role === "developer") {
+          commentPayload.publish = false;
+        }
       }
       const result = ticketsService.createTicketComment({
         ticketId: req.params.id,

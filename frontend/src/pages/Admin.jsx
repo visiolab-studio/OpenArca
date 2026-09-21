@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Pencil, Plus, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Copy,
+  KeyRound,
+  Pencil,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+  X
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   createProject,
@@ -12,6 +24,12 @@ import {
 import { API_BASE_URL } from "../api/client";
 import { getReadiness, getSettings, patchSettings, testEmail, uploadAppLogo } from "../api/settings";
 import {
+  createServiceAccount,
+  disableServiceAccount,
+  getServiceAccounts,
+  revokeServiceAccount
+} from "../api/serviceAccounts";
+import {
   createTicketTemplate,
   deleteTicketTemplate,
   getTicketTemplates,
@@ -22,8 +40,19 @@ import appLogo from "../assets/logo-openarca.png";
 import ProjectBadge from "../components/ProjectBadge";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
 
-const tabs = ["readiness", "app", "smtp", "projects", "users"];
+const tabs = ["readiness", "app", "smtp", "projects", "agents", "users"];
 const DEFAULT_PROJECT_COLOR = "#6B7280";
+// Mirrors the closed scope vocabulary in backend/core/service-accounts.js.
+// It is intentionally duplicated rather than fetched: the set is frozen and
+// versioned with the backend, so hand-copying it here is the same contract
+// every other enum in this file (CATEGORY_OPTIONS, PRIORITY_OPTIONS) follows.
+const SERVICE_ACCOUNT_SCOPES = [
+  "tickets:read",
+  "tickets:comment",
+  "tickets:propose_reply",
+  "projects:read"
+];
+const EMPTY_SERVICE_ACCOUNT_DRAFT = { name: "", description: "", scopes: [] };
 const EMPTY_TEMPLATE_DRAFT = {
   name: "",
   project_id: "",
@@ -156,15 +185,25 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [userDrafts, setUserDrafts] = useState({});
 
+  const [serviceAccounts, setServiceAccounts] = useState([]);
+  const [newServiceAccount, setNewServiceAccount] = useState({ ...EMPTY_SERVICE_ACCOUNT_DRAFT });
+  const [serviceAccountBusyId, setServiceAccountBusyId] = useState("");
+  // Holds the clear token EXACTLY as long as it takes the developer to copy
+  // it and dismiss the notice — never written to storage, never re-fetched.
+  // Once this is cleared (by the developer, or simply by leaving the page),
+  // there is no way back to it: a lost token has to be reminted.
+  const [revealedToken, setRevealedToken] = useState(null);
+
   async function loadAll() {
     setLoading(true);
     setError("");
     try {
-      const [settingsData, projectsData, templatesData, usersData] = await Promise.all([
+      const [settingsData, projectsData, templatesData, usersData, serviceAccountsData] = await Promise.all([
         getSettings(),
         getProjects(),
         getTicketTemplates({ includeInactive: true }),
-        getUsers()
+        getUsers(),
+        getServiceAccounts()
       ]);
 
       setSettings(settingsData);
@@ -192,6 +231,7 @@ export default function AdminPage() {
       setProjects(projectsData);
       setTemplates(templatesData);
       setUsers(usersData);
+      setServiceAccounts(serviceAccountsData);
 
       setProjectDrafts(
         Object.fromEntries(
@@ -643,6 +683,84 @@ export default function AdminPage() {
       setNotice("saved");
     } catch (templateError) {
       setError(parseError(templateError));
+    }
+  }
+
+  function toggleNewServiceAccountScope(scope) {
+    setNewServiceAccount((current) => {
+      const has = current.scopes.includes(scope);
+      return {
+        ...current,
+        scopes: has ? current.scopes.filter((item) => item !== scope) : [...current.scopes, scope]
+      };
+    });
+  }
+
+  async function handleCreateServiceAccount(event) {
+    event.preventDefault();
+    if (!newServiceAccount.name.trim() || newServiceAccount.scopes.length === 0) {
+      setError("validation_error");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+
+    try {
+      const created = await createServiceAccount({
+        name: newServiceAccount.name.trim(),
+        description: newServiceAccount.description.trim() || undefined,
+        scopes: newServiceAccount.scopes
+      });
+      const { token, ...account } = created;
+      setServiceAccounts((current) => [account, ...current]);
+      setRevealedToken({ accountId: account.id, accountName: account.name, token });
+      setNewServiceAccount({ ...EMPTY_SERVICE_ACCOUNT_DRAFT });
+    } catch (createError) {
+      setError(parseError(createError));
+    }
+  }
+
+  async function handleDisableServiceAccount(accountId) {
+    setError("");
+    setNotice("");
+
+    try {
+      setServiceAccountBusyId(accountId);
+      const updated = await disableServiceAccount(accountId);
+      setServiceAccounts((current) => current.map((account) => (account.id === accountId ? updated : account)));
+      setNotice("saved");
+    } catch (disableError) {
+      setError(parseError(disableError));
+    } finally {
+      setServiceAccountBusyId("");
+    }
+  }
+
+  async function handleRevokeServiceAccount(accountId) {
+    setError("");
+    setNotice("");
+
+    try {
+      setServiceAccountBusyId(accountId);
+      const updated = await revokeServiceAccount(accountId);
+      setServiceAccounts((current) => current.map((account) => (account.id === accountId ? updated : account)));
+      setNotice("saved");
+    } catch (revokeError) {
+      setError(parseError(revokeError));
+    } finally {
+      setServiceAccountBusyId("");
+    }
+  }
+
+  async function handleCopyRevealedToken() {
+    if (!revealedToken) return;
+    try {
+      await navigator.clipboard.writeText(revealedToken.token);
+      setNotice("saved");
+    } catch {
+      // Clipboard access can be denied by the browser; the token stays
+      // visible and selectable in the field either way.
     }
   }
 
@@ -1485,6 +1603,161 @@ export default function AdminPage() {
                 disabled={templateModalBusy}
               >
                 {templateModalBusy ? t("app.loading") : t("app.save")}
+              </button>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {!loading && activeTab === "agents" ? (
+        <article className="card form-grid">
+          <div>
+            <h2>{t("admin.serviceAccounts")}</h2>
+            <p className="muted">{t("admin.serviceAccountsHint")}</p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleCreateServiceAccount}>
+            <label className="form-group">
+              <span className="form-label">{t("admin.name")}</span>
+              <input
+                className="form-input"
+                type="text"
+                placeholder={t("admin.serviceAccountNamePlaceholder")}
+                value={newServiceAccount.name}
+                onChange={(event) =>
+                  setNewServiceAccount((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </label>
+
+            <label className="form-group">
+              <span className="form-label">{t("tickets.description")}</span>
+              <input
+                className="form-input"
+                type="text"
+                value={newServiceAccount.description}
+                onChange={(event) =>
+                  setNewServiceAccount((current) => ({ ...current, description: event.target.value }))
+                }
+              />
+            </label>
+
+            <div className="form-group">
+              <span className="form-label">{t("admin.serviceAccountScopes")}</span>
+              <div className="filters-grid admin-scope-grid">
+                {SERVICE_ACCOUNT_SCOPES.map((scope) => (
+                  <label key={scope} className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={newServiceAccount.scopes.includes(scope)}
+                      onChange={() => toggleNewServiceAccountScope(scope)}
+                    />
+                    <span>{t(`admin.serviceAccountScope.${scope}`)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-accent">
+              <Plus size={14} />
+              <span>{t("admin.newServiceAccount")}</span>
+            </button>
+          </form>
+
+          <div className="admin-section-divider" />
+
+          <div className="form-grid admin-template-list">
+            {serviceAccounts.map((account) => {
+              const isDisabled = Boolean(account.disabled_at);
+              const isRevoked = Boolean(account.revoked_at);
+              const busy = serviceAccountBusyId === account.id;
+
+              return (
+                <div key={account.id} className="card admin-template-card">
+                  <div className="admin-template-card-head">
+                    <div>
+                      <h3 className="admin-template-card-title">{account.name}</h3>
+                      <p className="muted">{account.description || "-"}</p>
+                      <div className="row-actions">
+                        {account.scopes.map((scope) => (
+                          <span key={scope} className="badge badge-no-dot">
+                            {t(`admin.serviceAccountScope.${scope}`)}
+                          </span>
+                        ))}
+                        <span className={isDisabled ? "badge badge-closed" : "badge badge-verified"}>
+                          {isDisabled ? t("admin.serviceAccountDisabled") : t("admin.serviceAccountActive")}
+                        </span>
+                        {isRevoked ? (
+                          <span className="badge badge-closed">{t("admin.serviceAccountRevoked")}</span>
+                        ) : null}
+                      </div>
+                      <p className="muted">
+                        {t("admin.serviceAccountLastUsed")}: {account.last_used_at || t("admin.serviceAccountNeverUsed")}
+                      </p>
+                    </div>
+                    <div className="row-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleRevokeServiceAccount(account.id)}
+                        disabled={busy || isRevoked}
+                      >
+                        <Ban size={12} />
+                        <span>{t("admin.serviceAccountRevoke")}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDisableServiceAccount(account.id)}
+                        disabled={busy || isDisabled}
+                      >
+                        <Trash2 size={12} />
+                        <span>{t("admin.serviceAccountDisable")}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {serviceAccounts.length === 0 ? <p className="muted">{t("admin.noServiceAccounts")}</p> : null}
+          </div>
+        </article>
+      ) : null}
+
+      {revealedToken ? (
+        <div className="todo-modal-backdrop" onClick={() => setRevealedToken(null)}>
+          <article
+            className="card todo-create-modal admin-template-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="todo-create-modal-header">
+              <h2 className="card-title">
+                <KeyRound size={16} />
+                <span>{t("admin.serviceAccountTokenTitle")}</span>
+              </h2>
+            </div>
+
+            <p>{t("admin.serviceAccountTokenIntro", { name: revealedToken.accountName })}</p>
+            <p className="admin-token-warning">
+              <AlertTriangle size={14} />
+              <span>{t("admin.serviceAccountTokenWarning")}</span>
+            </p>
+
+            <div className="form-group">
+              <span className="form-label">{t("admin.serviceAccountToken")}</span>
+              <div className="row-actions">
+                <input className="form-input" type="text" readOnly value={revealedToken.token} />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleCopyRevealedToken}>
+                  <Copy size={12} />
+                  <span>{t("admin.copy")}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="todo-create-modal-actions">
+              <button type="button" className="btn" onClick={() => setRevealedToken(null)}>
+                {t("admin.serviceAccountTokenDismiss")}
               </button>
             </div>
           </article>

@@ -44,14 +44,14 @@ test("a layer can register a service name core does not know", () => {
   const edudoro = writeOverrides(
     tmpDir,
     "edudoro",
-    "module.exports = { syliusService: { resolveOrderUrl(){ return 'https://example.test/order'; } } };"
+    "module.exports = { billingService: { resolveRecordUrl(){ return 'https://example.test/record'; } } };"
   );
 
   const registry = createServiceRegistry({ layers: [edudoro] });
-  const syliusService = registry.getService("syliusService");
+  const billingService = registry.getService("billingService");
 
-  assert.equal(syliusService.resolveOrderUrl(), "https://example.test/order");
-  assert.ok(registry.listServices().includes("syliusService"));
+  assert.equal(billingService.resolveRecordUrl(), "https://example.test/record");
+  assert.ok(registry.listServices().includes("billingService"));
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });

@@ -54,11 +54,11 @@ describe("mergeSections", () => {
   it("lets a higher layer add an item to a section the lower layer defined", () => {
     const merged = mergeSections([
       [{ labelKey: "nav.enterprise", items: [{ to: "/threads" }] }],
-      [{ labelKey: "nav.enterprise", items: [{ to: "/sylius" }] }]
+      [{ labelKey: "nav.enterprise", items: [{ to: "/billing" }] }]
     ]);
 
     expect(merged).toHaveLength(1);
-    expect(merged[0].items.map((item) => item.to)).toEqual(["/threads", "/sylius"]);
+    expect(merged[0].items.map((item) => item.to)).toEqual(["/threads", "/billing"]);
   });
 
   it("replaces an item inside a shared section", () => {

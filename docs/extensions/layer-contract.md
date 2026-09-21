@@ -173,3 +173,7 @@ Layers continue to gate capabilities through the existing `featureKey` conventio
 Core exposes the resolved layer stack — name, path, declared prerequisites, which seams each layer contributed to, and any load error — for the admin readiness view (plan task `P2-T04`).
 
 With one layer, a seam that silently fails to load is an inconvenience. With three, it is the single most likely operational question, so a layer that fails must appear in diagnostics **with its error** rather than be absent from the list.
+
+## Machine identity in extensions
+
+OpenArca supports machine identity for local coding agents — tools that run on a developer's hardware and can read tickets and comment on them. A machine identity is a scope set, never a role. A layer that integrates with agents should read [`machine-identity.md`](./machine-identity.md) before designing endpoints that machines can reach. The key rule is that `requireRole` refuses machines outright, so dangerous endpoints are safe by default; a new endpoint must explicitly scope-check if it wants to allow machines through.

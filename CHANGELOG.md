@@ -16,6 +16,18 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.3.1] - 2026-09-21
+
+### Added
+- Production images and compose: `backend/Dockerfile.prod`, `frontend/Dockerfile.prod` and `docker-compose.prod.yml`. The repository previously had no production path — `docker-compose.yml` runs the Vite dev server and nodemon with the source bind-mounted, which is not something to put on a public hostname.
+
+### Changed
+- A production build now calls the **same origin** it was served from. Baking an absolute API URL in at build time pinned the bundle to one hostname and quietly defeated the multi-host support added in 0.3.0. The dev server still needs the explicit default because it runs on a different port than the API; `VITE_API_URL` overrides either way.
+
+### Notes
+- Production compose binds ports to `127.0.0.1` behind a reverse proxy, sets memory limits and log rotation, drops Mailpit, and keeps SQLite on a **named volume** rather than a path inside the deploy directory — a redeploy replacing that directory would otherwise take the database with it.
+- `JWT_SECRET` and `APP_URL` are required rather than defaulted; a silent fallback on a secret is a security bug, not a convenience.
+
 ## [0.3.0] - 2026-09-21
 
 ### Added

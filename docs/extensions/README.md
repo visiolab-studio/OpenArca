@@ -171,3 +171,18 @@ They cannot express more than one layer. To stack layers, replace them with `EXT
 Setting both is not an error, but `EXTENSIONS_LAYERS` wins and a warning says so. Honouring both would produce a load order nobody could read off the configuration.
 
 One behavioural difference worth knowing: relative paths in the legacy variables resolve against `backend/`, while relative entries in `EXTENSIONS_LAYERS` resolve against the repository root, so that one value means the same thing to the backend and to Vite.
+
+## Production deployment
+
+`docker-compose.yml` is a **development** stack: it runs the Vite dev server and
+nodemon, and bind-mounts the source. Do not expose it.
+
+`docker-compose.prod.yml` builds `Dockerfile.prod` for both services: the SPA is
+compiled and served as static files, the backend runs `node server.js` with
+production dependencies only, ports bind to `127.0.0.1` behind a reverse proxy,
+and SQLite lives on a named volume rather than a path inside the deploy
+directory — a redeploy that replaces that directory would otherwise take the
+database with it.
+
+Layers are mounted into both containers and referenced by their absolute
+in-container path, exactly as in development.

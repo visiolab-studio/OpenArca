@@ -1,0 +1,38 @@
+# Production image: plain node, production dependencies only.
+#
+# The dev image runs nodemon and carries the full dependency tree. This one runs
+# the server directly, so a file change cannot restart production and dev-only
+# packages never ship.
+
+FROM node:20-bookworm-slim AS build
+
+WORKDIR /app
+
+# better-sqlite3 compiles a native module; the toolchain stays in this stage.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+FROM node:20-bookworm-slim AS runtime
+
+WORKDIR /app
+
+COPY --from=build /app/node_modules ./node_modules
+COPY . .
+
+RUN mkdir -p /app/data /app/uploads \
+  && chown -R node:node /app
+
+USER node
+
+ENV NODE_ENV=production
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "server.js"]

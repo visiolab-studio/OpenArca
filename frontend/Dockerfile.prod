@@ -1,0 +1,36 @@
+# Production image: build the SPA, then serve the static output.
+#
+# The dev image runs `npm run dev` — the Vite dev server — which is not meant to
+# face the internet and bind-mounts the source. This one ships only `dist/`.
+
+FROM node:20-bookworm-slim AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY . .
+
+# Empty on purpose: the bundle then calls the same origin it was served from,
+# so one image works under every configured host. Override only when the API
+# genuinely lives elsewhere.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
+
+# Layer composition needs the sibling layer roots present at build time; a build
+# without them falls back to the stub and simply ships no extension UI.
+ARG EXTENSIONS_LAYERS=""
+ENV EXTENSIONS_LAYERS=$EXTENSIONS_LAYERS
+
+RUN npm run build
+
+FROM nginx:1.27-alpine AS runtime
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 3330
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3330/ >/dev/null || exit 1

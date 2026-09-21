@@ -181,6 +181,15 @@ const schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS project_categories (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    category_key TEXT NOT NULL,
+    label TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS project_custom_fields (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -204,6 +213,7 @@ const schemaStatements = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_categories_key ON project_categories(project_id, category_key)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_custom_fields_key ON project_custom_fields(project_id, field_key)`,
   `CREATE INDEX IF NOT EXISTS idx_project_custom_fields_project ON project_custom_fields(project_id, archived_at, position)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_custom_values_unique ON ticket_custom_field_values(ticket_id, field_id)`,
@@ -295,6 +305,15 @@ function initDb() {
     if (!projectColumnNames.has("public_intake_enabled")) {
       db.prepare(
         "ALTER TABLE projects ADD COLUMN public_intake_enabled INTEGER NOT NULL DEFAULT 0"
+      ).run();
+    }
+
+    // Rygor pol przy zgloszeniu bledu jest ustawieniem PROJEKTU, domyslnie
+    // wlaczonym — istniejace instalacje nie zmieniaja zachowania. Wdrozenie,
+    // w ktorym zglasza obsluga klienta, moze go wylaczyc.
+    if (!projectColumnNames.has("require_bug_details")) {
+      db.prepare(
+        "ALTER TABLE projects ADD COLUMN require_bug_details INTEGER NOT NULL DEFAULT 1"
       ).run();
     }
 

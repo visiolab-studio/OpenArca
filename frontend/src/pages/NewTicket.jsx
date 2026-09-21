@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { createTicket } from "../api/tickets";
-import { getProjectCustomFields } from "../api/projects";
+import { getProjectCustomFields, getProjectCategories } from "../api/projects";
 import CustomFieldsInput from "../components/CustomFieldsInput";
 import { getProjects } from "../api/projects";
 import { getTicketTemplates } from "../api/ticketTemplates";
@@ -113,6 +113,7 @@ export default function NewTicketPage() {
 
   const [files, setFiles] = useState([]);
   const [customFieldDefinitions, setCustomFieldDefinitions] = useState([]);
+  const [categories, setCategories] = useState(null);
   const [customFieldValues, setCustomFieldValues] = useState({});
   const [customFieldErrors, setCustomFieldErrors] = useState({});
 
@@ -163,6 +164,23 @@ export default function NewTicketPage() {
 
     // Values are cleared with the project: a value collected for one project's
     // field is meaningless under another's definitions.
+    // Kategorie sa per projekt. Null oznacza "jeszcze nie wiem" i wtedy UI
+    // pokazuje wbudowane, zeby formularz nie migotal przy przelaczaniu.
+    async function loadCategories() {
+      if (!form.project_id) {
+        if (active) setCategories(null);
+        return;
+      }
+      try {
+        const items = await getProjectCategories(form.project_id);
+        if (active) setCategories(items);
+      } catch (_error) {
+        if (active) setCategories(null);
+      }
+    }
+
+    loadCategories();
+
     async function loadCustomFields() {
       if (!form.project_id) {
         if (active) {
@@ -226,6 +244,25 @@ export default function NewTicketPage() {
   function moveStep(direction) {
     setStep((current) => Math.min(4, Math.max(1, current + direction)));
   }
+
+  // Kategoria skonfigurowana w projekcie niesie wlasna etykiete; wbudowana
+  // bierze ja ze slownika, zeby dzialala w trzech jezykach.
+  const visibleCategories = useMemo(() => {
+    const source = categories && categories.length > 0
+      ? categories
+      : CATEGORY_OPTIONS.map((key) => ({ key, label: null }));
+    return source.map((entry) => ({
+      key: entry.key,
+      label: entry.label || t(`category.${entry.key}`)
+    }));
+  }, [categories, t]);
+
+  useEffect(() => {
+    if (!visibleCategories.length) return;
+    if (visibleCategories.some((entry) => entry.key === form.category)) return;
+    // Bez tego formularz wyglada poprawnie, a wysylka pada na walidacji serwera.
+    updateField("category", visibleCategories[0].key);
+  }, [visibleCategories]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -392,22 +429,26 @@ export default function NewTicketPage() {
             <div>
               <p className="form-label">{t("tickets.category")}</p>
               <div className="category-selector">
-                {CATEGORY_OPTIONS.map((value) => (
+                {visibleCategories.map((category) => (
                   <button
-                    key={value}
+                    key={category.key}
                     type="button"
                     className={
-                      form.category === value
+                      form.category === category.key
                         ? "category-option selected"
                         : "category-option"
                     }
-                    onClick={() => updateField("category", value)}
+                    onClick={() => updateField("category", category.key)}
                   >
-                    <span className="category-option-icon">{categoryMeta[value].icon}</span>
-                    <span className="category-option-label">{t(`category.${value}`)}</span>
-                    <span className="category-option-desc">
-                      {t(categoryMeta[value].desc, t(`category.${value}`))}
+                    <span className="category-option-icon">
+                      {categoryMeta[category.key]?.icon || "📌"}
                     </span>
+                    <span className="category-option-label">{category.label}</span>
+                    {categoryMeta[category.key] ? (
+                      <span className="category-option-desc">
+                        {t(categoryMeta[category.key].desc, category.label)}
+                      </span>
+                    ) : null}
                   </button>
                 ))}
               </div>

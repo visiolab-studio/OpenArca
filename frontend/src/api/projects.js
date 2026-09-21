@@ -45,3 +45,8 @@ export async function createProjectCustomField(projectId, payload) {
 export async function archiveProjectCustomField(projectId, fieldId) {
   await client.delete(`/api/projects/${projectId}/custom-fields/${fieldId}`);
 }
+
+export async function getProjectCategories(projectId) {
+  const response = await client.get(`/api/projects/${projectId}/categories`);
+  return response.data.items || [];
+}

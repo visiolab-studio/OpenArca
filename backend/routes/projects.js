@@ -11,6 +11,8 @@ const { upload } = require("../middleware/uploads");
 const { uploadsDir } = require("../config");
 const { customFieldsService } = require("../services/custom-fields");
 const { FIELD_TYPES, CustomFieldError } = require("../core/custom-fields");
+const { createCategoriesService, CategoryError } = require("../core/categories");
+const categoriesService = createCategoriesService({ db });
 
 const router = express.Router();
 const LOGO_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -317,6 +319,63 @@ router.delete(
       return res.status(204).send();
     } catch (error) {
       if (error instanceof CustomFieldError) {
+        return res.status(404).json({ error: error.code, message: error.message });
+      }
+      return next(error);
+    }
+  }
+);
+
+// Kategorie zgloszen per projekt. Projekt, ktory nic nie skonfiguruje,
+// zachowuje wbudowana piatke.
+router.get(
+  "/:id/categories",
+  authRequired,
+  validate({ params: idParamsSchema }),
+  (req, res) => res.json({ items: categoriesService.describe(req.params.id) })
+);
+
+router.post(
+  "/:id/categories",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: idParamsSchema }),
+  (req, res, next) => {
+    try {
+      return res.status(201).json(
+        categoriesService.upsert({
+          projectId: req.params.id,
+          payload: {
+            category_key: req.body?.category_key,
+            label: req.body?.label,
+            position: req.body?.position
+          }
+        })
+      );
+    } catch (error) {
+      if (error instanceof CategoryError) {
+        return res.status(400).json({ error: error.code, message: error.message });
+      }
+      return next(error);
+    }
+  }
+);
+
+// Archiwizuje, nie kasuje: zgloszenia zlozone w tej kategorii musza nadal sie
+// poprawnie odczytywac.
+router.delete(
+  "/:id/categories/:key",
+  authRequired,
+  requireRole("developer"),
+  writeLimiter,
+  validate({ params: idParamsSchema.extend({ key: z.string().trim().min(1).max(40) }) }),
+  (req, res, next) => {
+    try {
+      categoriesService.archive({ projectId: req.params.id, categoryKey: req.params.key });
+      return res.status(204).send();
+    } catch (error) {
+      if (error instanceof CategoryError) {
         return res.status(404).json({ error: error.code, message: error.message });
       }
       return next(error);

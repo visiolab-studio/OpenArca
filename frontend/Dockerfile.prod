@@ -3,6 +3,17 @@
 # The dev image runs `npm run dev` — the Vite dev server — which is not meant to
 # face the internet and bind-mounts the source. This one ships only `dist/`.
 
+# Layer sources for the build. Empty by default, so a core-only build needs
+# nothing extra. A layered deployment replaces this stage with a real directory:
+#
+#   docker compose build --build-context layers=/path/holding/the/layers
+#
+# It has to be a build context rather than a runtime mount, because the frontend
+# slots are composed by Vite AT BUILD TIME — a runtime mount would arrive after
+# the bundle was already written, and the build would silently fall back to the
+# stub with no extension UI.
+FROM scratch AS layers
+
 FROM node:20-bookworm-slim AS build
 
 WORKDIR /app
@@ -18,10 +29,20 @@ COPY . .
 ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL
 
-# Layer composition needs the sibling layer roots present at build time; a build
-# without them falls back to the stub and simply ships no extension UI.
+# Absolute paths inside /layers, e.g.
+#   EXTENSIONS_LAYERS=/layers/OpenArca-Enterprise,/layers/my-layer
 ARG EXTENSIONS_LAYERS=""
 ENV EXTENSIONS_LAYERS=$EXTENSIONS_LAYERS
+
+COPY --from=layers . /layers/
+
+# Fails loudly rather than shipping a bundle with no extension UI, which is the
+# kind of defect that looks like "the feature disappeared after deploy".
+RUN if [ -n "$EXTENSIONS_LAYERS" ]; then \
+      for layer in $(echo "$EXTENSIONS_LAYERS" | tr ',' ' '); do \
+        test -d "$layer" || { echo "Layer not found in build context: $layer"; exit 1; }; \
+      done; \
+    fi
 
 RUN npm run build
 

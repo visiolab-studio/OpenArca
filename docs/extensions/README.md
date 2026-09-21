@@ -186,3 +186,20 @@ database with it.
 
 Layers are mounted into both containers and referenced by their absolute
 in-container path, exactly as in development.
+
+### Layers in a production build
+
+Backend layers mount at runtime. Frontend slots do not — Vite composes them when
+the bundle is built, so the layer sources must be present **at build time**:
+
+```bash
+docker compose -f docker-compose.prod.yml build \
+  --build-context layers=/path/holding/the/layers
+```
+
+with `EXTENSIONS_LAYERS` pointing at paths inside that context, e.g.
+`/layers/OpenArca-Enterprise,/layers/my-layer`.
+
+A path that is not present fails the build. That is deliberate: the alternative
+is a bundle whose extension UI is quietly missing, which surfaces later as "the
+feature disappeared after deploy".

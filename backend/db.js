@@ -186,6 +186,7 @@ const schemaStatements = [
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     category_key TEXT NOT NULL,
     label TEXT NOT NULL,
+    description TEXT,
     position INTEGER NOT NULL DEFAULT 0,
     archived_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -311,6 +312,12 @@ function initDb() {
     // Rygor pol przy zgloszeniu bledu jest ustawieniem PROJEKTU, domyslnie
     // wlaczonym — istniejace instalacje nie zmieniaja zachowania. Wdrozenie,
     // w ktorym zglasza obsluga klienta, moze go wylaczyc.
+    // Kolumna dodana po tym, jak tabela juz istniala u wczesnych uzytkownikow.
+    const categoryColumns = db.prepare("PRAGMA table_info(project_categories)").all();
+    if (!categoryColumns.some((column) => String(column.name) === "description")) {
+      db.prepare("ALTER TABLE project_categories ADD COLUMN description TEXT").run();
+    }
+
     if (!projectColumnNames.has("require_bug_details")) {
       db.prepare(
         "ALTER TABLE projects ADD COLUMN require_bug_details INTEGER NOT NULL DEFAULT 1"

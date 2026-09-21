@@ -349,6 +349,7 @@ router.post(
           payload: {
             category_key: req.body?.category_key,
             label: req.body?.label,
+            description: req.body?.description,
             position: req.body?.position
           }
         })

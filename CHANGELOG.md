@@ -16,6 +16,15 @@ All notable changes to this project are documented in this file.
 ### Notes
 - -
 
+## [0.5.0] - 2026-09-21
+
+### Added
+- Categories carry a one-sentence **description**, shown under the name in the new-ticket form. Names alone force the reporter to guess: two categories that sound similar are only told apart after a few mistakes, and the reporter chooses once, under pressure.
+- `description` accepted by `POST /api/projects/:id/categories` and returned by the categories endpoint.
+
+### Notes
+- Built-in categories keep their existing dictionary descriptions, so they work in all three languages with no configuration.
+
 ## [0.4.1] - 2026-09-21
 
 ### Fixed

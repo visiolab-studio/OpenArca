@@ -4,7 +4,7 @@ const express = require("express");
 const { z } = require("zod");
 const { v4: uuidv4 } = require("uuid");
 const db = require("../db");
-const { authRequired, requireRole } = require("../middleware/auth");
+const { authRequired, requireRole, requireScope } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
 const { upload } = require("../middleware/uploads");
@@ -88,7 +88,7 @@ function getIconAbsolutePath(filename) {
   return filePath;
 }
 
-router.get("/", authRequired, (req, res) => {
+router.get("/", authRequired, requireScope("projects:read"), (req, res) => {
   const rows = db.prepare("SELECT * FROM projects ORDER BY created_at DESC").all();
   return res.json(rows.map((project) => buildProjectPayload(project)));
 });

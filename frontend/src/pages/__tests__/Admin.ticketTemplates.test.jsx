@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminPage from "../Admin";
 import * as ProjectsApi from "../../api/projects";
+import * as ServiceAccountsApi from "../../api/serviceAccounts";
 import * as SettingsApi from "../../api/settings";
 import * as TicketTemplatesApi from "../../api/ticketTemplates";
 import * as UsersApi from "../../api/users";
@@ -13,6 +14,13 @@ vi.mock("../../api/projects", () => ({
   getProjects: vi.fn(),
   patchProject: vi.fn(),
   uploadProjectIcon: vi.fn()
+}));
+
+vi.mock("../../api/serviceAccounts", () => ({
+  createServiceAccount: vi.fn(),
+  disableServiceAccount: vi.fn(),
+  getServiceAccounts: vi.fn(),
+  revokeServiceAccount: vi.fn()
 }));
 
 vi.mock("../../api/settings", () => ({
@@ -101,6 +109,7 @@ describe("Admin ticket templates", () => {
     ]);
 
     UsersApi.getUsers.mockResolvedValue([]);
+    ServiceAccountsApi.getServiceAccounts.mockResolvedValue([]);
 
     TicketTemplatesApi.createTicketTemplate.mockResolvedValue({
       id: "template-2",

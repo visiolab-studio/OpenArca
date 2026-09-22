@@ -16,8 +16,10 @@ const ticketTemplateRoutes = require("./routes/ticketTemplates");
 const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
 const publicRoutes = require("./routes/public");
+const serviceAccountRoutes = require("./routes/service-accounts");
 const { authRequired } = require("./middleware/auth");
 const { requireRole } = require("./middleware/auth");
+const { requireScope } = require("./middleware/auth");
 const { requireFeature } = require("./middleware/features");
 const { writeLimiter } = require("./middleware/rate-limiters");
 const { upload } = require("./middleware/uploads");
@@ -92,6 +94,7 @@ registerRoutesExtensions(app, {
     middlewares: {
       authRequired,
       requireRole,
+      requireScope,
       requireFeature,
       writeLimiter,
       upload
@@ -106,6 +109,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/ticket-templates", ticketTemplateRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/service-accounts", serviceAccountRoutes);
 
 // Unauthenticated by design. Mounted last among core routes so nothing above it
 // can be reached without a session by accident.

@@ -103,9 +103,11 @@ const schemaStatements = [
     is_developer INTEGER NOT NULL DEFAULT 0,
     is_internal INTEGER NOT NULL DEFAULT 0,
     is_closure_summary INTEGER NOT NULL DEFAULT 0,
+    author_kind TEXT NOT NULL DEFAULT 'human',
     type TEXT NOT NULL DEFAULT 'comment',
     parent_id TEXT REFERENCES comments(id),
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    published_at TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS attachments (
     id TEXT PRIMARY KEY,
@@ -214,7 +216,35 @@ const schemaStatements = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  // Machine identity for local coding agents. Every account has a human
+  // owner (owner_user_id) — a service account never acts on its own
+  // authority, only on behalf of the developer it is bound to.
+  `CREATE TABLE IF NOT EXISTS service_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    owner_user_id TEXT NOT NULL REFERENCES users(id),
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    disabled_at TEXT
+  )`,
+  // token_hash is NOT NULL and is the only place a token's value lives here —
+  // the clear token is never persisted, only its hash.
+  `CREATE TABLE IF NOT EXISTS service_tokens (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES service_accounts(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    scopes_json TEXT NOT NULL DEFAULT '[]',
+    expires_at TEXT,
+    last_used_at TEXT,
+    revoked_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_categories_key ON project_categories(project_id, category_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_service_accounts_owner ON service_accounts(owner_user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_service_tokens_account ON service_tokens(account_id)`,
+  // Weryfikacja szuka tokenu WYLACZNIE po haszu — bez tego indeksu kazde
+  // sprawdzenie tokenu to skan calej tabeli.
+  `CREATE INDEX IF NOT EXISTS idx_service_tokens_hash ON service_tokens(token_hash)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_project_custom_fields_key ON project_custom_fields(project_id, field_key)`,
   `CREATE INDEX IF NOT EXISTS idx_project_custom_fields_project ON project_custom_fields(project_id, archived_at, position)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_custom_values_unique ON ticket_custom_field_values(ticket_id, field_id)`,
@@ -295,6 +325,26 @@ function initDb() {
 
     if (!commentColumnNames.has("is_closure_summary")) {
       db.prepare("ALTER TABLE comments ADD COLUMN is_closure_summary INTEGER NOT NULL DEFAULT 0").run();
+    }
+
+    // Set only from request IDENTITY (req.machine), never from client input —
+    // see backend/routes/tickets.js. Existing rows predate machine identity,
+    // so 'human' is true of all of them.
+    if (!commentColumnNames.has("author_kind")) {
+      db.prepare("ALTER TABLE comments ADD COLUMN author_kind TEXT NOT NULL DEFAULT 'human'").run();
+    }
+
+    // published_at IS NULL means "draft": visible to developers only, never to
+    // the reporter, whatever is_internal says. That rule is only safe if every
+    // comment written BEFORE this column existed reads as published — the
+    // backfill below is the whole point of this migration, not a tidy-up. Leave
+    // those rows NULL and the entire comment history of every ticket silently
+    // disappears from every reporter's view on upgrade. created_at (not
+    // datetime('now')) is the right value: those comments were visible from the
+    // moment they were written, so that is when they were published.
+    if (!commentColumnNames.has("published_at")) {
+      db.prepare("ALTER TABLE comments ADD COLUMN published_at TEXT").run();
+      db.prepare("UPDATE comments SET published_at = created_at WHERE published_at IS NULL").run();
     }
 
     const projectColumns = db.prepare("PRAGMA table_info(projects)").all();

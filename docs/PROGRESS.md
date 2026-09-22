@@ -1,10 +1,11 @@
 # OpenArca — Progress Log
 
 ## Step UX-CATEGORIES-03-LanguageAndIcons — 2026-09-22
-- Status: Implemented and verified in the local three-layer preview; no production deployment.
+- Status: Implemented, verified locally and deployed to `https://tech.edudoro.eu`.
 - Scope: optional project-category icon mechanism and login language parity in core; Edudoro-specific glyphs and category wording in the deployment layer. Enterprise code unchanged.
 - Result: OTP login exposes PL/EN/IT and selecting IT changes the form to Italian. The eight Edudoro category cards use distinct semantic glyphs; `feature` is labeled „Nowa funkcjonalność” in Polish and „New feature” in English. Existing category records are synchronized by the deployment bootstrap without changing ticket data.
 - Tests: core backend lint and full suite PASS (404/404); core frontend lint and full suite PASS (83/83); three-layer frontend build PASS; Edudoro suite PASS (30/30). Isolated three-layer backend smoke PASS. Local browser verified IT login and all eight Edudoro category cards, then returned the preview account to the Polish new-ticket form.
+- Production: backup `/data/tech.edudoro.eu/backups/openarca-20260922-120054.sqlite.gz` created before rollout. Core `74ea885`, Enterprise `7c19f8e` and Edudoro `eb10589` built with the production three-layer Compose configuration. Both containers are healthy; the backend bootstrap confirms eight categories for each project; the public new-ticket endpoint returns `200` over HTTPS.
 - Architecture: `docs/skills/project-category-icons.md` records the core/deployment boundary and accessibility behavior.
 
 ## Step UX-APP-02-LocalPreviewAndWorkspace — 2026-09-22

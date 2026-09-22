@@ -403,3 +403,45 @@ test("a human developer may still publish a reporter-facing comment directly", a
   const stored = db.prepare("SELECT published_at FROM comments WHERE id = ?").get(created.body.id);
   assert.ok(stored.published_at, "czlowiek nie podlega tej bramce");
 });
+
+// Two agents owned by one developer are indistinguishable without this: the
+// endpoint resolves a machine token to its owner, so both would answer with
+// the same person and no way to tell which token is in hand.
+test("auth/me names the machine account, not just its owner", async () => {
+  const second = accounts.create({
+    name: "codex on the same laptop",
+    ownerUserId: devAuth.user.id,
+    description: "a second agent for the same person"
+  });
+  const secondToken = accounts.mintToken({
+    accountId: second.id,
+    scopes: ["tickets:read"]
+  }).clearToken;
+
+  const first = await request
+    .get("/api/auth/me")
+    .set("Authorization", `Bearer ${machineToken}`)
+    .expect(200);
+  const other = await request
+    .get("/api/auth/me")
+    .set("Authorization", `Bearer ${secondToken}`)
+    .expect(200);
+
+  assert.equal(first.body.id, other.body.id, "both agents belong to the same person");
+  assert.notEqual(
+    first.body.machine.account_id,
+    other.body.machine.account_id,
+    "and yet the response must tell them apart"
+  );
+  assert.equal(other.body.machine.account_name, "codex on the same laptop");
+  assert.deepEqual(other.body.machine.scopes, ["tickets:read"]);
+});
+
+test("a human sees no machine block at all", async () => {
+  const response = await request
+    .get("/api/auth/me")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .expect(200);
+
+  assert.equal(response.body.machine, undefined);
+});

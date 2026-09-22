@@ -229,7 +229,8 @@
     "customFieldsEmpty": "No additional details.",
     "customFieldArchived": "No longer collected",
     "customFieldFilter": "Additional detail",
-    "customFieldFilterValue": "Value"
+    "customFieldFilterValue": "Value",
+    "machineAuthor": "Agent ({{owner}})"
   },
   "newTicket": {
     "step1": "Step 1: Basics",

@@ -214,7 +214,24 @@ router.post("/verify-otp", validate({ body: verifyOtpSchema }), (req, res) => {
 });
 
 router.get("/me", authRequired, (req, res) => {
-  return res.json(getPublicUser(req.user.id));
+  const identity = getPublicUser(req.user.id);
+
+  // A machine token resolves req.user from its OWNER, so without this the
+  // endpoint answers "you are Piotr" for every one of Piotr's agents and there
+  // is no way to tell which token is in hand. The account name is what makes
+  // two agents belonging to one person distinguishable at the wire.
+  if (req.machine) {
+    return res.json({
+      ...identity,
+      machine: {
+        account_id: req.machine.account.id,
+        account_name: req.machine.account.name,
+        scopes: req.machine.scopes
+      }
+    });
+  }
+
+  return res.json(identity);
 });
 
 router.patch("/me", authRequired, validate({ body: patchMeSchema }), (req, res) => {

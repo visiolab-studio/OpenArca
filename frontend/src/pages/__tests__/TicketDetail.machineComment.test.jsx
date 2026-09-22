@@ -9,6 +9,10 @@ vi.mock("react-i18next", () => ({
       if (key === "tickets.machineActingFor" && options?.owner) {
         return `machineActingFor:${options.owner}`;
       }
+      // Rendered verbatim so the test pins the FORMAT, not just the key.
+      if (key === "tickets.machineAuthor" && options?.owner) {
+        return `Agent (${options.owner})`;
+      }
       return key;
     }
   }),
@@ -112,7 +116,14 @@ describe("TicketDetailPage machine-authored and draft comments", () => {
       expect(getTicket).toHaveBeenCalledWith("ticket-1");
     });
 
-    expect(await screen.findByText("Jane Owner")).toBeInTheDocument();
+    // "Agent (owner)", not the machine account's own name: a name like
+    // "MacBook Agents AI" tells a reader nothing, while the owner is who
+    // answers for the analysis.
+    // findAll, not find: the Enterprise layer's findings section renders the
+    // same label for the same comment, which is the consistency we want.
+    const labels = await screen.findAllByText("Agent (Jane Owner)");
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.some((node) => node.className.includes("comment-author"))).toBe(true);
 
     // The machine marker (avatar label) must be present without hovering.
     expect(screen.getByText("tickets.machineAvatar")).toBeInTheDocument();
@@ -121,7 +132,12 @@ describe("TicketDetailPage machine-authored and draft comments", () => {
     // The unpublished comment carries a visible draft marker.
     expect(screen.getByText("tickets.commentDraft")).toBeInTheDocument();
 
-    const machineComment = screen.getByText("This is a machine-drafted analysis.").closest("li");
+    // The layer's findings section shows the same text, so scope to the comment
+    // thread item rather than matching the string globally.
+    const machineComment = screen
+      .getAllByText("This is a machine-drafted analysis.")
+      .map((node) => node.closest("li"))
+      .find(Boolean);
     expect(machineComment).toHaveClass("machine");
     expect(machineComment).toHaveClass("draft");
 

@@ -675,7 +675,11 @@ export default function TicketDetailPage() {
                     </div>
                     <div className="comment-body">
                       <div className="comment-meta">
-                        <span className="comment-author">{author}</span>
+                        <span className="comment-author">
+                          {isMachineAuthored
+                            ? t("tickets.machineAuthor", { owner: author })
+                            : author}
+                        </span>
                         {comment.is_developer ? (
                           <span className="comment-developer-badge">Developer</span>
                         ) : null}

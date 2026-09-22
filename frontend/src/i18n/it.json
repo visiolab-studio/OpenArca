@@ -229,7 +229,8 @@
     "customFieldsEmpty": "Nessun dettaglio aggiuntivo.",
     "customFieldArchived": "Non più raccolto",
     "customFieldFilter": "Dettaglio aggiuntivo",
-    "customFieldFilterValue": "Valore"
+    "customFieldFilterValue": "Valore",
+    "machineAuthor": "Agent ({{owner}})"
   },
   "newTicket": {
     "step1": "Passo 1: Base",

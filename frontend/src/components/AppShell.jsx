@@ -19,17 +19,7 @@ import { useCapabilities } from "../contexts/CapabilitiesContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import appLogo from "../assets/logo-openarca.png";
 import openArcaLogoGrey from "../assets/logo-openarca-grey.png";
-import polandFlag from "../assets/poland.png";
-import unitedStatesFlag from "../assets/united-states.png";
-import italyFlag from "../assets/italy.svg";
-
-// Flags live here rather than in the dictionaries: a language option must render
-// identically whichever language is currently active.
-const LANGUAGE_OPTIONS = [
-  { code: "pl", label: "PL", flag: polandFlag },
-  { code: "en", label: "EN", flag: unitedStatesFlag },
-  { code: "it", label: "IT", flag: italyFlag }
-];
+import { LANGUAGE_OPTIONS } from "../utils/languages";
 import { API_BASE_URL } from "../api/client";
 import { getPublicSettings } from "../api/settings";
 import { getStoredValue, setStoredValue } from "../utils/storage";

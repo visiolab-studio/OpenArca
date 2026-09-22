@@ -5,13 +5,18 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
-- -
+- Project categories can define an optional icon glyph through the category API; existing categories keep their previous fallback icon.
 
 ### Changed
-- -
+- The OTP login now offers the same PL/EN/IT language choices as the authenticated app, with an accessible selected state.
+- The new-ticket category chooser uses readable two-column cards; optional project fields use a compact, aligned layout. The ticket detail's long extension sections and populated custom fields now use the main content column instead of the narrow sidebar.
+- Template checklists appear separately from the editable ticket description and are appended only on submission; the final preview now includes the project and filled custom fields.
+- The new-ticket first step keeps project and template aligned, brings the title into the initial view and puts examples behind a disclosure. Short-intake categories use guidance appropriate for a one-sentence question, and unchanged template instructions are not accepted as the report itself.
+- Short-intake tickets show required project context immediately and keep optional custom fields in an expandable group; ordinary intake keeps all fields visible.
+- Dashboard leads with a compact workload summary and current priorities; quick links have room to read. Board and developer TODO keep quick views visible while secondary filters and saved-view management can be expanded when needed.
 
 ### Fixed
-- -
+- Ticket templates and developer ticket edits validate categories against the selected project's taxonomy instead of only the five built-in categories. The template editor shows project-specific category labels and options.
 
 ### Notes
 - -

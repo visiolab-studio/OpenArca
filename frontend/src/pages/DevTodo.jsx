@@ -291,6 +291,7 @@ export default function DevTodoPage() {
   const [ticketActionId, setTicketActionId] = useState("");
 
   const [filters, setFilters] = useState(initialSavedViewsState.activeFilters);
+  const [filtersOpen, setFiltersOpen] = useState(() => Object.values(initialSavedViewsState.activeFilters).some(Boolean));
   const [savedViews, setSavedViews] = useState(initialSavedViewsState.views);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
   const [viewName, setViewName] = useState("");
@@ -1063,6 +1064,7 @@ export default function DevTodoPage() {
       ? `#${String(previewTaskTicket.number).padStart(3, "0")}`
       : `#${previewTask.ticket_id.slice(0, 8)}`
     : "";
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   return (
     <section className="page-content todo-page">
@@ -1473,7 +1475,9 @@ export default function DevTodoPage() {
             </div>
           </div>
 
-          <div className="filters-grid todo-saved-views-grid">
+          <details className="filter-disclosure todo-saved-disclosure">
+            <summary>{t("tickets.manageSavedViews")}</summary>
+            <div className="filters-grid todo-saved-views-grid">
             <label className="form-group">
               <span className="form-label">{t("tickets.savedViews")}</span>
               <select
@@ -1519,10 +1523,16 @@ export default function DevTodoPage() {
                 </button>
               </div>
             </div>
-          </div>
+            </div>
+          </details>
 
           <div className="todo-toolbar">
-            <div className="todo-toolbar-left">
+            <details className="filter-disclosure todo-filter-disclosure" open={filtersOpen} onToggle={(event) => setFiltersOpen(event.currentTarget.open)}>
+              <summary>
+                <span>{t("tickets.advancedFilters")}</span>
+                {activeFilterCount > 0 ? <span className="badge badge-no-dot">{t("tickets.activeFiltersCount", { count: activeFilterCount })}</span> : null}
+              </summary>
+              <div className="todo-toolbar-left">
               <select
                 className="form-select"
                 aria-label={t("tickets.status")}
@@ -1603,7 +1613,8 @@ export default function DevTodoPage() {
                   {t("dev.clearFilters")}
                 </button>
               ) : null}
-            </div>
+              </div>
+            </details>
 
             <div className="row-actions">
               {hasActiveFilters ? (

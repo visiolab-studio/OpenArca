@@ -45,6 +45,26 @@ describe("validateNewTicketForm", () => {
     expect(errors.description).toBeDefined();
   });
 
+  it("wymaga konkretnych danych zamiast niezmienionego tekstu szablonu", () => {
+    const templateDescription = "Wklej tutaj wiadomość od klienta i opisz problem z zakupionym materiałem.";
+    const form = {
+      title: "Problem z pobraniem materiału",
+      description: templateDescription,
+      category: "data_check"
+    };
+    expect(validateNewTicketForm(form, {
+      requireBugDetails: false,
+      templateDescription
+    }).description).toBe("newTicket.templateDescriptionRequired");
+    expect(validateNewTicketForm({
+      ...form,
+      description: `${templateDescription}\nNumer zamówienia 123, pobieranie kończy się błędem.`
+    }, {
+      requireBugDetails: false,
+      templateDescription
+    }).description).toBeUndefined();
+  });
+
   it("bez opcji zachowuje sie jak dotad — rygorystycznie", () => {
     expect(validateNewTicketForm(bugReport).steps_to_reproduce).toBeDefined();
   });

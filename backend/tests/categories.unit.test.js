@@ -117,6 +117,32 @@ test("a label is required", () => {
   );
 });
 
+test("a project icon survives an upsert and is returned with the category", () => {
+  const { db, dir } = createDb();
+  const service = createCategoriesService({ db });
+
+  service.upsert({
+    projectId: "p1",
+    payload: { category_key: "billing", label: "Płatności", icon: "🧾" }
+  });
+  assert.equal(service.describe("p1")[0].icon, "🧾");
+
+  service.upsert({
+    projectId: "p1",
+    payload: { category_key: "billing", label: "Faktury", icon: "💳" }
+  });
+  assert.equal(service.describe("p1")[0].icon, "💳");
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("an overlong icon is rejected", () => {
+  assert.throws(
+    () => validateDefinition({ category_key: "billing", label: "Płatności", icon: "x".repeat(25) }),
+    (error) => error.code === "invalid_category_icon"
+  );
+});
+
 test("translations survive a round trip and reach describe()", () => {
   const { db, dir } = createDb();
   const service = createCategoriesService({ db });

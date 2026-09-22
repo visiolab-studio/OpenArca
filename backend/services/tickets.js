@@ -2,13 +2,13 @@ const db = require("../db");
 const { z } = require("zod");
 const { v4: uuidv4 } = require("uuid");
 const { createCustomFieldsService } = require("./custom-fields");
+const { createCategoriesService } = require("../core/categories");
 const { TELEMETRY_EVENT_NAMES } = require("./telemetry");
 const { appendDomainEventToOutbox } = require("./domain-events");
 const { taskSyncService: defaultTaskSyncService } = require("./task-sync");
 const {
   TICKET_STATUSES,
-  TICKET_PRIORITIES,
-  TICKET_CATEGORIES
+  TICKET_PRIORITIES
 } = require("../constants");
 
 function assertUserContext(user) {
@@ -128,7 +128,7 @@ const developerPatchSchema = z
     internal_note: z.string().max(10000).nullable().optional(),
     assignee_id: z.string().uuid().nullable().optional(),
     order_index: z.coerce.number().int().min(0).optional(),
-    category: z.enum(TICKET_CATEGORIES).optional(),
+    category: z.string().trim().min(1).max(40).optional(),
     project_id: z.string().uuid().nullable().optional(),
     title: z.string().min(10).max(300).optional(),
     description: z.string().min(50).max(20000).optional(),
@@ -433,6 +433,7 @@ function createTicketsService(options = {}) {
   // Bound to the SAME database handle, so writes join the caller's transaction.
   const customFields =
     options.customFieldsService || createCustomFieldsService({ db: database });
+  const categories = createCategoriesService({ db: database });
   const taskSyncService = options.taskSyncService || defaultTaskSyncService;
   const appendDomainEvent = options.appendDomainEventToOutbox || appendDomainEventToOutbox;
 
@@ -598,6 +599,16 @@ function createTicketsService(options = {}) {
         if (!project) {
           throw createServiceError("project_not_found", 400);
         }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(payload, "project_id") ||
+          Object.prototype.hasOwnProperty.call(payload, "category")) {
+        categories.assertValid({
+          projectId: Object.prototype.hasOwnProperty.call(payload, "project_id")
+            ? payload.project_id
+            : current.project_id,
+          category: payload.category ?? current.category
+        });
       }
 
       // Validated up front so a bad value fails before anything is written, and

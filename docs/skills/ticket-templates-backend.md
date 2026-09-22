@@ -15,6 +15,7 @@ Dodać backendowy fundament dla szablonów zgłoszeń (`ticket templates`) z RBA
 - [ ] `GET` dla zalogowanego użytkownika.
 - [ ] `POST/PATCH/DELETE` tylko dla developera.
 - [ ] Waliduj `project_id` przed zapisem i filtrowaniem listy.
+- [ ] Waliduj `category` względem efektywnej taksonomii wybranego projektu; globalny szablon używa kategorii core. Przy zmianie projektu lub kategorii sprawdź ich wynikową parę przed zapisem.
 - [ ] Dla `GET ?project_id=...` zwracaj:
 - [ ] najpierw template projektowe,
 - [ ] potem globalne (`project_id IS NULL`).
@@ -59,6 +60,7 @@ Przykładowy payload:
 
 ## Najczęstsze błędy / pułapki
 - Przepuszczenie nieistniejącego `project_id`.
+- Ograniczenie kategorii szablonu do pięciu kluczy core, gdy projekt ma własną taksonomię.
 - Brak ukrycia nieaktywnych templatek dla zwykłego użytkownika.
 - Traktowanie checklisty jako surowego stringa zamiast listy.
 - Mieszanie etapu backend foundation z renderowaniem prefillu w formularzu.

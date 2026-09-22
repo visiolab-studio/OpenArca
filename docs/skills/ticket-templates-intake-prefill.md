@@ -18,13 +18,13 @@ Podłączyć aktywne `ticket templates` do formularza `New Ticket`, tak aby uży
 - [ ] `description`
 - [ ] `category`
 - [ ] `urgency_reporter`
-- [ ] Checklistę wstaw do `description` jako czytelny blok tekstu.
+- [ ] Checklistę pokazuj osobno od edytowalnego opisu. Dołącz ją dopiero przy wysyłce zgłoszenia, żeby nie zawyżała licznika i walidacji tekstu wpisywanego przez użytkownika.
 - [ ] Wyczyść pola specyficzne dla kategorii, których template nie opisuje.
 - [ ] Gdy zmienia się projekt, odśwież listę templatek i zresetuj niedostępny wybór.
 - [ ] Dodaj test frontendu dla fallbacku i prefilla.
 
 ## Przykłady
-Przykładowy opis po prefillu:
+Przykładowy opis zapisany w zgłoszeniu po wysłaniu:
 ```txt
 Customers lose context when the checkout response fails after payment step.
 
@@ -50,6 +50,7 @@ GET /api/ticket-templates?project_id=<uuid>
 - Nadpisanie projektu zgłoszenia przez template.
 - Brak resetu niepasującego `selectedTemplateId` po zmianie projektu.
 - Próba zapisu checklisty do osobnego modelu ticketu, mimo że flow używa tylko `description`.
+- Liczenie znaków checklisty jako części opisu przed wysłaniem formularza.
 - Ukryte stare wartości w polach specyficznych dla innej kategorii.
 
 ## Powiązane pliki w repo

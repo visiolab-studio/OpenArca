@@ -562,6 +562,91 @@ test("ticket templates CRUD works for developer and blocks user writes", async (
   assert.equal(getAfterDelete.statusCode, 404);
 });
 
+test("project templates accept configured categories and reject categories from another taxonomy", async () => {
+  const project = await request
+    .post("/api/projects")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ name: "Custom template categories", description: "Project taxonomy test", color: "#0F766E" });
+  assert.equal(project.statusCode, 201);
+
+  const category = await request
+    .post(`/api/projects/${project.body.id}/categories`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ category_key: "data_check", label: "Data check", description: "Check customer data", icon: "🔎" });
+  assert.equal(category.statusCode, 201);
+  const categoryList = await request
+    .get(`/api/projects/${project.body.id}/categories`)
+    .set("Authorization", `Bearer ${userAuth.token}`);
+  assert.equal(categoryList.statusCode, 200);
+  assert.equal(categoryList.body.items.find((item) => item.key === "data_check")?.icon, "🔎");
+  const secondCategory = await request
+    .post(`/api/projects/${project.body.id}/categories`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ category_key: "billing", label: "Billing", description: "Billing questions" });
+  assert.equal(secondCategory.statusCode, 201);
+
+  const payload = {
+    name: "Check data",
+    project_id: project.body.id,
+    category: "data_check",
+    title_template: "Check customer data",
+    description_template: "Check the customer data and document the result."
+  };
+  const created = await request
+    .post("/api/ticket-templates")
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send(payload);
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.body.category, "data_check");
+
+  const invalidCategory = await request
+    .patch(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ category: "bug" });
+  assert.equal(invalidCategory.statusCode, 400);
+
+  const invalidProject = await request
+    .patch(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ project_id: null });
+  assert.equal(invalidProject.statusCode, 400);
+
+  const ticket = await request
+    .post("/api/tickets")
+    .set("Authorization", `Bearer ${userAuth.token}`)
+    .field({
+      title: "Please check customer data",
+      description: "Please check this customer's data and explain the result in this ticket.",
+      project_id: project.body.id,
+      category: "data_check",
+      urgency_reporter: "normal"
+    });
+  assert.equal(ticket.statusCode, 201);
+
+  const movedCategory = await request
+    .patch(`/api/tickets/${ticket.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ category: "billing" });
+  assert.equal(movedCategory.statusCode, 200);
+
+  const rejectedCategory = await request
+    .patch(`/api/tickets/${ticket.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ category: "bug" });
+  assert.equal(rejectedCategory.statusCode, 400);
+
+  const archived = await request
+    .delete(`/api/projects/${project.body.id}/categories/data_check`)
+    .set("Authorization", `Bearer ${devAuth.token}`);
+  assert.equal(archived.statusCode, 204);
+
+  const renamedArchivedTemplate = await request
+    .patch(`/api/ticket-templates/${created.body.id}`)
+    .set("Authorization", `Bearer ${devAuth.token}`)
+    .send({ name: "Check data (legacy)", category: "data_check" });
+  assert.equal(renamedArchivedTemplate.statusCode, 200);
+});
+
 test("ticket templates list applies project fallback and hides inactive rows from standard user", async () => {
   const projectA = await request
     .post("/api/projects")

@@ -223,6 +223,7 @@ export default function BoardPage() {
   const [collapsedClosed, setCollapsedClosed] = useState(true);
 
   const [filters, setFilters] = useState(initialSavedViewsState.activeFilters);
+  const [filtersOpen, setFiltersOpen] = useState(() => Object.values(initialSavedViewsState.activeFilters).some(Boolean));
   const [savedViews, setSavedViews] = useState(initialSavedViewsState.views);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
   const [viewName, setViewName] = useState("");
@@ -526,10 +527,11 @@ export default function BoardPage() {
     }
   }
 
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
   return (
     <section className="page-content page-content--full">
-      <article className="card form-grid filters-grid">
-        <div className="saved-views-bar form-group-wide">
+      <div className="saved-views-bar board-quick-views">
           <div className="saved-views-header">
             <span className="form-label">{t("tickets.quickFilters")}</span>
             <span className="form-hint">{t("tickets.savedViewsHint")}</span>
@@ -554,7 +556,14 @@ export default function BoardPage() {
               <span>{t("tickets.resetFilters")}</span>
             </button>
           </div>
-        </div>
+      </div>
+
+      <details className="card filter-disclosure" open={filtersOpen} onToggle={(event) => setFiltersOpen(event.currentTarget.open)}>
+        <summary>
+          <span>{t("tickets.advancedFilters")}</span>
+          {activeFilterCount > 0 ? <span className="badge badge-no-dot">{t("tickets.activeFiltersCount", { count: activeFilterCount })}</span> : null}
+        </summary>
+        <div className="form-grid filters-grid">
 
         <label className="form-group">
           <span className="form-label">{t("tickets.savedViews")}</span>
@@ -642,7 +651,8 @@ export default function BoardPage() {
             <option value="standard">{t("tickets.originStandard")}</option>
           </select>
         </label>
-      </article>
+        </div>
+      </details>
 
       {error ? <p className="feedback err">{t(`errors.${error}`, { defaultValue: error })}</p> : null}
       {loading ? <section className="card">{t("app.loading")}</section> : null}

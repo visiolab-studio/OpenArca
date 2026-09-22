@@ -99,6 +99,10 @@ describe("Board saved views", () => {
     renderPage();
 
     expect(await screen.findByText("Critical checkout issue")).toBeInTheDocument();
+    const filtersDisclosure = screen.getByText("tickets.advancedFilters").closest("details");
+    expect(filtersDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByText("tickets.advancedFilters"));
+    expect(filtersDisclosure).toHaveAttribute("open");
 
     fireEvent.change(screen.getByLabelText("tickets.project"), {
       target: { value: "project-2" }

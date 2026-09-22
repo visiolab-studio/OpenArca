@@ -292,38 +292,42 @@ export default function DashboardPage() {
 
       {error ? <p className="feedback err">{t(`errors.${error}`, { defaultValue: error })}</p> : null}
 
-      <div className="dashboard-stats overview-stats">
+      <div className="dashboard-stats dashboard-compact-stats">
+        <article className="stat-card">
+          <span className="badge badge-no-dot">{t("overview.totalOpen")}</span>
+          <strong className="stat-card-value">{openCount}</strong>
+        </article>
         <StatCard statusKey="in_progress" count={workload._stats?.in_progress ?? stats?.in_progress ?? 0} />
         <article className="stat-card stat-card-queue">
           <span className="badge badge-waiting">{t("overview.queueList")}</span>
           <strong className="stat-card-value">{queueCount}</strong>
-          <span className="muted">{t("overview.queueHint")}</span>
         </article>
-        <StatCard statusKey="blocked" count={workload._stats?.blocked ?? stats?.blocked ?? 0} />
         <StatCard statusKey="submitted" count={workload._stats?.submitted ?? stats?.submitted ?? 0} />
-        <article className="stat-card">
-          <span className="badge badge-no-dot">{t("overview.totalOpen")}</span>
-          <strong className="stat-card-value">{openCount}</strong>
-          <span className="muted">{t("overview.totalHint")}</span>
-        </article>
-        <article className="stat-card">
-          <span className="badge badge-closed">{t("dashboard.closedToday")}</span>
-          <strong className="stat-card-value">{stats?.closed_today || 0}</strong>
-          <span className="muted">{t("dashboard.closedTodayHint")}</span>
-        </article>
         {isDeveloper ? (
           <article className="stat-card stat-card-in_progress">
             <span className="badge badge-in_progress">{t("dashboard.todoCount")}</span>
             <strong className="stat-card-value">{todoStats.total}</strong>
-            <span className="muted">
-              {t("dashboard.todoSplit", { inProgress: todoStats.inProgress, todo: todoStats.todo })}
-            </span>
           </article>
         ) : null}
       </div>
 
-      <div className="panel-grid">
-        <article className="card">
+      <div className="panel-grid dashboard-main-grid">
+        <article className="card dashboard-focus-card">
+          <h2 className="card-title">{t("dashboard.focus")}</h2>
+          <p className="muted">
+            {isDeveloper ? t("dashboard.focusHintDev") : t("dashboard.focusHintUser")}
+          </p>
+          {focusTickets.length === 0 ? <p>{t("tickets.noTickets")}</p> : null}
+          <ul className="list-plain workload-list">
+            {focusTickets.map((ticket) => (
+              <li key={ticket.id}>
+                <DashboardWorkRow ticket={ticket} t={t} />
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="card dashboard-links-card">
           <h2 className="card-title">{t("dashboard.quick")}</h2>
           <div className="dashboard-quick-groups">
             <section className="dashboard-quick-group">
@@ -371,21 +375,6 @@ export default function DashboardPage() {
               </section>
             ) : null}
           </div>
-        </article>
-
-        <article className="card">
-          <h2 className="card-title">{t("dashboard.focus")}</h2>
-          <p className="muted">
-            {isDeveloper ? t("dashboard.focusHintDev") : t("dashboard.focusHintUser")}
-          </p>
-          {focusTickets.length === 0 ? <p>{t("tickets.noTickets")}</p> : null}
-          <ul className="list-plain workload-list">
-            {focusTickets.map((ticket) => (
-              <li key={ticket.id}>
-                <DashboardWorkRow ticket={ticket} t={t} />
-              </li>
-            ))}
-          </ul>
         </article>
 
         <article className="card">

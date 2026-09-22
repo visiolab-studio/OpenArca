@@ -33,6 +33,7 @@ function installCategorySchema(db) {
       category_key TEXT NOT NULL,
       label TEXT NOT NULL,
       description TEXT,
+      icon TEXT,
       translations TEXT,
       simple_intake INTEGER NOT NULL DEFAULT 0,
       position INTEGER NOT NULL DEFAULT 0,
@@ -56,7 +57,7 @@ function parseTranslations(raw) {
   }
 }
 
-function validateDefinition({ category_key: key, label }) {
+function validateDefinition({ category_key: key, label, icon }) {
   if (!CATEGORY_KEY_PATTERN.test(String(key || ""))) {
     throw new CategoryError(
       "invalid_category_key",
@@ -69,6 +70,10 @@ function validateDefinition({ category_key: key, label }) {
     throw new CategoryError("invalid_category_label", "Category label is required", key);
   }
 
+  if (icon != null && (typeof icon !== "string" || icon.trim().length > 24)) {
+    throw new CategoryError("invalid_category_icon", "Category icon must be a short glyph", key);
+  }
+
   return true;
 }
 
@@ -79,7 +84,7 @@ function createCategoriesService(options = {}) {
     if (!projectId) return [];
     return db
       .prepare(
-        `SELECT category_key, label, description, translations, simple_intake, position
+        `SELECT category_key, label, description, icon, translations, simple_intake, position
          FROM project_categories
          WHERE project_id = ? AND archived_at IS NULL
          ORDER BY position ASC, created_at ASC`
@@ -108,6 +113,7 @@ function createCategoriesService(options = {}) {
         // Bez niego nazwy takie jak "Sprawdzenie danych" i "Tresc i katalog"
         // sa rozroznialne dopiero po kilku pomylkach.
         description: row.description || null,
+        icon: row.icon || null,
         // Zwracamy caly zestaw, a klient wybiera po swoim jezyku. Negocjacja po
         // stronie serwera wymagalaby, zeby kazde zapytanie niosło jezyk, a UI
         // przelacza go bez przeladowania.
@@ -124,6 +130,7 @@ function createCategoriesService(options = {}) {
       key,
       label: null,
       description: null,
+      icon: null,
       translations: null,
       simple_intake: false,
       source: "core"
@@ -157,11 +164,12 @@ function createCategoriesService(options = {}) {
     if (existing) {
       db.prepare(
         `UPDATE project_categories
-         SET label = ?, description = ?, translations = ?, simple_intake = ?, position = ?, archived_at = NULL
+         SET label = ?, description = ?, icon = ?, translations = ?, simple_intake = ?, position = ?, archived_at = NULL
          WHERE id = ?`
       ).run(
         payload.label.trim(),
         payload.description?.trim() || null,
+        payload.icon?.trim() || null,
         payload.translations ? JSON.stringify(payload.translations) : null,
         payload.simple_intake ? 1 : 0,
         payload.position ?? 0,
@@ -174,14 +182,15 @@ function createCategoriesService(options = {}) {
     const id = randomUUID();
     db.prepare(
       `INSERT INTO project_categories
-         (id, project_id, category_key, label, description, translations, simple_intake, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (id, project_id, category_key, label, description, icon, translations, simple_intake, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       projectId,
       payload.category_key,
       payload.label.trim(),
       payload.description?.trim() || null,
+      payload.icon?.trim() || null,
       payload.translations ? JSON.stringify(payload.translations) : null,
       payload.simple_intake ? 1 : 0,
       payload.position ?? 0

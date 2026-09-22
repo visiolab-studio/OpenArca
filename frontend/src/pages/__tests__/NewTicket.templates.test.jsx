@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import NewTicketPage from "../NewTicket";
+import NewTicketPage, { buildSubmittedDescription } from "../NewTicket";
 import * as ProjectsApi from "../../api/projects";
 import * as TicketTemplatesApi from "../../api/ticketTemplates";
 
 vi.mock("../../api/projects", () => ({
-  getProjects: vi.fn()
+  getProjects: vi.fn(),
+  getProjectCategories: vi.fn(),
+  getProjectCustomFields: vi.fn()
 }));
 
 vi.mock("../../api/ticketTemplates", () => ({
@@ -41,6 +43,8 @@ describe("NewTicket templates", () => {
     ProjectsApi.getProjects.mockResolvedValue([
       { id: "project-1", name: "Checkout Core", color: "#0F766E", icon_url: null }
     ]);
+    ProjectsApi.getProjectCategories.mockResolvedValue([]);
+    ProjectsApi.getProjectCustomFields.mockResolvedValue([]);
 
     TicketTemplatesApi.getTicketTemplates.mockImplementation(({ projectId } = {}) => {
       if (projectId === "project-1") {
@@ -124,10 +128,32 @@ describe("NewTicket templates", () => {
     expect(descriptionField.value).toContain(
       "Customers lose context when the checkout response fails after payment step."
     );
-    expect(descriptionField.value).toContain("- Capture order ID");
+    expect(descriptionField.value).not.toContain("- Capture order ID");
+    expect(screen.getByText("Capture order ID")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "app.next" }));
 
     expect(screen.getByLabelText("tickets.urgency")).toHaveValue("high");
+  });
+
+  it("adds checklist to saved description only at submission", () => {
+    expect(buildSubmittedDescription("Customer report", {
+      checklist_items: ["Capture order ID", "Attach screenshot"]
+    }, "Checklist")).toBe("Customer report\n\nChecklist\n- Capture order ID\n- Attach screenshot");
+  });
+
+  it("shows a configured project icon with its category label", async () => {
+    ProjectsApi.getProjectCategories.mockResolvedValue([
+      { key: "billing", label: "Płatności", description: "Faktury i płatności", icon: "🧾" }
+    ]);
+    renderPage();
+    fireEvent.change(await screen.findByLabelText("tickets.project"), {
+      target: { value: "project-1" }
+    });
+
+    const category = await screen.findByRole("button", { name: /Płatności/ });
+    const icon = category.querySelector(".category-option-icon");
+    expect(icon).toHaveTextContent("🧾");
+    expect(icon).toHaveAttribute("aria-hidden", "true");
   });
 });

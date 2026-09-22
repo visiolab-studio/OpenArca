@@ -742,6 +742,34 @@ export default function TicketDetailPage() {
             </form>
           </article>
 
+          {Array.isArray(ticket.custom_fields) && ticket.custom_fields.length > 0 ? (
+            <article className="card">
+              <h2 className="card-title">{t("tickets.customFields")}</h2>
+              <dl className="custom-field-values">
+                {ticket.custom_fields.map((field) => (
+                  <div className="custom-field-value" key={field.field_key}>
+                    <dt>
+                      {field.label}
+                      {field.archived ? (
+                        <span className="badge badge-no-dot">{t("tickets.customFieldArchived")}</span>
+                      ) : null}
+                    </dt>
+                    <dd>
+                      {field.field_type === "url" && isSafeHttpUrl(field.value) ? (
+                        <a href={field.value} target="_blank" rel="noopener noreferrer">{field.value}</a>
+                      ) : field.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          ) : null}
+
+          {ticketDetailSections.map((section) => {
+            const Component = section.component;
+            return Component ? <Component key={section.key} ticket={ticket} /> : null;
+          })}
+
           <article className="card">
             <h2 className="card-title">{t("tickets.history")}</h2>
             <ul className="list-plain">
@@ -866,43 +894,6 @@ export default function TicketDetailPage() {
                 </button>
               </form>
             ) : null}
-          </article>
-
-          {ticketDetailSections.map((section) => {
-            const Component = section.component;
-            return Component ? <Component key={section.key} ticket={ticket} /> : null;
-          })}
-
-          <article className="card">
-            <h2 className="card-title">{t("tickets.customFields")}</h2>
-
-            {Array.isArray(ticket.custom_fields) && ticket.custom_fields.length > 0 ? (
-              <dl className="custom-field-values">
-                {ticket.custom_fields.map((field) => (
-                  <div className="custom-field-value" key={field.field_key}>
-                    <dt>
-                      {field.label}
-                      {/* An archived definition still has values on older tickets;
-                          saying so beats letting a stale label look current. */}
-                      {field.archived ? (
-                        <span className="badge badge-no-dot">{t("tickets.customFieldArchived")}</span>
-                      ) : null}
-                    </dt>
-                    <dd>
-                      {field.field_type === "url" && isSafeHttpUrl(field.value) ? (
-                        <a href={field.value} target="_blank" rel="noopener noreferrer">
-                          {field.value}
-                        </a>
-                      ) : (
-                        field.value
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <p>{t("tickets.customFieldsEmpty")}</p>
-            )}
           </article>
 
           <article className="card">

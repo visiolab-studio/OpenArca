@@ -1,5 +1,29 @@
 # OpenArca — Progress Log
 
+## Step UX-CATEGORIES-03-LanguageAndIcons — 2026-09-22
+- Status: Implemented and verified in the local three-layer preview; no production deployment.
+- Scope: optional project-category icon mechanism and login language parity in core; Edudoro-specific glyphs and category wording in the deployment layer. Enterprise code unchanged.
+- Result: OTP login exposes PL/EN/IT and selecting IT changes the form to Italian. The eight Edudoro category cards use distinct semantic glyphs; `feature` is labeled „Nowa funkcjonalność” in Polish and „New feature” in English. Existing category records are synchronized by the deployment bootstrap without changing ticket data.
+- Tests: core backend lint and full suite PASS (404/404); core frontend lint and full suite PASS (83/83); three-layer frontend build PASS; Edudoro suite PASS (30/30). Isolated three-layer backend smoke PASS. Local browser verified IT login and all eight Edudoro category cards, then returned the preview account to the Polish new-ticket form.
+- Architecture: `docs/skills/project-category-icons.md` records the core/deployment boundary and accessibility behavior.
+
+## Step UX-APP-02-LocalPreviewAndWorkspace — 2026-09-22
+- Status: Implemented and verified in the local three-layer browser preview.
+- Scope: generic core UI mechanisms in OpenArca; the broken module import in Enterprise; Edudoro local compose documentation corrected. No production write.
+- Local diagnosis: the frontend container was healthy but a `.js` import of the Enterprise `.mjs` findings module prevented React from rendering. Correcting the import and restarting the frontend restored the OTP login. Local Mailpit was configured in the local database, and a synthetic `preview@example.com` developer account was used for read-only browser checks; no ticket was submitted.
+- Browser verification: Dashboard, New Ticket, Kanban and Developer TODO rendered in Chrome. Edudoro's eight project categories and eight templates load after project selection; a template prefills the title, category and urgency. The ticket form's first step now shows project/template together and the title before the long category list; examples are optional. For quick questions, required project context remains visible while six optional fields are expandable. The Dashboard quick-link cards have adequate width. Secondary Board/TODO filters are collapsed with quick views still visible. The final preview includes the project and selected shop; no ticket was submitted.
+- Additional guard: template boilerplate alone does not satisfy the frontend description validation; short-intake guidance no longer asks for a detailed business goal when the category calls for a one-sentence question. Empty title fields no longer show an error before user interaction; hidden optional fields open when the server reports a field error.
+- Quality gates: frontend lint and i18n PASS; frontend tests PASS (80/80); three-layer build PASS; Enterprise tests PASS (161/161); Edudoro tests PASS (29/29); isolated backend smoke PASS in the three-layer container. Previous step's full backend suite passed; no backend implementation changed in this step.
+
+## Step UX-INTAKE-01-ProjectCategoriesAndLayout — 2026-09-22
+- Status: Implemented; browser verification completed in UX-APP-02.
+- Scope: core mechanisms and layout only for this step. Enterprise and Edudoro changes belong to UX-APP-02.
+- Production observations: category cards were narrow, long ticket analyses were confined to the sidebar, the preview omitted project/custom fields, and Dashboard/Overview/Board/DevTodo put large summary or filter areas ahead of actionable content.
+- Implemented: project-aware category validation for templates and developer ticket edits; category-aware template editor; separate checklist presentation with submission-time persistence in description; clearer category cards and aligned custom fields; preview completeness; extension analysis cards and populated custom fields in the main ticket column.
+- Tests: backend lint PASS; backend full suite PASS (dot reporter); frontend lint, full tests and build PASS; Enterprise tests PASS (161/161); three-layer frontend build PASS.
+- E2E: backend smoke flow is included in the passing backend suite. Local browser verification is recorded in UX-APP-02; production was inspected read-only and was not modified.
+- Next UX pass: continue the Overview review and validate the form with real team feedback before changing the deployment taxonomy.
+
 ## Step E-NOTIFY-03-EnterpriseSupportThreads-ProfilePlacement
 - Status: Done (approved by user)
 - Enterprise commit: `ef2c9b7`

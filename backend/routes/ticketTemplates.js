@@ -5,9 +5,11 @@ const db = require("../db");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { writeLimiter } = require("../middleware/rate-limiters");
-const { TICKET_CATEGORIES, TICKET_PRIORITIES } = require("../constants");
+const { TICKET_PRIORITIES } = require("../constants");
+const { createCategoriesService } = require("../core/categories");
 
 const router = express.Router();
+const categoriesService = createCategoriesService({ db });
 
 const idParamsSchema = z.object({ id: z.string().uuid() });
 const checklistItemSchema = z.string().trim().min(1).max(200);
@@ -17,7 +19,7 @@ const baseTemplateSchema = z
   .object({
     name: z.string().trim().min(2).max(120),
     project_id: projectIdSchema,
-    category: z.enum(TICKET_CATEGORIES),
+    category: z.string().trim().min(1).max(40),
     urgency_reporter: z.enum(TICKET_PRIORITIES).optional(),
     title_template: z.string().trim().min(5).max(160),
     description_template: z.string().trim().min(20).max(4000),
@@ -177,6 +179,10 @@ router.post(
   (req, res, next) => {
     try {
       assertProjectExists(req.body.project_id || null);
+      categoriesService.assertValid({
+        projectId: req.body.project_id || null,
+        category: req.body.category
+      });
 
       const id = uuidv4();
       db.prepare(
@@ -220,6 +226,15 @@ router.patch(
 
       if (Object.prototype.hasOwnProperty.call(req.body, "project_id")) {
         assertProjectExists(req.body.project_id || null);
+      }
+      if ((Object.prototype.hasOwnProperty.call(req.body, "project_id") && req.body.project_id !== template.project_id) ||
+          (Object.prototype.hasOwnProperty.call(req.body, "category") && req.body.category !== template.category)) {
+        categoriesService.assertValid({
+          projectId: Object.prototype.hasOwnProperty.call(req.body, "project_id")
+            ? req.body.project_id
+            : template.project_id,
+          category: req.body.category ?? template.category
+        });
       }
 
       const updates = [];

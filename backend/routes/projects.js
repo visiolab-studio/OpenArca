@@ -350,6 +350,7 @@ router.post(
             category_key: req.body?.category_key,
             label: req.body?.label,
             description: req.body?.description,
+            icon: req.body?.icon,
             translations: req.body?.translations,
             simple_intake: req.body?.simple_intake,
             position: req.body?.position

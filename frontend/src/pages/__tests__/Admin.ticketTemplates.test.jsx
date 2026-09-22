@@ -11,6 +11,7 @@ vi.mock("../../api/projects", () => ({
   createProject: vi.fn(),
   deleteProject: vi.fn(),
   deleteProjectIcon: vi.fn(),
+  getProjectCategories: vi.fn(),
   getProjects: vi.fn(),
   patchProject: vi.fn(),
   uploadProjectIcon: vi.fn()
@@ -92,6 +93,10 @@ describe("Admin ticket templates", () => {
     ProjectsApi.getProjects.mockResolvedValue([
       { id: "project-1", name: "Checkout Core", description: "Checkout", color: "#0F766E", icon_url: null }
     ]);
+    ProjectsApi.getProjectCategories.mockResolvedValue([
+      { key: "bug", label: null },
+      { key: "data_check", label: "Sprawdzenie danych" }
+    ]);
 
     TicketTemplatesApi.getTicketTemplates.mockResolvedValue([
       {
@@ -167,6 +172,28 @@ describe("Admin ticket templates", () => {
         is_active: true
       });
     });
+  });
+
+  it("offers the selected project's category when editing a template", async () => {
+    TicketTemplatesApi.getTicketTemplates.mockResolvedValueOnce([{
+      id: "template-custom",
+      name: "Check customer data",
+      project_id: "project-1",
+      project_name: "Checkout Core",
+      category: "data_check",
+      urgency_reporter: "normal",
+      title_template: "Check customer data title",
+      description_template: "Check the customer data and explain the result.",
+      checklist_items: [],
+      is_active: true
+    }]);
+
+    render(<AdminPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "admin.tabProjects" }));
+    expect(await screen.findByText("Sprawdzenie danych")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "admin.projectSettings" }).at(-1));
+    expect(screen.getByLabelText("tickets.category")).toHaveValue("data_check");
+    expect(screen.getByRole("option", { name: "Sprawdzenie danych" })).toBeInTheDocument();
   });
 
   it("shows field validation and blocks submit when template description is too short", async () => {

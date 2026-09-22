@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import appLogo from "../assets/logo-openarca.png";
-import polandFlag from "../assets/poland.png";
-import unitedStatesFlag from "../assets/united-states.png";
+import { LANGUAGE_OPTIONS } from "../utils/languages";
 import { getPublicSettings } from "../api/settings";
 
 const OTP_LIFETIME_SECONDS = 10 * 60;
@@ -164,23 +163,19 @@ export default function LoginPage() {
     <main className="login-page">
       <section className="login-card">
         <div className="login-head-row">
-          <div className="lang-switch auth-lang">
-            <button
-              type="button"
-              className={language === "pl" ? "lang-option active" : "lang-option"}
-              onClick={() => setLanguage("pl")}
-            >
-              <img src={polandFlag} alt="" className="lang-flag" aria-hidden="true" />
-              <span>PL</span>
-            </button>
-            <button
-              type="button"
-              className={language === "en" ? "lang-option active" : "lang-option"}
-              onClick={() => setLanguage("en")}
-            >
-              <img src={unitedStatesFlag} alt="" className="lang-flag" aria-hidden="true" />
-              <span>EN</span>
-            </button>
+          <div className="lang-switch auth-lang" role="group" aria-label="Language switch">
+            {LANGUAGE_OPTIONS.map((option) => (
+              <button
+                key={option.code}
+                type="button"
+                className={language === option.code ? "lang-option active" : "lang-option"}
+                onClick={() => setLanguage(option.code)}
+                aria-pressed={language === option.code}
+              >
+                <img src={option.flag} alt="" className="lang-flag" aria-hidden="true" />
+                <span>{option.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

@@ -189,6 +189,7 @@ const schemaStatements = [
     category_key TEXT NOT NULL,
     label TEXT NOT NULL,
     description TEXT,
+    icon TEXT,
     position INTEGER NOT NULL DEFAULT 0,
     archived_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -367,6 +368,9 @@ function initDb() {
     const categoryColumnNames = new Set(categoryColumns.map((column) => String(column.name)));
     if (!categoryColumnNames.has("description")) {
       db.prepare("ALTER TABLE project_categories ADD COLUMN description TEXT").run();
+    }
+    if (!categoryColumnNames.has("icon")) {
+      db.prepare("ALTER TABLE project_categories ADD COLUMN icon TEXT").run();
     }
     // Tlumaczenia etykiety i opisu. Kategoria jest trescia konfigurowalna, wiec
     // musi podazac za jezykiem INTERFEJSU, nie za projektem — inaczej ktos z

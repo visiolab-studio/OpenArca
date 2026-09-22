@@ -31,27 +31,19 @@ function charCountClass(current, min) {
   return "form-char-count";
 }
 
-function buildTemplateDescription(template, t) {
-  const baseDescription = String(template?.description_template || "").trim();
+export function buildSubmittedDescription(description, template, checklistHeading) {
   const checklistItems = Array.isArray(template?.checklist_items) ? template.checklist_items : [];
-
-  if (checklistItems.length === 0) {
-    return baseDescription;
-  }
-
-  const checklistBlock = [
-    t("newTicket.templateChecklistHeading"),
-    ...checklistItems.map((item) => `- ${item}`)
-  ].join("\n");
-
-  return [baseDescription, checklistBlock].filter(Boolean).join("\n\n");
+  const checklistBlock = checklistItems.length > 0
+    ? [checklistHeading, ...checklistItems.map((item) => `- ${item}`)].join("\n")
+    : "";
+  return [String(description || "").trim(), checklistBlock].filter(Boolean).join("\n\n");
 }
 
 // `requireBugDetails` i `simpleIntake` musza dojechac tutaj z projektu i
 // kategorii, bo backend liczy progi dokladnie tak samo. Gdy front trzymal je
 // na sztywno, projekt z wylaczonym rygorem i tak nie pozwalal wyslac zgloszenia
 // — serwer by je przyjal, ale formularz nie dawal klikac dalej.
-export function validateNewTicketForm(form, { requireBugDetails = true, simpleIntake = false } = {}) {
+export function validateNewTicketForm(form, { requireBugDetails = true, simpleIntake = false, templateDescription = "" } = {}) {
   const errors = {};
 
   if ((form.title || "").trim().length < (simpleIntake ? 5 : 10)) {
@@ -67,6 +59,8 @@ export function validateNewTicketForm(form, { requireBugDetails = true, simpleIn
       : 50;
   if (descriptionLength < minDescription) {
     errors.description = "tickets.validation.description";
+  } else if (templateDescription.trim() && form.description.trim() === templateDescription.trim()) {
+    errors.description = "newTicket.templateDescriptionRequired";
   }
 
   if (simpleIntake) {
@@ -231,10 +225,18 @@ export default function NewTicketPage() {
   const simpleIntake = Boolean(
     (categories || []).find((entry) => entry.key === form.category)?.simple_intake
   );
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.id === selectedTemplateId) || null,
+    [selectedTemplateId, templates]
+  );
 
   const errors = useMemo(
-    () => validateNewTicketForm(form, { requireBugDetails, simpleIntake }),
-    [form, requireBugDetails, simpleIntake]
+    () => validateNewTicketForm(form, {
+      requireBugDetails,
+      simpleIntake,
+      templateDescription: selectedTemplate?.description_template || ""
+    }),
+    [form, requireBugDetails, simpleIntake, selectedTemplate]
   );
 
   const detailsEnabled = requireBugDetails && !simpleIntake;
@@ -242,10 +244,7 @@ export default function NewTicketPage() {
   const showBusinessGoal = detailsEnabled && ["feature", "improvement"].includes(form.category);
   const showQuestionContext = detailsEnabled && form.category === "question";
   const minDescriptionHint = simpleIntake ? 20 : showBugDetails || showBusinessGoal ? 100 : 50;
-  const selectedTemplate = useMemo(
-    () => templates.find((template) => template.id === selectedTemplateId) || null,
-    [selectedTemplateId, templates]
-  );
+  const showTitleError = Boolean(errors.title && (form.title.length > 0 || error === "validation_error"));
 
   function updateField(name, value) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -262,7 +261,7 @@ export default function NewTicketPage() {
       category: template.category || current.category,
       urgency_reporter: template.urgency_reporter || current.urgency_reporter,
       title: template.title_template || "",
-      description: buildTemplateDescription(template, t),
+      description: template.description_template || "",
       steps_to_reproduce: "",
       expected_result: "",
       actual_result: "",
@@ -287,6 +286,7 @@ export default function NewTicketPage() {
       const resolved = resolveCategoryText(entry, language);
       return {
         key: entry.key,
+        icon: entry.icon || categoryMeta[entry.key]?.icon || "📌",
         label: resolved.label || t(`category.${entry.key}`),
         description:
           resolved.description ||
@@ -318,7 +318,11 @@ export default function NewTicketPage() {
       const payload = new FormData();
       payload.append("title", form.title.trim());
 
-      let description = form.description.trim();
+      let description = buildSubmittedDescription(
+        form.description,
+        selectedTemplate,
+        t("newTicket.templateChecklistHeading")
+      );
       if (showBusinessGoal) {
         description += `\n\nBusiness Goal:\n${form.business_goal.trim()}`;
       }
@@ -381,7 +385,7 @@ export default function NewTicketPage() {
     <section className="page-content new-ticket-page">
       <header className="new-ticket-header">
         <h1 className="new-ticket-title">{t("tickets.newTitle")}</h1>
-        <p className="new-ticket-subtitle">{t("dashboard.subtitle")}</p>
+        <p className="new-ticket-subtitle">{t("newTicket.subtitle")}</p>
       </header>
 
       <div className="form-progress">
@@ -401,107 +405,60 @@ export default function NewTicketPage() {
       <form className="card form-grid" onSubmit={handleSubmit}>
         {step === 1 ? (
           <>
-            <div className="form-instruction-box">
-              <div className="form-instruction-box-title">{t("tickets.titleField")}</div>
-              <p>{t("newTicket.titleHint")}</p>
+            <div className="new-ticket-intake-row">
+              <label className="form-group">
+                <span className="form-label">{t("tickets.project")}</span>
+                <select
+                  className="form-select"
+                  value={form.project_id}
+                  onChange={(event) => updateField("project_id", event.target.value)}
+                >
+                  <option value="">-</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-group">
+                <span className="form-label">{t("newTicket.templateLabel")}</span>
+                <select
+                  className="form-select"
+                  aria-label={t("newTicket.templateLabel")}
+                  value={selectedTemplateId}
+                  onChange={(event) => handleTemplateChange(event.target.value)}
+                >
+                  <option value="">{t("newTicket.templatePlaceholder")}</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                      {template.project_name ? ` · ${template.project_name}` : ` · ${t("admin.templateGlobal")}`}
+                    </option>
+                  ))}
+                </select>
+                <small className="form-hint">{t("newTicket.templateHint")}</small>
+              </label>
             </div>
-
-            <div className="form-examples">
-              <div className="form-example form-example-bad">
-                <div className="form-example-label">{t("newTicket.badExample")}</div>
-                <div>{t("newTicket.badTitle")}</div>
-              </div>
-              <div className="form-example form-example-good">
-                <div className="form-example-label">{t("newTicket.goodExample")}</div>
-                <div>{t("newTicket.goodTitle")}</div>
-              </div>
-            </div>
-
-            <label className="form-group">
-              <span className="form-label">{t("tickets.project")}</span>
-              <select
-                className="form-select"
-                value={form.project_id}
-                onChange={(event) => updateField("project_id", event.target.value)}
-              >
-                <option value="">-</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="form-group">
-              <span className="form-label">{t("newTicket.templateLabel")}</span>
-              <select
-                className="form-select"
-                aria-label={t("newTicket.templateLabel")}
-                value={selectedTemplateId}
-                onChange={(event) => handleTemplateChange(event.target.value)}
-              >
-                <option value="">{t("newTicket.templatePlaceholder")}</option>
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}
-                    {template.project_name ? ` · ${template.project_name}` : ` · ${t("admin.templateGlobal")}`}
-                  </option>
-                ))}
-              </select>
-              <small className="form-hint">{t("newTicket.templateHint")}</small>
-            </label>
 
             {selectedTemplate ? (
               <div className="form-instruction-box">
                 <div className="form-instruction-box-title">{selectedTemplate.name}</div>
                 <p>
                   {selectedTemplate.project_name || t("admin.templateGlobal")} ·{" "}
-                  {t(`category.${selectedTemplate.category}`)} ·{" "}
+                  {visibleCategories.find((entry) => entry.key === selectedTemplate.category)?.label || selectedTemplate.category} ·{" "}
                   {t(`priority.${selectedTemplate.urgency_reporter}`)}
                 </p>
-                <p>{t("newTicket.templateApplyNotice")}</p>
+                <p>{t(simpleIntake ? "newTicket.templateApplySimpleNotice" : "newTicket.templateApplyNotice")}</p>
               </div>
             ) : null}
-
-            <div>
-              <p className="form-label">{t("tickets.category")}</p>
-              {!form.project_id ? (
-                // Kategorie sa per projekt. Pokazanie tu wbudowanej piatki
-                // sugerowaloby, ze to jest lista do wyboru — a projekt z wlasna
-                // taksonomia odrzucilby polowe z niej przy wysylce.
-                <p className="form-hint">{t("newTicket.categoryNeedsProject")}</p>
-              ) : (
-              <div className="category-selector">
-                {visibleCategories.map((category) => (
-                  <button
-                    key={category.key}
-                    type="button"
-                    className={
-                      form.category === category.key
-                        ? "category-option selected"
-                        : "category-option"
-                    }
-                    onClick={() => updateField("category", category.key)}
-                  >
-                    <span className="category-option-icon">
-                      {categoryMeta[category.key]?.icon || "📌"}
-                    </span>
-                    <span className="category-option-label">{category.label}</span>
-                    {category.description ? (
-                      <span className="category-option-desc">{category.description}</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-              )}
-            </div>
 
             <label className="form-group">
               <span className="form-label">{t("tickets.titleField")}</span>
               <input
                 type="text"
-                className={errors.title ? "form-input error" : "form-input"}
+                className={showTitleError ? "form-input error" : "form-input"}
                 aria-label={t("tickets.titleField")}
                 value={form.title}
                 onChange={(event) => updateField("title", event.target.value)}
@@ -511,8 +468,47 @@ export default function NewTicketPage() {
               <div className={charCountClass(form.title.trim().length, 10)}>
                 {form.title.trim().length}/300
               </div>
-              {errors.title ? <small className="form-error-msg">{t(errors.title)}</small> : null}
+              <small className="form-hint">{t("newTicket.titleHint")}</small>
+              {showTitleError ? <small className="form-error-msg">{t(errors.title)}</small> : null}
             </label>
+
+            <details className="title-guidance">
+              <summary>{t("newTicket.titleExamples")}</summary>
+              <div className="form-examples">
+                <div className="form-example form-example-bad">
+                  <div className="form-example-label">{t("newTicket.badExample")}</div>
+                  <div>{t("newTicket.badTitle")}</div>
+                </div>
+                <div className="form-example form-example-good">
+                  <div className="form-example-label">{t("newTicket.goodExample")}</div>
+                  <div>{t("newTicket.goodTitle")}</div>
+                </div>
+              </div>
+            </details>
+
+            <div>
+              <p className="form-label">{t("tickets.category")}</p>
+              {!form.project_id ? (
+                <p className="form-hint">{t("newTicket.categoryNeedsProject")}</p>
+              ) : (
+                <div className="category-selector">
+                  {visibleCategories.map((category) => (
+                    <button
+                      key={category.key}
+                      type="button"
+                      className={form.category === category.key ? "category-option selected" : "category-option"}
+                      onClick={() => updateField("category", category.key)}
+                    >
+                      <span className="category-option-icon" aria-hidden="true">{category.icon}</span>
+                      <span className="category-option-label">{category.label}</span>
+                      {category.description ? (
+                        <span className="category-option-desc">{category.description}</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         ) : null}
 
@@ -521,7 +517,9 @@ export default function NewTicketPage() {
             <div className="form-instruction-box">
               <div className="form-instruction-box-title">{t("tickets.description")}</div>
               <p>
-                {showBugDetails
+                {simpleIntake
+                  ? t("newTicket.simpleHint")
+                  : showBugDetails
                   ? t("newTicket.bugHint")
                   : t("newTicket.generalHint")}
               </p>
@@ -542,6 +540,15 @@ export default function NewTicketPage() {
               </div>
               {errors.description ? <small className="form-error-msg">{t(errors.description)}</small> : null}
             </label>
+
+            {selectedTemplate?.checklist_items?.length > 0 ? (
+              <div className="template-checklist" aria-label={t("newTicket.templateChecklistHeading")}>
+                <strong>{t("newTicket.templateChecklistHeading")}</strong>
+                <ul>
+                  {selectedTemplate.checklist_items.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+            ) : null}
 
             {showBugDetails ? (
               <>
@@ -654,6 +661,7 @@ export default function NewTicketPage() {
               values={customFieldValues}
               errors={customFieldErrors}
               disabled={loading}
+              compactOptional={simpleIntake}
               onChange={(key, value) => {
                 setCustomFieldValues((current) => ({ ...current, [key]: value }));
                 setCustomFieldErrors((current) => {
@@ -686,7 +694,7 @@ export default function NewTicketPage() {
               <header className="preview-jira-header">
                 <span className="ticket-number">NEW-XXXX</span>
                 <div className="row-actions">
-                  <span className="badge badge-no-dot">{t(`category.${form.category}`)}</span>
+                  <span className="badge badge-no-dot">{visibleCategories.find((entry) => entry.key === form.category)?.label || form.category}</span>
                   <span className="badge badge-no-dot">{t(`priority.${form.urgency_reporter}`)}</span>
                 </div>
               </header>
@@ -694,9 +702,25 @@ export default function NewTicketPage() {
               <h3 className="preview-jira-title">{form.title || "-"}</h3>
 
               <section className="preview-jira-section">
+                <p className="preview-jira-label">{t("tickets.project")}</p>
+                <div className="preview-jira-text">
+                  {projects.find((project) => project.id === form.project_id)?.name || "-"}
+                </div>
+              </section>
+
+              <section className="preview-jira-section">
                 <p className="preview-jira-label">{t("tickets.description")}</p>
                 <div className="preview-jira-text">{form.description || "-"}</div>
               </section>
+
+              {selectedTemplate?.checklist_items?.length > 0 ? (
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("newTicket.templateChecklistHeading")}</p>
+                  <ul className="preview-file-list">
+                    {selectedTemplate.checklist_items.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </section>
+              ) : null}
 
               {form.steps_to_reproduce ? (
                 <section className="preview-jira-section">
@@ -723,6 +747,20 @@ export default function NewTicketPage() {
                 <section className="preview-jira-section">
                   <p className="preview-jira-label">{t("tickets.environment")}</p>
                   <div className="preview-jira-text">{form.environment}</div>
+                </section>
+              ) : null}
+
+              {customFieldDefinitions.some((field) => String(customFieldValues[field.field_key] ?? "").trim()) ? (
+                <section className="preview-jira-section">
+                  <p className="preview-jira-label">{t("tickets.customFields")}</p>
+                  <dl className="custom-field-values">
+                    {customFieldDefinitions.filter((field) => String(customFieldValues[field.field_key] ?? "").trim()).map((field) => (
+                      <div className="custom-field-value" key={field.field_key}>
+                        <dt>{field.label}</dt>
+                        <dd>{customFieldValues[field.field_key]}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </section>
               ) : null}
 

@@ -145,6 +145,11 @@ describe("DevTodo saved views", () => {
     renderPage();
 
     expect(await screen.findByText("Blocked payment gateway follow-up")).toBeInTheDocument();
+    const filtersDisclosure = screen.getByText("tickets.advancedFilters").closest("details");
+    expect(filtersDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByText("tickets.advancedFilters"));
+    expect(filtersDisclosure).toHaveAttribute("open");
+    fireEvent.click(screen.getByText("tickets.manageSavedViews"));
 
     fireEvent.change(screen.getByLabelText("dev.ticketWorkflowFilter"), {
       target: { value: "waiting" }

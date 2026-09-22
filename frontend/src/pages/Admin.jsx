@@ -17,6 +17,7 @@ import {
   createProject,
   deleteProject,
   deleteProjectIcon,
+  getProjectCategories,
   getProjects,
   patchProject,
   uploadProjectIcon
@@ -39,6 +40,7 @@ import { getUsers, patchUser } from "../api/users";
 import appLogo from "../assets/logo-openarca.png";
 import ProjectBadge from "../components/ProjectBadge";
 import { CATEGORY_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
+import { resolveCategoryText } from "../utils/categoryLabel";
 
 const tabs = ["readiness", "app", "smtp", "projects", "agents", "users"];
 const DEFAULT_PROJECT_COLOR = "#6B7280";
@@ -153,7 +155,8 @@ function validateTemplateDraft(draft) {
 }
 
 export default function AdminPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n?.language || "pl";
   const [activeTab, setActiveTab] = useState("app");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -170,6 +173,7 @@ export default function AdminPage() {
   const [isLogoUploading, setIsLogoUploading] = useState(false);
 
   const [projects, setProjects] = useState([]);
+  const [projectCategories, setProjectCategories] = useState({});
   const [projectDrafts, setProjectDrafts] = useState({});
   const [newProject, setNewProject] = useState({ name: "", description: "", color: DEFAULT_PROJECT_COLOR });
   const [projectModalId, setProjectModalId] = useState("");
@@ -205,6 +209,9 @@ export default function AdminPage() {
         getUsers(),
         getServiceAccounts()
       ]);
+      const categoriesByProject = Object.fromEntries(await Promise.all(
+        projectsData.map(async (project) => [project.id, await getProjectCategories(project.id)])
+      ));
 
       setSettings(settingsData);
       setSettingsForm({
@@ -229,6 +236,7 @@ export default function AdminPage() {
       });
 
       setProjects(projectsData);
+      setProjectCategories(categoriesByProject);
       setTemplates(templatesData);
       setUsers(usersData);
       setServiceAccounts(serviceAccountsData);
@@ -300,6 +308,21 @@ export default function AdminPage() {
       return String(a.name || "").localeCompare(String(b.name || ""), "pl");
     });
   }, [templates]);
+  function templateCategoryOptions(projectId) {
+    const configured = projectId ? projectCategories[projectId] : null;
+    const source = Array.isArray(configured) && configured.length > 0
+      ? configured
+      : CATEGORY_OPTIONS.map((key) => ({ key }));
+    return source.map((entry) => ({
+      key: entry.key,
+      label: resolveCategoryText(entry, language).label || t(`category.${entry.key}`)
+    }));
+  }
+
+  function templateCategoryLabel(template) {
+    return templateCategoryOptions(template.project_id).find((entry) => entry.key === template.category)?.label
+      || template.category;
+  }
   const appLogoPreviewUrl = settings?.app_logo_url ? `${API_BASE_URL}${settings.app_logo_url}` : appLogo;
   const readinessChecks = Array.isArray(readiness?.checks) ? readiness.checks : [];
   const readinessLayers = Array.isArray(readiness?.extensions?.layers)
@@ -1292,7 +1315,7 @@ export default function AdminPage() {
                       <span className="badge badge-no-dot">
                         {template.project_name || t("admin.templateGlobal")}
                       </span>
-                      <span className="badge badge-no-dot">{t(`category.${template.category}`)}</span>
+                      <span className="badge badge-no-dot">{templateCategoryLabel(template)}</span>
                       <span className="badge badge-no-dot">{t(`priority.${template.urgency_reporter}`)}</span>
                       <span className={template.is_active ? "badge badge-verified" : "badge badge-closed"}>
                         {template.is_active ? t("admin.templateActive") : t("admin.templateInactive")}
@@ -1494,7 +1517,17 @@ export default function AdminPage() {
                 <select
                   className="form-select"
                   value={templateModalDraft.project_id}
-                  onChange={(event) => updateTemplateField("project_id", event.target.value)}
+                  onChange={(event) => {
+                    const projectId = event.target.value;
+                    const options = templateCategoryOptions(projectId);
+                    setTemplateModalDraft((current) => ({
+                      ...current,
+                      project_id: projectId,
+                      category: options.some((option) => option.key === current.category)
+                        ? current.category
+                        : options[0]?.key || "bug"
+                    }));
+                  }}
                 >
                   <option value="">{t("admin.templateGlobal")}</option>
                   {projects.map((project) => (
@@ -1513,9 +1546,16 @@ export default function AdminPage() {
                     value={templateModalDraft.category}
                     onChange={(event) => updateTemplateField("category", event.target.value)}
                   >
-                    {CATEGORY_OPTIONS.map((category) => (
-                      <option key={category} value={category}>
-                        {t(`category.${category}`)}
+                    {!templateCategoryOptions(templateModalDraft.project_id).some(
+                      (category) => category.key === templateModalDraft.category
+                    ) ? (
+                      <option value={templateModalDraft.category}>
+                        {templateModalDraft.category} ({t("tickets.customFieldArchived")})
+                      </option>
+                    ) : null}
+                    {templateCategoryOptions(templateModalDraft.project_id).map((category) => (
+                      <option key={category.key} value={category.key}>
+                        {category.label}
                       </option>
                     ))}
                   </select>
